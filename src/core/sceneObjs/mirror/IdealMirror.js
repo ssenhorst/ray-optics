@@ -16,6 +16,7 @@
 
 import BaseFilter from '../BaseFilter.js';
 import LineObjMixin from '../LineObjMixin.js';
+import FocalLengthHandleMixin from '../FocalLengthHandleMixin.js';
 import i18next from 'i18next';
 import Simulator from '../../Simulator.js';
 import geometry from '../../geometry.js';
@@ -54,7 +55,7 @@ const IDEAL_MIRROR_SURFACE_TYPE = {
  * @property {Point} p2 - The second endpoint.
  * @property {number} focalLength - The focal length. The Cartesian sign convention is not used. But if the Cartesian sign convention is enabled (as a preference setting), the focal length changes sign in the UI.
  */
-class IdealMirror extends LineObjMixin(BaseFilter) {
+class IdealMirror extends FocalLengthHandleMixin(LineObjMixin(BaseFilter)) {
   static type = 'IdealMirror';
   static isOptical = true;
   static mergesWithGlass = true;
@@ -172,6 +173,11 @@ class IdealMirror extends LineObjMixin(BaseFilter) {
       ctx.lineTo(this.p2.x + par_x * arrow_size_par + per_x * arrow_size_per, this.p2.y + par_y * arrow_size_par + per_y * arrow_size_per);
       ctx.lineTo(this.p2.x + par_x * arrow_size_par - per_x * arrow_size_per, this.p2.y + par_y * arrow_size_par - per_y * arrow_size_per);
       ctx.fill();
+    }
+
+    if (isHovered) {
+      // Show the focal points, which are also the handles for dragging the focal length.
+      this.drawFocalHandles(canvasRenderer);
     }
   }
 

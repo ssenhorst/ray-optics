@@ -1,0 +1,147 @@
+{
+  "version": 5,
+  "name": "two_lens_imaging",
+  "objs": [
+    {
+      "type": "AngleSource",
+      "name": "Tip",
+      "p1": {
+        "x": 160,
+        "y": 300
+      },
+      "p2": {
+        "x": 200,
+        "y": 300
+      },
+      "brightness": 1,
+      "emisAngle": 26,
+      "interaction": {
+        "enabled": false
+      }
+    },
+    {
+      "type": "AngleSource",
+      "name": "Base",
+      "p1": {
+        "x": 160,
+        "y": 360
+      },
+      "p2": {
+        "x": 200,
+        "y": 360
+      },
+      "brightness": 1,
+      "emisAngle": 26,
+      "wavelength": 620,
+      "interaction": {
+        "enabled": false
+      }
+    },
+    {
+      "type": "IdealLens",
+      "name": "Objective",
+      "p1": {
+        "x": 460,
+        "y": 220
+      },
+      "p2": {
+        "x": 460,
+        "y": 440
+      },
+      "focalLength": 120,
+      "interaction": {
+        "move": true,
+        "reshape": false,
+        "properties": {
+          "focalLength": false
+        }
+      }
+    },
+    {
+      "type": "IdealLens",
+      "name": "Relay",
+      "p1": {
+        "x": 900,
+        "y": 220
+      },
+      "p2": {
+        "x": 900,
+        "y": 440
+      },
+      "focalLength": 150,
+      "interaction": {
+        "move": true,
+        "reshape": false,
+        "properties": {
+          "focalLength": true
+        }
+      }
+    },
+    {
+      "type": "TextLabel",
+      "x": 120,
+      "y": 150,
+      "text": "object",
+      "fontSize": 18,
+      "interaction": {
+        "enabled": false
+      }
+    }
+  ],
+  "width": 1400,
+  "height": 640,
+  "rayModeDensity": 0.1,
+  "origin": {
+    "x": -40,
+    "y": -110
+  },
+  "scale": 1,
+  "interaction": {
+    "enabled": false,
+    "create": false,
+    "pan": true,
+    "zoom": true,
+    "keyboard": false
+  },
+  "ui": {
+    "toolbar": false,
+    "objectBar": false,
+    "sidebar": false,
+    "statusBar": false
+  },
+  "task": {
+    "title": "Image the object at twice its size",
+    "description": "The object is 60 units tall and its two ends emit green and red light. Slide the two lenses, and drag the relay lens's focal point, so that both ends come to a sharp focus on the marked plane, twice as far apart as they started.",
+    "hint": "Work one lens at a time: the objective forms an intermediate image, and the relay lens re-images that onto the marked plane. Two real imaging steps invert the picture twice, so the final image is upright. Only the relay lens's focal length can be changed.",
+    "successMessage": "Both ends are in focus on the target plane and 120 units apart: an overall magnification of +2. Two inversions make an upright image.",
+    "goals": [
+      {
+        "id": "tip",
+        "type": "raysConverge",
+        "title": "Focus the green end on the upper mark",
+        "source": "Tip",
+        "point": {
+          "x": 1240,
+          "y": 270
+        },
+        "radius": 20,
+        "minDepth": 2,
+        "targetLabel": "green"
+      },
+      {
+        "id": "base",
+        "type": "raysConverge",
+        "title": "Focus the red end on the lower mark",
+        "source": "Base",
+        "point": {
+          "x": 1240,
+          "y": 390
+        },
+        "radius": 20,
+        "minDepth": 2,
+        "targetLabel": "red"
+      }
+    ]
+  },
+  "simulateColors": true
+}

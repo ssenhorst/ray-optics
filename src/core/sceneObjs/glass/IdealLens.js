@@ -16,6 +16,7 @@
 
 import BaseSceneObj from '../BaseSceneObj.js';
 import LineObjMixin from '../LineObjMixin.js';
+import FocalLengthHandleMixin from '../FocalLengthHandleMixin.js';
 import i18next from 'i18next';
 import geometry from '../../geometry.js';
 import { parseFormula } from '../../formula/formula-parser.js';
@@ -53,7 +54,7 @@ const IDEAL_LENS_SURFACE_TYPE = {
  * @property {Point} p2 - The second endpoint.
  * @property {number} focalLength - The focal length.
  */
-class IdealLens extends LineObjMixin(BaseSceneObj) {
+class IdealLens extends FocalLengthHandleMixin(LineObjMixin(BaseSceneObj)) {
   static type = 'IdealLens';
   static isOptical = true;
   static serializableDefaults = {
@@ -154,11 +155,8 @@ class IdealLens extends LineObjMixin(BaseSceneObj) {
     }
 
     if (isHovered) {
-      // show focal length
-      var mp = geometry.segmentMidpoint(this);
-      ctx.fillStyle = 'rgb(255,0,255)';
-      ctx.fillRect(mp.x + this.focalLength * per_x - 1.5 * ls, mp.y + this.focalLength * per_y - 1.5 * ls, 3 * ls, 3 * ls);
-      ctx.fillRect(mp.x - this.focalLength * per_x - 1.5 * ls, mp.y - this.focalLength * per_y - 1.5 * ls, 3 * ls, 3 * ls);
+      // Show the focal points, which are also the handles for dragging the focal length.
+      this.drawFocalHandles(canvasRenderer);
     }
   }
 

@@ -33,6 +33,7 @@ import {
   sceneObjs,
 } from '../../core/index.js';
 import { DATA_VERSION } from '../../core/Scene.js';
+import { sceneAllows, objAllows } from '../../core/interaction.js';
 import { objBar } from '../services/objBar.js';
 import { saveAs } from 'file-saver';
 import i18next, { t, use } from 'i18next';
@@ -735,6 +736,7 @@ function initAppService() {
     }
     //Ctrl+D or Cmd+D
     if ((e.ctrlKey || e.metaKey) && e.keyCode == 68) {
+      if (!sceneAllows(scene, 'create')) return false;
       if (editor.selectedObjIndex != -1) {
         if (scene.objs[editor.selectedObjIndex].constructor.type == 'Handle') {
           scene.cloneObjsByHandle(editor.selectedObjIndex);
@@ -783,6 +785,17 @@ function initAppService() {
       if (editor.isConstructing) {
         editor.undo();
       }
+    }
+
+    // The keyboard shortcuts that edit the scene obey the same interaction permissions as the mouse,
+    // so that a scene authored as an exercise cannot be changed in ways it forbids.
+    const isDeleteKey = e.keyCode == 46 || e.keyCode == 8;
+    const isMoveKey = (e.keyCode >= 37 && e.keyCode <= 40)
+      || [107, 187, 61, 109, 189, 173].includes(e.keyCode);
+    if (isDeleteKey || isMoveKey) {
+      if (!sceneAllows(scene, 'keyboard')) return false;
+      const selectedObj = editor.selectedObjIndex >= 0 ? scene.objs[editor.selectedObjIndex] : null;
+      if (selectedObj && !objAllows(selectedObj, isDeleteKey ? 'remove' : 'move')) return false;
     }
 
     //Delete
@@ -854,6 +867,7 @@ function initAppService() {
       else {
         // TODO: Is this a historical remnant? Should the expected behavior be to change `scene.origin` instead? Note however that some users may be using the current behavior to align the scene with the background image or the grid.
         for (var i = 0; i < scene.objs.length; i++) {
+          if (!objAllows(scene.objs[i], 'move')) continue;
           if (e.keyCode == 37) {
             scene.objs[i].move(-step, 0);
           }

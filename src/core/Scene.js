@@ -16,6 +16,9 @@
 
 import * as sceneObjs from './sceneObjs.js';
 import { versionUpdate } from './versionUpdate.js';
+import { validateInteraction } from './interaction.js';
+import { validateUiOptions } from './uiOptions.js';
+import { validateTask } from './goals/TaskEvaluator.js';
 import i18next from 'i18next';
 import seedrandom from 'seedrandom';
 
@@ -196,6 +199,9 @@ function extractNonDefaults(obj, defaults) {
  * @property {string|null} randomSeed - The seed for the random number generator used in the simulation, null if using randomly generated seed. Using a seed allows the simulation to be deterministic for the same version of this app when randomness is used. However, reproducibility is only guaranteed if the scene is just loaded (that is, no other editing has been done on the scene). Also, reproducibility is not guaranteed across different versions of the app.
  * @property {function} rng - The random number generator.
  * @property {Object|null} backgroundImage - The background image of the scene, null if not set.
+ * @property {Object} interaction - The scene-level interaction permissions, which decide what the user is allowed to do with the scene. See {@link module:interaction} for the available keys. Individual objects may override them with their own `interaction` property.
+ * @property {Object} ui - The parts of the user interface that are shown. See {@link module:uiOptions} for the available keys. This lets a scene be presented as a minimal embeddable widget instead of the full editor.
+ * @property {Object|null} task - The assignment posed by the scene: a title, an optional description and hint, and a list of goals evaluated against the simulation. See {@link TaskEvaluator}.
  */
 class Scene {
   static serializableDefaults = {
@@ -227,6 +233,9 @@ class Scene {
     rayPowerSampling: false,
     maxRayDepth: Infinity,
     randomSeed: null,
+    interaction: {},
+    ui: {},
+    task: null,
     theme: {
       background: {
         color: { r: 0, g: 0, b: 0 }
@@ -542,6 +551,21 @@ class Scene {
         this.error = i18next.t('simulator:generalErrors.unknownPropertyValue', { property: 'colorMode', value: jsonData.colorMode });
         callback(true, true);
         return;
+      }
+
+      // Check the interaction, UI and task properties, which are free-form objects and so are
+      // validated by their own modules rather than by the generic nested-key check above.
+      const structuredErrors = [
+        validateInteraction(jsonData.interaction, true),
+        validateUiOptions(jsonData.ui),
+        validateTask(jsonData.task),
+      ];
+      for (const structuredError of structuredErrors) {
+        if (structuredError) {
+          this.error = structuredError;
+          callback(true, true);
+          return;
+        }
       }
 
       // Set the properties of the scene. Use the default properties if the JSON data does not contain them.

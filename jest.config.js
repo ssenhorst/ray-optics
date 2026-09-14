@@ -21,6 +21,8 @@ module.exports = {
     "**/test/formula/**/*.test.js",
     "**/test/primitive/**/*.test.js",
     "**/test/propertyUtils/**/*.test.js",
+    "**/test/interaction/**/*.test.js",
+    "**/test/goals/**/*.test.js",
     "**/test/sceneObjs/**/*.test.js",
     "**/test/scenes/**/*.test.js"
   ]

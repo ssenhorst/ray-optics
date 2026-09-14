@@ -27,8 +27,19 @@ A web app for creating and simulating 2D geometric optical scenes, with a galler
 - Import shapes from SVG files as optical components
 - Export as SVG diagram
 - Create modularized combinations of optical elements with custom parameters.
+- Author interactive assignments: restrict what the student may change, hide parts of the interface, and set goals that are scored live against the simulation.
 - Run with high-performance ray tracing engine based on WebGPU. <sup>Beta</sup>
 - Use the simulator as a node module in your own project and integrate with other programming languages.
+
+## Task scenes
+
+A scene can carry an `interaction` property saying what the user may change (scene-wide and per
+object, down to individual properties), a `ui` property saying which parts of the interface are
+shown, and a `task` property stating an assignment with goals that are scored after every
+simulation run. `npm run build-tasks` packs each scene in `data/taskScenes/` into a single
+self-contained HTML file under `dist/tasks/`, suitable for embedding in a course platform that
+allows only static HTML with no external dependencies. See
+[data/taskScenes/README.md](data/taskScenes/README.md) for the authoring guide.
 
 ## Links
 - [**Launch the Web App**](https://phydemo.app/ray-optics/simulator/)

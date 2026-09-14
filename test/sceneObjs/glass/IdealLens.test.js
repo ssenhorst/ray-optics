@@ -62,6 +62,63 @@ describe('IdealLens', () => {
     expect(result.type).toBe('IdealLens');
   });
 
+  describe('focal length handles', () => {
+    /** The unit normal of a lens from (100, 100) to (200, 300). */
+    const normal = { x: 200 / Math.sqrt(50000), y: -100 / Math.sqrt(50000) };
+    const mid = { x: 150, y: 200 };
+
+    beforeEach(() => {
+      user.click(100, 100);
+      user.click(200, 300);
+      user.set("{{simulator:sceneObjs.common.focalLength}}", 50);
+    });
+
+    it('reports the focal points as control points either side of the centre', () => {
+      const points = obj.getFocalPoints();
+      expect(points).toHaveLength(2);
+      expect(points[0].x).toBeCloseTo(mid.x + 50 * normal.x, 6);
+      expect(points[0].y).toBeCloseTo(mid.y + 50 * normal.y, 6);
+      expect(points[1].x).toBeCloseTo(mid.x - 50 * normal.x, 6);
+      expect(points[1].y).toBeCloseTo(mid.y - 50 * normal.y, 6);
+    });
+
+    it('offers the focal points as handles named after the property they change', () => {
+      const handles = obj.getInteractionHandles();
+      const focal = handles.filter(h => h.propertyKey === 'focalLength');
+      expect(focal).toHaveLength(2);
+      expect(handles.some(h => h.propertyKey === 'p1')).toBe(true);
+    });
+
+    it('sets the focal length by dragging a focal point', () => {
+      const from = obj.getFocalPoints()[0];
+      user.drag(from.x, from.y, mid.x + 100 * normal.x, mid.y + 100 * normal.y);
+      expect(obj.focalLength).toBeCloseTo(100, 6);
+    });
+
+    it('sets the same focal length from the handle on the other side', () => {
+      const from = obj.getFocalPoints()[1];
+      user.drag(from.x, from.y, mid.x - 120 * normal.x, mid.y - 120 * normal.y);
+      expect(obj.focalLength).toBeCloseTo(120, 6);
+    });
+
+    it('measures only the distance along the normal, ignoring sideways movement', () => {
+      const from = obj.getFocalPoints()[0];
+      const along = { x: 100 / Math.sqrt(50000), y: 200 / Math.sqrt(50000) };
+      user.drag(
+        from.x, from.y,
+        mid.x + 80 * normal.x + 60 * along.x,
+        mid.y + 80 * normal.y + 60 * along.y
+      );
+      expect(obj.focalLength).toBeCloseTo(80, 6);
+    });
+
+    it('still drags the endpoints', () => {
+      user.drag(100, 100, 120, 140);
+      expect(obj.p1).toEqual({ x: 120, y: 140 });
+      expect(obj.focalLength).toBeCloseTo(50, 6);
+    });
+  });
+
   it('sets properties', () => {
     user.click(100, 100);
     user.click(200, 300);

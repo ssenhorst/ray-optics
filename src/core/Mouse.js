@@ -39,6 +39,24 @@ class Mouse {
     this.scene = scene;
     this.isTouch = isTouch;
     this.overrideGrid = overrideGrid;
+
+    /**
+     * @property {boolean} ignorePoints - When true, `isOnPoint` always reports false, so that
+     * `checkMouseOver` reports what the user would be interacting with if the object's control
+     * points were not there. The editor uses this to fall back to dragging an object as a whole when
+     * the control point under the cursor is one the scene does not allow the user to move.
+     */
+    this.ignorePoints = false;
+  }
+
+  /**
+   * A copy of this mouse that does not see control points.
+   * @returns {Mouse} The copy.
+   */
+  withoutPoints() {
+    const copy = new Mouse(this.pos, this.scene, this.isTouch, this.overrideGrid);
+    copy.ignorePoints = true;
+    return copy;
   }
 
   /**
@@ -66,6 +84,7 @@ class Mouse {
    * @returns {boolean} True if the mouse is on the given point, false otherwise.
    */
   isOnPoint(point) {
+    if (this.ignorePoints) return false;
     return geometry.distanceSquared(this.pos, point) < this.getClickExtent(true) * this.getClickExtent(true);
   }
 

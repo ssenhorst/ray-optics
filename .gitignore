@@ -1,6 +1,7 @@
 /node_modules
 /dist
 /dist-node
+/dist-widget
 /dist-integrations
 /.local-test-output/
 .hintrc
