@@ -478,6 +478,31 @@ Progressive resolution and the status-bar instrumentation landed with M1 and M3.
 is normally used for, written the way it is typed rather than as LaTeX, with coefficients
 computed from the scene's current wavelength so they can be copied straight in.*
 
+**Bug fix: the resolution ladder did not transfer safely between scenes. ✅ Done.**
+`AdaptiveResolution` tracked capacity as a bare *resolution*, implicitly assuming compute
+cost depends only on the grid and not on how many sources it sums. It does not: the field
+pass costs `pixels * sourceCount`. Loading a light scene let the ladder climb to 2048;
+switching to a scene with two thousand more sources then tried that same 2048 at the new,
+much heavier source count, and the field pass — which ends with an explicit `gl.finish()`
+so the ladder can measure real GPU time — blocked the main thread for several seconds. On
+this machine that surfaced as "selecting another scene does not load it"; on slower
+hardware the same path took the tab down entirely.
+
+Fixed by tracking capacity as *workload* (`resolution² × sourceCount`, the field pass's
+actual cost driver) instead of resolution alone, so a proven capacity transfers correctly
+between scenes of different complexity rather than carrying over a number that only meant
+something for the scene it was measured on. `WaveSimulator` now resolves the initial
+resolution from inside `buildWaveModel`, via the `resolveResolution` hook that had been
+built for exactly this but never wired up, since the choice needs the source count and the
+source count is only known once the scene is built.
+
+*A related, pre-existing, lower-priority effect: for a scene where the propagation chain's
+own cost (independent of resolution) already consumes most of the settled budget, the
+per-rung refinement step correctly declines to climb further, since it can't yet tell how
+much of the measured time was chain versus field. Such a scene stays at a conservative
+resolution rather than sharpening over time. This is safe — it does not reproduce the
+reported symptom — and separating the two costs is future work, not part of this fix.*
+
 **Follow-up round. ✅ Done.** Draggable interface vertices with hit testing that
 follows the drawn profile rather than the chord; a plane-wave source evaluated in closed
 form; five parameterised interface types (N slits, square grating, sinusoidal phase

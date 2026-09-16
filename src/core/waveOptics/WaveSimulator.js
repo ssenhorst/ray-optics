@@ -194,7 +194,16 @@ class WaveSimulator {
     this.needsStats = true;
 
     const target = settings.targetResolution;
-    this.computeField(this.adaptive.chooseInitial(target, isInteracting), isInteracting);
+    // The resolution can only be chosen once the source count is known, and
+    // the source count is only known once the scene has been built — so the
+    // choice is made from inside buildWaveModel via this callback, rather than
+    // computed up front. Picking it up front is exactly what caused a scene
+    // change to try whatever resolution a *previous, unrelated* scene had
+    // proven safe, regardless of how many more sources the new one has.
+    this.computeField(
+      (sourceCount) => this.adaptive.chooseInitial(sourceCount, target, isInteracting),
+      isInteracting
+    );
     this.render();
     this.scheduleRefine(target);
   }
@@ -243,6 +252,11 @@ class WaveSimulator {
 
     this.refineTimerId = setTimeout(() => {
       this.refineTimerId = -1;
+      // A refinement step already has a real measurement for this scene's
+      // source count at the current resolution (nextStep only offers a rung
+      // once that measurement came in comfortably under budget), so there is
+      // no chicken-and-egg problem here: the target resolution is just a
+      // constant.
       this.computeField(next, false);
       this.render();
       this.scheduleRefine(target);
@@ -251,15 +265,24 @@ class WaveSimulator {
 
   /**
    * Compute the field at a given grid resolution and update the colour scale.
-   * @param {number} resolution
+   * @param {number|function(number): number} resolutionOrResolver - Either a
+   *   fixed resolution, or a function from the scene's source count to the
+   *   resolution to use — needed whenever the choice depends on the source
+   *   count, since that is only known once the scene has been built.
    * @param {boolean} [isInteracting=false] - Which time budget applies.
    * @private
    */
-  computeField(resolution, isInteracting = false) {
+  computeField(resolutionOrResolver, isInteracting = false) {
     if (!this.engine) return;
 
     const startTime = typeof performance !== 'undefined' ? performance.now() : Date.now();
-    const model = buildWaveModel(this.scene, { resolution });
+    let resolution = typeof resolutionOrResolver === 'number' ? resolutionOrResolver : 0;
+    const model = buildWaveModel(this.scene, {
+      resolveResolution: typeof resolutionOrResolver === 'function'
+        ? (sourceCount) => (resolution = resolutionOrResolver(sourceCount))
+        : undefined,
+      resolution: typeof resolutionOrResolver === 'number' ? resolutionOrResolver : undefined,
+    });
     this.lastModel = model;
     this.currentResolution = resolution;
 
@@ -279,7 +302,7 @@ class WaveSimulator {
 
     const endTime = typeof performance !== 'undefined' ? performance.now() : Date.now();
     this.lastComputeMs = endTime - startTime;
-    this.adaptive.record(resolution, this.lastComputeMs, isInteracting);
+    this.adaptive.record(resolution, model.diagnostics.sourceCount, this.lastComputeMs, isInteracting);
 
     this.emit('fieldComputed', {
       diagnostics: model.diagnostics,
