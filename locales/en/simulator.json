@@ -982,7 +982,28 @@
       "yInfo": "The variable <code>y</code> is the transverse distance from the centre of the interface, in the same length units as the canvas.",
       "refractiveIndexAfter": "Index after",
       "refractiveIndexAfterInfo": "The refractive index of the subspace beyond this interface. The index before it comes from the previous interface, or from the scene background for the first one.",
-      "sagInfo": "The position of the surface along the optical axis, relative to the straight line between its endpoints. A spherical surface of radius R is <code>y^2/(2R)</code>."
+      "sagInfo": "The position of the surface along the optical axis, relative to the straight line between its endpoints. A spherical surface of radius R is <code>y^2/(2R)</code>.",
+      "anchorPoint": "Anchor point",
+      "angle": "Angle",
+      "angleInfo": "The propagation direction, measured from the optical axis. Zero travels straight along it.",
+      "anchorPhaseInfo": "The phase at the anchor point. The anchor also decides which subspace the wave fills.",
+      "pitch": "Pitch",
+      "dutyCycle": "Duty cycle",
+      "dutyCycleInfo": "The fraction of each period occupied by a bar. One half gives equal bars and gaps, which suppresses the even diffraction orders.",
+      "barTransmission": "Bar transmission",
+      "barTransmissionInfo": "Amplitude transmitted through a bar. Zero gives an absorbing grating; one, combined with a phase shift, gives a pure phase grating.",
+      "barPhase": "Bar phase",
+      "maxPhaseShift": "Peak-to-peak phase",
+      "maxPhaseShiftInfo": "The full phase excursion in radians, so the modulation amplitude is half of it. The orders follow the Bessel series Jₘ of that half, so the zeroth order vanishes at a peak-to-peak shift of about 4.81, twice the first zero of J₀.",
+      "slitCount": "Slits",
+      "slitWidth": "Slit width",
+      "slitSpacing": "Slit spacing",
+      "slitSpacingInfo": "Centre-to-centre spacing. The slit width sets the width of the diffraction envelope; the spacing sets how finely the fringes divide it.",
+      "focalLength": "Focal length",
+      "focalLengthInfo": "Where the zones bring the light to a focus, at the scene wavelength. The zone boundaries follow from it as the square root of n·λ·f.",
+      "phaseReversing": "Phase-reversing",
+      "phaseReversingInfo": "Invert the cancelling zones rather than blocking them. This wastes none of the light and is about four times as efficient.",
+      "maskInfo": "The screen is open wherever this function is non-negative, and opaque wherever it is negative."
     },
     "eqnInfo": {
       "examples": "For example:",
@@ -996,7 +1017,10 @@
       "spherical": "a spherical surface of radius {{radius}}",
       "tilted": "a surface tilted relative to its endpoints",
       "aperture": "a hard-edged opening of half-width {{half}}, opaque outside it",
-      "typingNote": "Type them as written: <code>*</code> becomes a multiplication dot and <code>^</code> starts a power."
+      "typingNote": "Type them as written: <code>*</code> becomes a multiplication dot and <code>^</code> starts a power.",
+      "maskRuling": "a grating of equal bars and gaps",
+      "maskSlit": "a single slit of half-width {{half}}",
+      "maskZonePlate": "a zone plate, since the zone index goes as y²"
     }
   }
 }

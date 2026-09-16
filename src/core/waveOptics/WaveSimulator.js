@@ -17,7 +17,7 @@
 import CanvasRenderer from '../CanvasRenderer.js';
 import WaveFieldEngineWebGL2 from './WaveFieldEngineWebGL2.js';
 import { buildWaveModel, resolveWaveSettings } from './waveSceneModel.js';
-import { INTERACTIVE_GRID_RESOLUTION } from './conventions.js';
+import { AdaptiveResolution } from './adaptiveResolution.js';
 
 /**
  * How long after the last edit the field is recomputed at full resolution.
@@ -26,8 +26,8 @@ import { INTERACTIVE_GRID_RESOLUTION } from './conventions.js';
 const REFINE_DELAY_MS = 150;
 
 /**
- * If two light updates arrive closer together than this, the user is dragging
- * and the coarse grid is used.
+ * Fallback window for deciding that updates are part of an interaction, used
+ * only when there is no editor to ask.
  */
 const INTERACTION_WINDOW_MS = 200;
 
@@ -97,6 +97,19 @@ class WaveSimulator {
     this.referenceAmplitude = 0;
     this.lastLightUpdateTime = -Infinity;
     this.refineTimerId = -1;
+
+    /**
+     * @property {AdaptiveResolution} adaptive - Tracks what this machine has
+     * managed within each time budget, so the grid can be sized from
+     * measurement rather than a fixed guess.
+     */
+    this.adaptive = new AdaptiveResolution();
+
+    /** @property {number} currentResolution - The resolution last computed at. */
+    this.currentResolution = 0;
+
+    /** Whether the colour scale still needs reading back for this change. */
+    this.needsStats = true;
     this.animationFrameId = -1;
     this.animationLastTime = 0;
 
@@ -155,60 +168,109 @@ class WaveSimulator {
   }
 
   /**
-   * Recompute the field, coarsely while the user is interacting and at full
-   * resolution once they stop.
+   * Recompute the field, then climb towards the target resolution.
+   *
+   * The starting point is whatever this machine has already proved it can
+   * manage inside the relevant time budget, which is tracked separately for
+   * drags and for settled redraws. After the user stops, the refinement steps
+   * up one rung at a time for as long as each step stays cheap enough to
+   * justify the next.
    * @private
    */
   scheduleFieldUpdate() {
     if (!this.engine) return;
 
     const settings = resolveWaveSettings(this.scene);
-    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-    const isInteracting = now - this.lastLightUpdateTime < INTERACTION_WINDOW_MS;
-    this.lastLightUpdateTime = now;
-
-    const resolution = isInteracting
-      ? Math.min(INTERACTIVE_GRID_RESOLUTION, settings.gridResolution)
-      : settings.gridResolution;
-
-    this.computeField(resolution);
+    const isInteracting = this.isInteracting();
 
     if (this.refineTimerId !== -1) {
       clearTimeout(this.refineTimerId);
       this.refineTimerId = -1;
     }
-    if (resolution < settings.gridResolution) {
-      this.refineTimerId = setTimeout(() => {
-        this.refineTimerId = -1;
-        this.computeField(settings.gridResolution);
-        this.render();
-      }, REFINE_DELAY_MS);
+
+    // The colour scale is read back once per change, on the first pass, and
+    // reused as the picture sharpens. That keeps the colours from shifting
+    // under the refinement, and keeps the readback off the largest grids.
+    this.needsStats = true;
+
+    const target = settings.targetResolution;
+    this.computeField(this.adaptive.chooseInitial(target, isInteracting), isInteracting);
+    this.render();
+    this.scheduleRefine(target);
+  }
+
+  /**
+   * Whether the user is in the middle of a gesture.
+   *
+   * The editor is asked directly rather than inferred from how closely updates
+   * arrive. On a machine where one redraw already takes longer than the
+   * inference window, consecutive mouse moves would each look like a fresh
+   * change, and the drag would never get the responsive budget it needs — which
+   * is exactly the case where it matters most.
+   *
+   * @returns {boolean}
+   * @private
+   */
+  isInteracting() {
+    const editor = this.scene.editor;
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+
+    if (editor) {
+      // -1 means nothing is being dragged; anything else is an object, the
+      // scene being panned, or the observer.
+      const dragging = editor.draggingObjIndex !== -1 || Boolean(editor.isConstructing);
+      this.lastLightUpdateTime = now;
+      return dragging;
     }
 
-    this.render();
+    const recent = now - this.lastLightUpdateTime < INTERACTION_WINDOW_MS;
+    this.lastLightUpdateTime = now;
+    return recent;
+  }
+
+  /**
+   * Queue the next step of the resolution climb.
+   * @param {number} target
+   * @private
+   */
+  scheduleRefine(target) {
+    if (this.refineTimerId !== -1) {
+      clearTimeout(this.refineTimerId);
+      this.refineTimerId = -1;
+    }
+    const next = this.adaptive.nextStep(this.currentResolution, target, this.lastComputeMs);
+    if (next === null) return;
+
+    this.refineTimerId = setTimeout(() => {
+      this.refineTimerId = -1;
+      this.computeField(next, false);
+      this.render();
+      this.scheduleRefine(target);
+    }, REFINE_DELAY_MS);
   }
 
   /**
    * Compute the field at a given grid resolution and update the colour scale.
    * @param {number} resolution
+   * @param {boolean} [isInteracting=false] - Which time budget applies.
    * @private
    */
-  computeField(resolution) {
+  computeField(resolution, isInteracting = false) {
     if (!this.engine) return;
 
     const startTime = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const model = buildWaveModel(this.scene, { resolution });
     this.lastModel = model;
+    this.currentResolution = resolution;
 
     try {
       this.engine.computeField(model);
 
-      // The percentile readback stalls the pipeline, so it is done only on the
-      // full-resolution pass. During a drag the previous scale is reused, which
-      // keeps the colours stable while the geometry moves.
-      if (resolution >= model.settings.gridResolution || this.referenceAmplitude === 0) {
+      const settled = this.needsStats && !isInteracting;
+      if (settled || this.referenceAmplitude === 0) {
         const stats = this.engine.readFieldStats(model.settings.scalePercentile);
         this.referenceAmplitude = stats.referenceAmplitude;
+        this.needsStats = false;
       }
       this.error = null;
     } catch (e) {
@@ -217,11 +279,13 @@ class WaveSimulator {
 
     const endTime = typeof performance !== 'undefined' ? performance.now() : Date.now();
     this.lastComputeMs = endTime - startTime;
+    this.adaptive.record(resolution, this.lastComputeMs, isInteracting);
 
     this.emit('fieldComputed', {
       diagnostics: model.diagnostics,
       warnings: model.warnings,
       resolution,
+      isInteracting,
       gridWidth: model.grid.width,
       gridHeight: model.grid.height,
       computeMs: this.lastComputeMs,

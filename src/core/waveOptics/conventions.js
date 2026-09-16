@@ -54,14 +54,8 @@ export const DEFAULT_REFRACTIVE_INDEX = 1;
  */
 export const MIN_RADIUS_IN_WAVELENGTHS = 0.01;
 
-/** Grid resolutions offered in the UI, as samples across the longer viewport axis. */
-export const GRID_RESOLUTIONS = [64, 128, 256, 512, 1024];
-
-/** Default grid resolution. */
-export const DEFAULT_GRID_RESOLUTION = 256;
-
-/** The resolution used while the user is dragging, panning or zooming. */
-export const INTERACTIVE_GRID_RESOLUTION = 96;
+/** Default grid resolution when the automatic ladder is turned off. */
+export const DEFAULT_GRID_RESOLUTION = 512;
 
 /**
  * Default sampling density of extended sources, in samples per wavelength in

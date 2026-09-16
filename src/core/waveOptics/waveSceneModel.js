@@ -28,6 +28,7 @@ import {
   DEFAULT_SOURCE_DENSITY, MAX_SOURCES, samplingDiagnostics
 } from './conventions.js';
 import { DEFAULT_PHASE_CHROMA } from './oklch.js';
+import { RESOLUTION_LADDER } from './adaptiveResolution.js';
 
 /**
  * @typedef {Object} WaveSource
@@ -43,6 +44,7 @@ import { DEFAULT_PHASE_CHROMA } from './oklch.js';
  * @property {Array<Object>} surfaceSamples - Sites on the interface bounding this
  *   subspace from below, which re-radiate into it. Empty for the first subspace.
  * @property {WaveSource[]} primaries - Isotropic sources located in this subspace.
+ * @property {Array<Object>} planeWaves - Plane waves filling this subspace.
  * @property {Object|null} lowerBoundary - The interface before this subspace.
  * @property {Object|null} upperBoundary - The interface after this subspace.
  */
@@ -66,10 +68,11 @@ import { DEFAULT_PHASE_CHROMA } from './oklch.js';
  */
 export function resolveWaveSettings(scene) {
   const stored = scene?.waveOptics ?? {};
-  return {
+  const resolved = {
     wavelength: positiveOr(stored.wavelength, DEFAULT_WAVELENGTH),
     refractiveIndex: positiveOr(stored.refractiveIndex, DEFAULT_REFRACTIVE_INDEX),
     gridResolution: positiveOr(stored.gridResolution, DEFAULT_GRID_RESOLUTION),
+    autoResolution: stored.autoResolution !== false,
     sourceDensity: positiveOr(stored.sourceDensity, DEFAULT_SOURCE_DENSITY),
     view: stored.view ?? 'intensity',
     intensityColormap: stored.intensityColormap ?? 'magma',
@@ -81,6 +84,13 @@ export function resolveWaveSettings(scene) {
     logScale: Boolean(stored.logScale),
     dynamicRange: positiveOr(stored.dynamicRange, 40),
   };
+
+  // In automatic mode the ladder is free to climb to the top; otherwise the
+  // chosen resolution is both the target and the cap.
+  resolved.targetResolution = resolved.autoResolution
+    ? RESOLUTION_LADDER.at(-1)
+    : resolved.gridResolution;
+  return resolved;
 }
 
 /**
@@ -176,6 +186,7 @@ export function buildSubspaceStack(scene, settings, samplesPerWavelength) {
     refractiveIndex: settings.refractiveIndex,
     surfaceSamples: [],
     primaries: [],
+    planeWaves: [],
     lowerBoundary: null,
     upperBoundary: interfaces[0] ?? null,
   }];
@@ -189,6 +200,7 @@ export function buildSubspaceStack(scene, settings, samplesPerWavelength) {
         scene, settings, samplesPerWavelength, refractiveIndexBefore: before
       }),
       primaries: [],
+      planeWaves: [],
       lowerBoundary: surface,
       upperBoundary: interfaces[i + 1] ?? null,
     });
@@ -204,15 +216,26 @@ export function buildSubspaceStack(scene, settings, samplesPerWavelength) {
     }
   }
 
-  // Place each primary source in the subspace it sits in.
+  // Place each source in the subspace it sits in.
   for (const obj of scene.objs ?? []) {
-    if (typeof obj?.getWaveSources !== 'function') continue;
-    const contributed = obj.getWaveSources({ scene, settings, samplesPerWavelength });
-    if (!contributed?.length) continue;
-    for (const source of contributed) {
-      if (!Number.isFinite(source.x) || !Number.isFinite(source.y) ||
-        !Number.isFinite(source.re) || !Number.isFinite(source.im)) continue;
-      subspaces[subspaceIndexAt(interfaces, source.x, source.y)].primaries.push(source);
+    if (typeof obj?.getWaveSources === 'function') {
+      const contributed = obj.getWaveSources({ scene, settings, samplesPerWavelength });
+      for (const source of contributed ?? []) {
+        if (!Number.isFinite(source.x) || !Number.isFinite(source.y) ||
+          !Number.isFinite(source.re) || !Number.isFinite(source.im)) continue;
+        subspaces[subspaceIndexAt(interfaces, source.x, source.y)].primaries.push(source);
+      }
+    }
+
+    // A plane wave has no extent, so its anchor decides which subspace it
+    // fills; it then stops at that subspace's far boundary like anything else.
+    if (typeof obj?.getPlaneWaves === 'function') {
+      const waves = obj.getPlaneWaves({ scene, settings });
+      for (const wave of waves ?? []) {
+        if (!Number.isFinite(wave.x) || !Number.isFinite(wave.y) ||
+          !Number.isFinite(wave.re) || !Number.isFinite(wave.im)) continue;
+        subspaces[subspaceIndexAt(interfaces, wave.x, wave.y)].planeWaves.push(wave);
+      }
     }
   }
 
@@ -336,9 +359,8 @@ export function gridSamplePosition(grid, i, j) {
  *   used to drop to a coarse grid while the user is interacting.
  * @returns {{settings: Object, sources: WaveSource[], grid: FieldGrid, diagnostics: Object}}
  */
-export function buildWaveModel(scene, { resolution } = {}) {
+export function buildWaveModel(scene, { resolution, resolveResolution } = {}) {
   const settings = resolveWaveSettings(scene);
-  const grid = computeFieldGrid(scene, resolution ?? settings.gridResolution);
   const density = resolveSourceDensity(scene, settings);
   const { subspaces, interfaces, warnings } = buildSubspaceStack(
     scene, settings, density.samplesPerWavelength
@@ -347,9 +369,17 @@ export function buildWaveModel(scene, { resolution } = {}) {
   let sourceCount = 0;
   let largestIndex = settings.refractiveIndex;
   for (const subspace of subspaces) {
-    sourceCount += subspace.surfaceSamples.length + subspace.primaries.length;
+    sourceCount += subspace.surfaceSamples.length + subspace.primaries.length
+      + subspace.planeWaves.length;
     largestIndex = Math.max(largestIndex, subspace.refractiveIndex);
   }
+
+  // The grid is laid out after the sources are known, so a caller sizing the
+  // grid to a time budget can take the source count into account.
+  const chosen = resolveResolution
+    ? resolveResolution(sourceCount)
+    : (resolution ?? settings.targetResolution);
+  const grid = computeFieldGrid(scene, chosen);
 
   return {
     settings,

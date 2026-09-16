@@ -231,7 +231,8 @@ class Scene {
     waveOptics: {
       wavelength: 20,
       refractiveIndex: 1,
-      gridResolution: 256,
+      gridResolution: 512,
+      autoResolution: true,
       sourceDensity: 8,
       view: 'intensity',
       intensityColormap: 'magma',

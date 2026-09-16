@@ -44,15 +44,31 @@
 
       <!-- Tools -->
       <div class="wave-group">
-        <div class="wave-group-body btn-group">
+        <div class="wave-group-body">
           <button
-            v-for="item in tools"
-            :key="item.type"
             class="btn btn-sm"
-            :class="tool === item.type ? 'btn-primary' : 'btn-outline-light'"
-            :title="item.hint"
-            @click="tool = item.type"
-          >{{ item.label }}</button>
+            :class="tool === '' ? 'btn-primary' : 'btn-outline-light'"
+            title="Drag to pan, scroll to zoom"
+            @click="chooseTool('')"
+          >Move view</button>
+
+          <div class="wave-menu" v-for="group in toolGroups" :key="group.id">
+            <button
+              class="btn btn-sm"
+              :class="activeItem(group) ? 'btn-primary' : 'btn-outline-light'"
+              @click="toggleMenu(group.id)"
+            >{{ activeItem(group)?.label ?? group.label }} &#9662;</button>
+            <ul class="wave-menu-list" v-show="openMenu === group.id">
+              <li v-for="item in group.items" :key="item.type">
+                <button
+                  type="button"
+                  :class="{ 'wave-menu-active': tool === item.type }"
+                  :title="item.hint"
+                  @click="chooseTool(item.type)"
+                >{{ item.label }}</button>
+              </li>
+            </ul>
+          </div>
         </div>
         <div class="wave-group-title">Tools</div>
       </div>
@@ -123,8 +139,9 @@
       <!-- Sampling -->
       <div class="wave-group">
         <div class="wave-group-body">
-          <select class="form-select form-select-sm wave-select" v-model.number="gridResolution">
-            <option v-for="value in resolutions" :key="value" :value="value">
+          <select class="form-select form-select-sm wave-select" v-model="resolutionChoice">
+            <option value="auto">Auto</option>
+            <option v-for="value in resolutions" :key="value" :value="String(value)">
               {{ value }}
             </option>
           </select>
@@ -137,7 +154,7 @@
         </div>
         <div class="wave-group-title">
           Field samples across the view, and samples per wavelength on extended
-          sources
+          sources. Auto climbs as far as this machine keeps up with
         </div>
       </div>
 
@@ -216,15 +233,43 @@
  * @description The toolbar for the wave-optics app: tools, field view, colour
  * scale, optical parameters, grid resolution and the animation transport.
  */
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { app } from '../services/waveApp.js';
 import { useWaveStore } from '../store/wave.js';
 import {
   listColormapsForView, colormapDisplayName, colormapCssGradient
 } from '../../core/waveOptics/colormaps.js';
 import { phaseWheelCssGradient } from '../../core/waveOptics/oklch.js';
-import { GRID_RESOLUTIONS } from '../../core/waveOptics/conventions.js';
+import { RESOLUTION_LADDER } from '../../core/waveOptics/adaptiveResolution.js';
 import { EXAMPLE_SCENES } from '../exampleScenes.js';
+
+/**
+ * The tools, grouped the way the scene objects divide: things that radiate and
+ * things that divide space.
+ */
+const TOOL_GROUPS = [
+  {
+    id: 'sources',
+    label: 'Sources',
+    items: [
+      { type: 'WavePointSource', label: 'Point source', hint: 'Click to place a time-harmonic point source' },
+      { type: 'WaveLineSource', label: 'Line source', hint: 'Drag to draw a line of point sources with A(u) and phase(u)' },
+      { type: 'WavePlaneWave', label: 'Plane wave', hint: 'Click to place an ideal plane wave filling its subspace' },
+    ],
+  },
+  {
+    id: 'interfaces',
+    label: 'Interfaces',
+    items: [
+      { type: 'WaveInterface', label: 'Interface', hint: 'A surface with transmission given by equations' },
+      { type: 'WaveMultiSlit', label: 'N slits', hint: 'An opaque screen with a row of identical slits' },
+      { type: 'WaveSquareGrating', label: 'Square grating', hint: 'Square-wave transmission, by pitch and duty cycle' },
+      { type: 'WaveSinusoidalGrating', label: 'Sinusoidal phase grating', hint: 'A single-frequency phase grating' },
+      { type: 'WaveZonePlate', label: 'Fresnel zone plate', hint: 'Zones alternating every half wave of path to the focus' },
+      { type: 'WaveBinaryMask', label: 'Binary mask', hint: 'Open wherever a function of y is non-negative' },
+    ],
+  },
+];
 
 export default {
   name: 'WaveToolbar',
@@ -232,6 +277,14 @@ export default {
     const store = useWaveStore();
     const fileInput = ref(null);
     const example = ref('');
+    const openMenu = ref(null);
+
+    // Close an open tool menu when the click lands anywhere else.
+    const closeOnOutsideClick = (event) => {
+      if (!event.target.closest?.('.wave-menu')) openMenu.value = null;
+    };
+    onMounted(() => document.addEventListener('click', closeOnOutsideClick));
+    onUnmounted(() => document.removeEventListener('click', closeOnOutsideClick));
 
     const view = store.view;
 
@@ -259,6 +312,22 @@ export default {
     // The intensity view is time-averaged; the other two show an instant.
     const isTimeResolved = computed(() => view.value !== 'intensity');
 
+    /**
+     * One control for two settings: 'auto' lets the resolution climb as far as
+     * the machine keeps up with, and a number pins it there.
+     */
+    const resolutionChoice = computed({
+      get: () => (store.autoResolution.value ? 'auto' : String(store.gridResolution.value)),
+      set: (value) => {
+        if (value === 'auto') {
+          store.autoResolution.value = true;
+        } else {
+          store.gridResolution.value = Number(value);
+          store.autoResolution.value = false;
+        }
+      },
+    });
+
     // The field view shows one optical cycle; the scrubber spans exactly that.
     const timeFraction = computed(() => store.state.time - Math.floor(store.state.time));
     const timeLabel = computed(() => `${timeFraction.value.toFixed(2)} cycle`);
@@ -271,6 +340,7 @@ export default {
       store,
       fileInput,
       example,
+      openMenu,
       examples: EXAMPLE_SCENES,
       tool: store.tool,
       view,
@@ -283,6 +353,7 @@ export default {
       wavelength: store.wavelength,
       refractiveIndex: store.refractiveIndex,
       gridResolution: store.gridResolution,
+      resolutionChoice,
       sourceDensity: store.sourceDensity,
       upperCutoff: store.upperCutoff,
       lowerCutoff: store.lowerCutoff,
@@ -296,13 +367,8 @@ export default {
       timeFraction,
       timeLabel,
       onScrubTime,
-      resolutions: GRID_RESOLUTIONS,
-      tools: [
-        { type: '', label: 'Move view', hint: 'Drag to pan, scroll to zoom' },
-        { type: 'WavePointSource', label: 'Point', hint: 'Click to place a time-harmonic point source' },
-        { type: 'WaveLineSource', label: 'Line', hint: 'Drag to draw a line of point sources with A(u) and phi(u)' },
-        { type: 'WaveInterface', label: 'Interface', hint: 'Drag to draw a surface dividing space; opaque outside its extent' },
-      ],
+      resolutions: RESOLUTION_LADDER,
+      toolGroups: TOOL_GROUPS,
       views: [
         { value: 'intensity', label: 'Intensity', hint: 'The time-averaged intensity |U|²' },
         { value: 'field', label: 'Field', hint: 'The instantaneous field Re{U e^{-iωt}}' },
@@ -313,6 +379,17 @@ export default {
   methods: {
     colormapLabel(name) {
       return colormapDisplayName(name);
+    },
+    /** The item of a group that is the active tool, if any. */
+    activeItem(group) {
+      return group.items.find((item) => item.type === this.tool) ?? null;
+    },
+    toggleMenu(id) {
+      this.openMenu = this.openMenu === id ? null : id;
+    },
+    chooseTool(type) {
+      this.tool = type;
+      this.openMenu = null;
     },
     onNew() {
       this.example = '';
@@ -417,6 +494,46 @@ export default {
 .wave-range {
   width: 120px;
   padding-top: 3px;
+}
+
+.wave-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.wave-menu-list {
+  position: absolute;
+  top: calc(100% + 3px);
+  left: 0;
+  z-index: 30;
+  margin: 0;
+  padding: 3px 0;
+  list-style: none;
+  min-width: 200px;
+  background-color: rgba(26, 29, 34, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 4px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+.wave-menu-list button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 4px 12px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.wave-menu-list button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.wave-menu-list button.wave-menu-active {
+  color: #7db3ff;
 }
 
 .wave-phase-wheel {

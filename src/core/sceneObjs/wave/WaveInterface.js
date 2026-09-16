@@ -16,6 +16,7 @@
 
 import BaseSceneObj from '../BaseSceneObj.js';
 import LineObjMixin from '../LineObjMixin.js';
+import geometry from '../../geometry.js';
 import i18next from 'i18next';
 import { evaluateLatex } from '../../equation.js';
 import { wavelengthInMedium } from '../../waveOptics/conventions.js';
@@ -28,6 +29,21 @@ const SLOPE_SCAN_SAMPLES = 64;
 
 /** Step used for the central difference that gives the surface slope. */
 const SLOPE_EPSILON = 1e-4;
+
+/** Samples across the smallest feature of a patterned transmission. */
+const SAMPLES_PER_FEATURE = 6;
+
+/**
+ * The properties every interface has, whatever its transmission is defined by.
+ * Subclasses spread this into their own `serializableDefaults` so they keep the
+ * geometry and the index without redeclaring them.
+ */
+export const SHARED_INTERFACE_DEFAULTS = Object.freeze({
+  p1: null,
+  p2: null,
+  refractiveIndexAfter: 1.5,
+  eqnSag: '0',
+});
 
 /**
  * A surface that divides space, transmitting the field from the subspace before
@@ -63,10 +79,7 @@ class WaveInterface extends LineObjMixin(BaseSceneObj) {
   static type = 'WaveInterface';
   static isOptical = true;
   static serializableDefaults = {
-    p1: null,
-    p2: null,
-    refractiveIndexAfter: 1.5,
-    eqnSag: '0',
+    ...SHARED_INTERFACE_DEFAULTS,
     eqnAmplitude: '1',
     eqnPhase: '0'
   };
@@ -107,9 +120,14 @@ class WaveInterface extends LineObjMixin(BaseSceneObj) {
     ];
   }
 
-  populateObjBar(objBar) {
-    const help = WaveInterface.equationHelp(this.scene);
-    objBar.setTitle(i18next.t('main:waveTools.WaveInterface.title'));
+  /**
+   * The controls every interface shares: the index beyond it and its shape.
+   *
+   * The patterned interfaces reuse this and then add their own parameters in
+   * place of the general transmission equations.
+   * @param {ObjBar} objBar
+   */
+  populateGeometryObjBar(objBar) {
     objBar.createNumber(
       i18next.t('simulator:waveSceneObjs.common.refractiveIndexAfter'),
       0.1, 5, 0.01, this.refractiveIndexAfter,
@@ -118,7 +136,13 @@ class WaveInterface extends LineObjMixin(BaseSceneObj) {
     );
     objBar.createEquation('z(y)', this.eqnSag, function (obj, value) {
       obj.eqnSag = value;
-    }, help.sag);
+    }, WaveInterface.equationHelp(this.scene).sag);
+  }
+
+  populateObjBar(objBar) {
+    const help = WaveInterface.equationHelp(this.scene);
+    objBar.setTitle(i18next.t('main:waveTools.WaveInterface.title'));
+    this.populateGeometryObjBar(objBar);
     objBar.createEquation('|t|(y)', this.eqnAmplitude, function (obj, value) {
       obj.eqnAmplitude = value;
     }, help.amplitude);
@@ -217,24 +241,54 @@ class WaveInterface extends LineObjMixin(BaseSceneObj) {
    */
   getAxialRange() {
     if (!this.isValid()) return null;
-    const extent = this.getExtent();
     let min = Infinity;
     let max = -Infinity;
-    for (let i = 0; i <= SLOPE_SCAN_SAMPLES; i++) {
-      const z = this.zAt(extent.yMin + (extent.yMax - extent.yMin) * i / SLOPE_SCAN_SAMPLES);
-      if (z < min) min = z;
-      if (z > max) max = z;
+    for (const point of this.curvePoints()) {
+      if (point.x < min) min = point.x;
+      if (point.x > max) max = point.x;
     }
     return { min, max };
   }
 
   /**
+   * The complex transmission at a transverse position.
+   *
+   * This is the hook the patterned interfaces override. The general interface
+   * evaluates the user's amplitude and phase equations; a grating or a zone
+   * plate computes its profile from its own parameters instead.
+   *
+   * @param {number} y - Transverse position, measured from the centre.
+   * @returns {{amplitude: number, phase: number}}
+   */
+  transmissionAt(y) {
+    return {
+      amplitude: this.compiled('eqnAmplitude')({ y }),
+      phase: this.compiled('eqnPhase')({ y }),
+    };
+  }
+
+  /**
+   * The smallest feature of the transmission profile, or null if it is smooth.
+   *
+   * A patterned transmission has to be sampled finely enough to resolve its own
+   * structure, not just the wavelength. A grating whose pitch is finer than the
+   * sampling would otherwise be reproduced as a different, coarser grating and
+   * would diffract into entirely the wrong orders.
+   *
+   * @returns {number|null}
+   */
+  minimumFeatureSize() {
+    return null;
+  }
+
+  /**
    * How many samples this surface needs.
    *
-   * The count is set by the steepest part of the curve, so that the arc-length
-   * spacing satisfies the requested density everywhere rather than only on
-   * average. Sampling is uniform in `y`, which is what keeps the subspace
-   * lookup table and the sample positions consistent.
+   * Sampling is uniform in `y`, which is what keeps the subspace lookup table
+   * and the sample positions consistent, so both requirements are expressed as
+   * a limit on the transverse step. The wavelength limit uses the steepest part
+   * of the curve, so the *arc-length* spacing satisfies the requested density
+   * everywhere rather than only on average.
    *
    * @param {Object} context
    * @returns {number}
@@ -257,7 +311,12 @@ class WaveInterface extends LineObjMixin(BaseSceneObj) {
       settings.wavelength,
       Math.max(refractiveIndexBefore, this.refractiveIndexAfter)
     );
-    return Math.max(1, Math.ceil(span * samplesPerWavelength * steepest / shortest));
+    let step = shortest / (samplesPerWavelength * steepest);
+
+    const feature = this.minimumFeatureSize();
+    if (feature > 0) step = Math.min(step, feature / SAMPLES_PER_FEATURE);
+
+    return Math.max(1, Math.ceil(span / step));
   }
 
   /**
@@ -274,12 +333,9 @@ class WaveInterface extends LineObjMixin(BaseSceneObj) {
     this.error = null;
     if (!this.isValid()) return [];
 
-    let amplitudeOf;
-    let phaseOf;
     try {
-      amplitudeOf = this.compiled('eqnAmplitude');
-      phaseOf = this.compiled('eqnPhase');
       this.compiled('eqnSag');
+      this.transmissionAt(0);
     } catch (e) {
       this.error = e.toString();
       return [];
@@ -303,8 +359,7 @@ class WaveInterface extends LineObjMixin(BaseSceneObj) {
       try {
         z = this.zAt(y);
         slope = this.slopeAt(y);
-        amplitude = amplitudeOf({ y: local });
-        phase = phaseOf({ y: local });
+        ({ amplitude, phase } = this.transmissionAt(local));
       } catch (e) {
         this.error = e.toString();
         return [];
@@ -325,6 +380,55 @@ class WaveInterface extends LineObjMixin(BaseSceneObj) {
       });
     }
     return samples;
+  }
+
+  /**
+   * Points along the drawn profile, used for rendering, for hit testing and
+   * for the axial-range scan.
+   * @param {number} [count=SLOPE_SCAN_SAMPLES]
+   * @returns {Array<{x: number, y: number}>}
+   */
+  curvePoints(count = SLOPE_SCAN_SAMPLES) {
+    if (!this.isValid()) return [];
+    const extent = this.getExtent();
+    const span = extent.yMax - extent.yMin;
+    const points = [];
+    for (let i = 0; i <= count; i++) {
+      const y = extent.yMin + span * i / count;
+      points.push({ x: this.zAt(y), y });
+    }
+    return points;
+  }
+
+  /**
+   * Hit testing follows the drawn profile rather than the straight chord, so a
+   * curved interface can be grabbed where it actually appears. The endpoints
+   * are tested first so they stay reachable where the curve passes close to
+   * them.
+   */
+  checkMouseOver(mouse) {
+    if (!this.isValid()) return super.checkMouseOver(mouse);
+
+    if (mouse.isOnPoint(this.p1) &&
+      geometry.distanceSquared(mouse.pos, this.p1) <= geometry.distanceSquared(mouse.pos, this.p2)) {
+      return { part: 1, targetPoint: geometry.point(this.p1.x, this.p1.y) };
+    }
+    if (mouse.isOnPoint(this.p2)) {
+      return { part: 2, targetPoint: geometry.point(this.p2.x, this.p2.y) };
+    }
+
+    const points = this.curvePoints();
+    for (let i = 0; i < points.length - 1; i++) {
+      if (mouse.isOnSegment(geometry.line(points[i], points[i + 1]))) {
+        const mousePos = mouse.getPosSnappedToGrid();
+        return {
+          part: 0,
+          mousePos0: mousePos,
+          mousePos1: mousePos,
+          snapContext: {},
+        };
+      }
+    }
   }
 
   draw(canvasRenderer, isAboveLight, isHovered) {
@@ -349,11 +453,10 @@ class WaveInterface extends LineObjMixin(BaseSceneObj) {
     ctx.lineWidth = 1.5 * ls;
     ctx.setLineDash([]);
     ctx.beginPath();
-    for (let i = 0; i <= SLOPE_SCAN_SAMPLES; i++) {
-      const y = extent.yMin + span * i / SLOPE_SCAN_SAMPLES;
-      const z = this.zAt(y);
-      if (i === 0) ctx.moveTo(z, y); else ctx.lineTo(z, y);
-    }
+    const points = this.curvePoints();
+    points.forEach((point, i) => {
+      if (i === 0) ctx.moveTo(point.x, point.y); else ctx.lineTo(point.x, point.y);
+    });
     ctx.stroke();
 
     // Short dashed stubs past each end, marking that the surface goes on as an
@@ -370,6 +473,16 @@ class WaveInterface extends LineObjMixin(BaseSceneObj) {
     ctx.stroke();
     ctx.globalAlpha = 1;
     ctx.setLineDash([]);
+
+    // The endpoints are the drag handles for the transverse extent, so they are
+    // drawn as grabbable vertices rather than left invisible.
+    for (const end of [this.p1, this.p2]) {
+      canvasRenderer.drawPoint(
+        end,
+        isHovered ? this.scene.highlightColor : this.scene.theme.sourcePoint.color,
+        this.scene.theme.sourcePoint.size
+      );
+    }
   }
 
   getError() {

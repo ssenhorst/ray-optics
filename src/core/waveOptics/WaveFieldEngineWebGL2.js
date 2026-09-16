@@ -48,8 +48,10 @@ const UNIT_DIRECTIONAL_GEOMETRY = 0;
 const UNIT_DIRECTIONAL_WEIGHTS = 1;
 const UNIT_ISOTROPIC_GEOMETRY = 2;
 const UNIT_ISOTROPIC_WEIGHTS = 3;
-const UNIT_EXTRA_A = 4;
-const UNIT_EXTRA_B = 5;
+const UNIT_PLANE_GEOMETRY = 4;
+const UNIT_PLANE_WEIGHTS = 5;
+const UNIT_EXTRA_A = 6;
+const UNIT_EXTRA_B = 7;
 
 const FULLSCREEN_VERTEX_SHADER = `#version 300 es
 // A single oversized triangle covering the viewport; no vertex buffer needed.
@@ -76,10 +78,14 @@ uniform sampler2D uDirGeometry;   // (x, y, nx, ny)
 uniform sampler2D uDirWeights;    // (Re, Im, -, -)
 uniform sampler2D uIsoGeometry;   // (x, y, -, -)
 uniform sampler2D uIsoWeights;    // (Re, Im, -, -)
+uniform sampler2D uPlaneGeometry; // (dir x, dir y, anchor x, anchor y)
+uniform sampler2D uPlaneWeights;  // (Re, Im, -, -)
 uniform int uDirCount;
 uniform int uDirWidth;
 uniform int uIsoCount;
 uniform int uIsoWidth;
+uniform int uPlaneCount;
+uniform int uPlaneWidth;
 uniform float uWavenumber;
 uniform float uMinRadius;
 
@@ -108,6 +114,16 @@ vec2 sumField(vec2 p) {
     vec2 weight = texelFetch(uIsoWeights, uv, 0).xy;
     float r = max(distance(p, position), uMinRadius);
     total += cmul(greensFunction(uWavenumber * r), weight);
+  }
+
+  // Plane waves are evaluated in closed form. They are not built from point
+  // sources, so they carry no aperture diffraction of their own.
+  for (int i = 0; i < uPlaneCount; i++) {
+    ivec2 uv = ivec2(i % uPlaneWidth, i / uPlaneWidth);
+    vec4 wave = texelFetch(uPlaneGeometry, uv, 0);
+    vec2 weight = texelFetch(uPlaneWeights, uv, 0).xy;
+    float phase = uWavenumber * dot(wave.xy, p - wave.zw);
+    total += cmul(vec2(cos(phase), sin(phase)), weight);
   }
 
   return total;
@@ -297,7 +313,9 @@ function collectUniforms(gl, program, names) {
 
 const SUMMATION_UNIFORMS = [
   'uDirGeometry', 'uDirWeights', 'uIsoGeometry', 'uIsoWeights',
+  'uPlaneGeometry', 'uPlaneWeights',
   'uDirCount', 'uDirWidth', 'uIsoCount', 'uIsoWidth',
+  'uPlaneCount', 'uPlaneWidth',
   'uWavenumber', 'uMinRadius',
 ];
 
@@ -396,6 +414,8 @@ class WaveFieldEngineWebGL2 {
         siteWeights: new FloatTable(gl, true),
         primaryGeometry: new FloatTable(gl),
         primaryWeights: new FloatTable(gl),
+        planeGeometry: new FloatTable(gl),
+        planeWeights: new FloatTable(gl),
       });
     }
     return this.subspaceTables[index];
@@ -479,6 +499,18 @@ class WaveFieldEngineWebGL2 {
       buffer[at] = primaries[i].re;
       buffer[at + 1] = primaries[i].im;
     });
+
+    const planeWaves = subspace.planeWaves ?? [];
+    tables.planeGeometry.fill(planeWaves.length, (i, buffer, at) => {
+      buffer[at] = planeWaves[i].dirX;
+      buffer[at + 1] = planeWaves[i].dirY;
+      buffer[at + 2] = planeWaves[i].x;
+      buffer[at + 3] = planeWaves[i].y;
+    });
+    tables.planeWeights.fill(planeWaves.length, (i, buffer, at) => {
+      buffer[at] = planeWaves[i].re;
+      buffer[at + 1] = planeWaves[i].im;
+    });
   }
 
   /**
@@ -502,11 +534,15 @@ class WaveFieldEngineWebGL2 {
     bind(UNIT_DIRECTIONAL_WEIGHTS, tables.siteWeights, uniforms.uDirWeights);
     bind(UNIT_ISOTROPIC_GEOMETRY, tables.primaryGeometry, uniforms.uIsoGeometry);
     bind(UNIT_ISOTROPIC_WEIGHTS, tables.primaryWeights, uniforms.uIsoWeights);
+    bind(UNIT_PLANE_GEOMETRY, tables.planeGeometry, uniforms.uPlaneGeometry);
+    bind(UNIT_PLANE_WEIGHTS, tables.planeWeights, uniforms.uPlaneWeights);
 
     gl.uniform1i(uniforms.uDirCount, tables.siteGeometry.count);
     gl.uniform1i(uniforms.uDirWidth, tables.siteGeometry.width);
     gl.uniform1i(uniforms.uIsoCount, tables.primaryGeometry.count);
     gl.uniform1i(uniforms.uIsoWidth, tables.primaryGeometry.width);
+    gl.uniform1i(uniforms.uPlaneCount, tables.planeGeometry.count);
+    gl.uniform1i(uniforms.uPlaneWidth, tables.planeGeometry.width);
     gl.uniform1f(uniforms.uWavenumber, wavenumber(wavelength, refractiveIndex));
     gl.uniform1f(uniforms.uMinRadius, minimumRadius(wavelength, refractiveIndex));
   }
@@ -535,6 +571,13 @@ class WaveFieldEngineWebGL2 {
 
     gl.bindVertexArray(null);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    // Block until the GPU has actually finished. Draw calls only queue work, so
+    // without this the caller would time the submission rather than the
+    // computation, and the resolution ladder would conclude that every grid is
+    // free and climb to the top whatever the machine can do.
+    gl.finish();
+
     this.lastStats = null;
   }
 

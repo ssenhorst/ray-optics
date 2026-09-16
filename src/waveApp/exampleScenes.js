@@ -42,14 +42,6 @@ const steerPhase = (variable, degrees) =>
 const focusPhase = (variable, distance) =>
   `-${round(K / (2 * distance))}\\cdot ${variable}^2`;
 
-/** A hard-edged transmission window of half-width `half` centred on the axis. */
-const slit = (half) =>
-  `\\max(0,\\operatorname{sign}(${half}-\\operatorname{abs}(y)))`;
-
-/** Two hard-edged windows of half-width `half`, separated by `separation`. */
-const doubleSlit = (half, separation) =>
-  `\\max(0,\\operatorname{sign}(${half}-\\operatorname{abs}(\\operatorname{abs}(y)-${separation / 2})))`;
-
 const pointSource = (x, y, extra = {}) =>
   ({ type: 'WavePointSource', x: round(x), y: round(y), amplitude: 1, ...extra });
 
@@ -61,13 +53,18 @@ const lineSource = (x, y0, y1, extra = {}) => ({
   ...extra,
 });
 
-const interface_ = (x, y0, y1, extra = {}) => ({
-  type: 'WaveInterface',
+const planeWave = (x, y, angle = 0) =>
+  ({ type: 'WavePlaneWave', x: round(x), y: round(y), angle, amplitude: 1 });
+
+const element = (type, x, y0, y1, extra = {}) => ({
+  type,
   p1: { x: round(x), y: round(y0) },
   p2: { x: round(x), y: round(y1) },
   refractiveIndexAfter: 1,
   ...extra,
 });
+
+const interface_ = (x, y0, y1, extra = {}) => element('WaveInterface', x, y0, y1, extra);
 
 /**
  * Wrap objects into a loadable scene.
@@ -114,23 +111,54 @@ export const EXAMPLE_SCENES = [
     description: 'A point source behind an opaque screen with one narrow opening.',
     build: (width, height) => build('Single slit', [
       pointSource(width * 0.16, height * 0.5),
-      interface_(width * 0.38, height * 0.5 - 1.5 * WAVELENGTH, height * 0.5 + 1.5 * WAVELENGTH),
+      element('WaveMultiSlit', width * 0.38, height * 0.28, height * 0.72, {
+        slitCount: 1, slitWidth: 3 * WAVELENGTH,
+      }),
     ], { upperCutoff: 0.8 }),
   },
   {
     id: 'doubleSlit',
     name: 'Double slit',
     description: "Young's experiment: one screen with two openings.",
-    build: (width, height) => {
-      const separation = 6 * WAVELENGTH;
-      return build('Double slit', [
-        pointSource(width * 0.12, height * 0.5),
-        interface_(
-          width * 0.34, height * 0.5 - separation, height * 0.5 + separation,
-          { eqnAmplitude: doubleSlit(0.75 * WAVELENGTH, separation) }
-        ),
-      ], { upperCutoff: 0.7 });
-    },
+    build: (width, height) => build('Double slit', [
+      pointSource(width * 0.12, height * 0.5),
+      element('WaveMultiSlit', width * 0.34, height * 0.22, height * 0.78, {
+        slitCount: 2, slitWidth: 1.5 * WAVELENGTH, slitSpacing: 6 * WAVELENGTH,
+      }),
+    ], { upperCutoff: 0.7 }),
+  },
+  {
+    id: 'fiveSlits',
+    name: 'Five slits',
+    description: 'More slits sharpen the fringes without moving them.',
+    build: (width, height) => build('Five slits', [
+      planeWave(width * 0.1, height * 0.5),
+      element('WaveMultiSlit', width * 0.3, height * 0.28, height * 0.72, {
+        slitCount: 5, slitWidth: 0.7 * WAVELENGTH, slitSpacing: 3.5 * WAVELENGTH,
+      }),
+    ], { upperCutoff: 0.7 }),
+  },
+  {
+    id: 'grating',
+    name: 'Diffraction grating',
+    description: 'A plane wave on a square grating, splitting into diffraction orders.',
+    build: (width, height) => build('Diffraction grating', [
+      planeWave(width * 0.1, height * 0.5),
+      element('WaveSquareGrating', width * 0.3, height * 0.15, height * 0.85, {
+        pitch: 3 * WAVELENGTH, dutyCycle: 0.5,
+      }),
+    ], { upperCutoff: 2.2 }),
+  },
+  {
+    id: 'zonePlate',
+    name: 'Fresnel zone plate',
+    description: 'Zones alternating every half wave of path bring a plane wave to a focus.',
+    build: (width, height) => build('Fresnel zone plate', [
+      planeWave(width * 0.08, height * 0.5),
+      element('WaveZonePlate', width * 0.22, height * 0.22, height * 0.78, {
+        focalLength: width * 0.42, phaseReversing: true,
+      }),
+    ], { upperCutoff: 1.1 }),
   },
   {
     id: 'lens',
@@ -140,12 +168,12 @@ export const EXAMPLE_SCENES = [
       const halfHeight = height * 0.22;
       const lensX = width * 0.35;
       return build('Lens', [
-        lineSource(width * 0.08, height * 0.5 - halfHeight, height * 0.5 + halfHeight),
+        planeWave(width * 0.1, height * 0.5),
         interface_(
-          lensX, height * 0.5 - halfHeight * 1.1, height * 0.5 + halfHeight * 1.1,
+          lensX, height * 0.5 - halfHeight, height * 0.5 + halfHeight,
           { eqnPhase: focusPhase('y', width * 0.32) }
         ),
-      ], { upperCutoff: 2.5 });
+      ], { upperCutoff: 3 });
     },
   },
   {

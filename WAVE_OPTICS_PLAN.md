@@ -478,6 +478,21 @@ Progressive resolution and the status-bar instrumentation landed with M1 and M3.
 is normally used for, written the way it is typed rather than as LaTeX, with coefficients
 computed from the scene's current wavelength so they can be copied straight in.*
 
+**Follow-up round. ✅ Done.** Draggable interface vertices with hit testing that
+follows the drawn profile rather than the chord; a plane-wave source evaluated in closed
+form; five parameterised interface types (N slits, square grating, sinusoidal phase
+grating, Fresnel zone plate, binary mask), each reporting its own smallest feature so a
+pattern finer than the sampling warns instead of aliasing; a 2048 grid and an adaptive
+resolution ladder; tools grouped into Sources and Interfaces menus.
+
+*The resolution ladder measures rather than models. It also needs the measurement to be
+real: draw calls only queue work, so the field pass now ends with an explicit
+`gl.finish()`. Without it the timings came back at well under a millisecond and the
+ladder would have climbed to the top on any machine. Whether a gesture is in progress is
+asked of the editor rather than inferred from update timing, since on a machine where one
+redraw already exceeds the inference window a drag would never get the responsive
+budget — precisely where it matters most.*
+
 **M5 — Pulses. Deferred.** Frequency decomposition, per-component cached field textures,
 animated recombination, Gaussian pulse UI. The per-frequency architecture is already in
 place, so this is a loop over cached field textures; note that the chain cost multiplies

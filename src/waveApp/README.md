@@ -45,6 +45,51 @@ between interfaces, self-shadowing within one interface, Fresnel transmission
 coefficients (supply them through an interface's `|t|(y)` if wanted), and
 polarization.
 
+## Elements
+
+Sources radiate; interfaces divide space. Both live under their own toolbar menu.
+
+- **Point source** — the 2D Green's function, the primitive everything else is
+  built from.
+- **Line source** — a row of point sources with amplitude and phase given as
+  functions of the arc length from its centre.
+- **Plane wave** — evaluated in closed form rather than built from point
+  sources, so it carries no aperture diffraction of its own.
+
+Every interface has a refractive index for the subspace beyond it and a sag
+equation for its shape; they differ only in how their transmission is defined.
+The patterned ones are all expressible through the general interface's
+equations, but stating them by their optical parameters is both clearer and
+lets each one report its own smallest feature, so that a pattern finer than the
+sampling raises a warning instead of quietly diffracting into the wrong orders.
+
+- **Interface** — transmission from amplitude and phase equations.
+- **N slits** — count, width and spacing.
+- **Square grating** — pitch and duty cycle; opaque bars by default, or a binary
+  phase grating if the bars are given transmission and a phase shift instead.
+- **Sinusoidal phase grating** — pitch and peak-to-peak phase.
+- **Fresnel zone plate** — focal length, blocking or phase-reversing.
+- **Binary mask** — open wherever a function of the transverse coordinate is
+  non-negative, with the feature size measured from the pattern itself.
+
+## Resolution
+
+The field grid can be pinned to a size up to 2048, or left on **Auto**, where it
+climbs as far as the machine keeps up with. Rather than model the cost — which
+would have to account for the grid, the source count, the subspace count, the
+propagation chain and the GPU itself — the simulator measures: it starts at the
+highest resolution it has already managed inside the relevant time budget, and
+steps up while each step stays cheap enough to justify the next.
+
+Two budgets are tracked separately, because they answer different questions:
+what can be redrawn while a gesture is in progress, and what can be redrawn once
+it ends. Drags never go below 256 samples, since a grid coarse enough to alias
+misreports the field rather than merely showing less of it.
+
+For any of this to work the timing has to be real, so the field pass ends with
+an explicit `gl.finish()`. Draw calls otherwise only queue work, and the ladder
+would time the submission and conclude every grid was free.
+
 ## Reading the status bar
 
 An undersampled field still renders as a plausible-looking picture, so the

@@ -49,10 +49,12 @@ import { gridSamplePosition, subspaceIndexAt } from './waveSceneModel.js';
  * @param {number} params.wavelength - Vacuum wavelength in scene units.
  * @param {number} params.refractiveIndex - Index of the medium radiated into.
  * @param {number} [params.directionalCount=0] - How many leading sources are directional.
+ * @param {Array<Object>} [params.planeWaves=[]] - Plane waves filling the medium,
+ *   evaluated in closed form rather than as a sum of point sources.
  * @returns {Float64Array} Interleaved real and imaginary parts, `2 * points.length` long.
  */
 export function computeFieldAt(points, {
-  sources, wavelength, refractiveIndex = 1, directionalCount = 0
+  sources, wavelength, refractiveIndex = 1, directionalCount = 0, planeWaves = []
 }) {
   const k = wavenumber(wavelength, refractiveIndex);
   const rMin = minimumRadius(wavelength, refractiveIndex);
@@ -76,6 +78,15 @@ export function computeFieldAt(points, {
       // Complex multiply: kernel * weight.
       re += kernel.re * source.re - kernel.im * source.im;
       im += kernel.re * source.im + kernel.im * source.re;
+    }
+
+    for (let w = 0; w < planeWaves.length; w++) {
+      const wave = planeWaves[w];
+      const phase = k * (wave.dirX * (x - wave.x) + wave.dirY * (y - wave.y));
+      const cos = Math.cos(phase);
+      const sin = Math.sin(phase);
+      re += cos * wave.re - sin * wave.im;
+      im += cos * wave.im + sin * wave.re;
     }
 
     out[p * 2] = re;
@@ -136,6 +147,7 @@ export function propagateChain(model) {
         wavelength: settings.wavelength,
         refractiveIndex: subspaces[j - 1].refractiveIndex,
         directionalCount: previous.directionalCount,
+        planeWaves: previous.planeWaves,
       });
 
       directional = subspace.surfaceSamples.map((site, i) => {
@@ -157,6 +169,7 @@ export function propagateChain(model) {
       refractiveIndex: subspace.refractiveIndex,
       sources: [...directional, ...subspace.primaries],
       directionalCount: directional.length,
+      planeWaves: subspace.planeWaves ?? [],
       lowerBoundary: subspace.lowerBoundary,
       upperBoundary: subspace.upperBoundary,
     });
@@ -192,6 +205,7 @@ export function computeModelFieldAt(model, points) {
       wavelength: model.settings.wavelength,
       refractiveIndex: subspace.refractiveIndex,
       directionalCount: subspace.directionalCount,
+      planeWaves: subspace.planeWaves,
     });
     indices.forEach((pointIndex, k) => {
       out[pointIndex * 2] = values[k * 2];

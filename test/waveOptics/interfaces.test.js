@@ -306,6 +306,43 @@ describe('the subspace stack', () => {
   });
 });
 
+describe('sampling diagnostics across media', () => {
+  // The wavelength is shorter inside a denser medium, so the grid has fewer
+  // samples per wavelength there. The diagnostic has to report the worst case
+  // anywhere in the scene, not the background, or a glass region would alias
+  // while the status bar still claimed the grid was fine.
+  function diagnosticsFor(indexAfter) {
+    const scene = makeScene();
+    scene.setViewportSize(1500, 900);
+    addInterface(scene, { x: 500, y0: -200, y1: 200, indexAfter });
+    return buildWaveModel(scene, { resolution: 256 }).diagnostics;
+  }
+
+  test('samples per wavelength fall in proportion to the largest index', () => {
+    const vacuum = diagnosticsFor(1);
+    const glass = diagnosticsFor(2.5);
+    expect(glass.pixelsPerWavelength).toBeCloseTo(vacuum.pixelsPerWavelength / 2.5, 6);
+  });
+
+  test('a dense enough medium raises the aliasing warning on its own', () => {
+    expect(diagnosticsFor(1).isAliasing).toBe(false);
+    // The background grid is fine; only the medium makes it inadequate.
+    expect(diagnosticsFor(4).isAliasing).toBe(true);
+  });
+
+  test('the background index is used when it is the largest', () => {
+    const scene = makeScene({ backgroundIndex: 3 });
+    scene.setViewportSize(1500, 900);
+    addInterface(scene, { x: 500, y0: -200, y1: 200, indexAfter: 1 });
+    const withGlass = buildWaveModel(scene, { resolution: 256 }).diagnostics;
+
+    const plain = makeScene({ backgroundIndex: 3 });
+    plain.setViewportSize(1500, 900);
+    expect(withGlass.pixelsPerWavelength)
+      .toBeCloseTo(buildWaveModel(plain, { resolution: 256 }).diagnostics.pixelsPerWavelength, 6);
+  });
+});
+
 describe('propagateChain', () => {
   test('gives each subspace its own boundary sources, directional first', () => {
     const scene = makeScene();
