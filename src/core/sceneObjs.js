@@ -67,6 +67,7 @@ export const CustomArcSurface = require('./sceneObjs/other/CustomArcSurface.js')
 export const CustomCurveSurface = require('./sceneObjs/other/CustomCurveSurface.js').default;
 export const WavePointSource = require('./sceneObjs/wave/WavePointSource.js').default;
 export const WaveLineSource = require('./sceneObjs/wave/WaveLineSource.js').default;
+export const WaveInterface = require('./sceneObjs/wave/WaveInterface.js').default;
 export const Handle = require('./sceneObjs/special/Handle.js').default;
 export const CropBox = require('./sceneObjs/special/CropBox.js').default;
 export const ModuleObj = require('./sceneObjs/special/ModuleObj.js').default;

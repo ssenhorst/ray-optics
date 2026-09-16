@@ -282,6 +282,7 @@ export default {
         { type: '', label: 'Move view', hint: 'Drag to pan, scroll to zoom' },
         { type: 'WavePointSource', label: 'Point', hint: 'Click to place a time-harmonic point source' },
         { type: 'WaveLineSource', label: 'Line', hint: 'Drag to draw a line of point sources with A(u) and phi(u)' },
+        { type: 'WaveInterface', label: 'Interface', hint: 'Drag to draw a surface dividing space; opaque outside its extent' },
       ],
       views: [
         { value: 'intensity', label: 'Intensity', hint: 'The time-averaged intensity |U|²' },

@@ -440,11 +440,32 @@ Verified: a linear phase ramp steers the far field to the predicted angle; a qua
 ramp focuses, with the peak at the Fresnel-shifted position and a waist of 36 units
 against the diffraction limit `λf/2a` = 30.
 
-**M4 — Interfaces and subspaces.** `WaveInterface` as an open Bézier curve; z-ordering
-validation; per-subspace refractive index; the chained RS propagation; `t(y)`; subspace
-membership LUTs and per-subspace draw passes; interface rendering on the overlay layer.
-*This is the largest milestone and the one that makes it a wave-optics simulator rather
-than a point-source plotter.*
+**M4 — Interfaces and subspaces. ✅ Done.** `WaveInterface`, the ordered subspace stack
+with per-subspace refractive index, the chained Rayleigh–Sommerfeld propagation on the
+GPU, `t(y)`, boundary lookup tables with per-subspace draw passes, and the overlap
+validation.
+
+*Two decisions differ from what this section originally assumed.*
+
+**The interface is `z = f(y)`, not an open Bézier.** The chord from `p1` to `p2` sets the
+transverse extent and base position, and a sag equation in `y` adds the shape. Writing it
+as a function of `y` makes single-valuedness structural rather than something to validate
+after the fact, gives spherical/parabolic/aspheric surfaces directly — which is what
+"like lenses in the original" points at, since `CustomGlass` is equation-defined too —
+and reuses `LineObjMixin` for dragging. A Bézier polyline could still be added later as a
+second interface type.
+
+**The chain stayed on the GPU, as planned, but for a measured reason.** The chain costs
+`Σ M_j·M_{j−1}`, which looked small enough to do on the CPU and reuse the tested reference
+implementation. Measuring first: the JS summation runs at ~0.9M Hankel evaluations per
+second, so a pair of 1000-sample interfaces would take about a second. The GPU chain it
+is. The CPU path remains as the reference the tests check against.
+
+Verified: a transparent index-matched interface is invisible (mean difference 0.34/255
+against the same scene without it, on the GPU); Snell's law emerges rather than being
+coded, measured at 18.7° against the predicted 18.2° for n = 1.6; a slab restores the
+original beam direction; a short interface gives clean single-slit diffraction; and a
+quadratic `t(y)` focuses at the expected distance.
 
 **M5 — Pulses.** Frequency decomposition, per-component cached field textures, animated
 recombination, Gaussian pulse UI.

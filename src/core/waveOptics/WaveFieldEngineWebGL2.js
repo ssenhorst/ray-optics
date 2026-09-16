@@ -15,26 +15,41 @@
  */
 
 /**
- * @file The GPU backend: sums the contribution of every source at every grid
- * sample, then colours the result.
+ * @file The GPU backend.
  *
- * The work is split into two passes for a reason that matters for performance.
- * The field `U(r)` of a time-harmonic source does not depend on time, so it is
- * computed once into a floating-point texture and cached there. Animation
- * re-runs only the cheap display pass, which means the frame rate is
- * independent of the number of sources.
+ * Three kinds of pass run here:
  *
- * WebGL2 rather than WebGL1: rendering *into* a float texture needs
- * `EXT_color_buffer_float`, and indexing the source table needs `texelFetch`.
+ * 1. **Chain passes**, one per interface in order along the optical axis. Each
+ *    evaluates the field arriving at that interface's sample sites from the
+ *    subspace before it, multiplies by the transmission and the arc length, and
+ *    leaves the result as the secondary-source weights radiating into the
+ *    subspace beyond. These run sequentially because each depends on the last.
+ * 2. **Field passes**, one per subspace, each drawing a full-screen quad that
+ *    discards the pixels belonging to other subspaces. They share one float
+ *    texture, which ends up holding the complex field over the whole view.
+ * 3. **The display pass**, which colours that texture.
+ *
+ * The split matters for performance: a time-harmonic field does not depend on
+ * time, so the first two run only when the scene changes, and animation re-runs
+ * the third alone.
+ *
+ * WebGL2 rather than WebGL1: rendering into a float texture needs
+ * `EXT_color_buffer_float`, and indexing the source tables needs `texelFetch`.
  */
 
 import { buildHankelGlsl } from './hankel.js';
 import { wavenumber, minimumRadius } from './conventions.js';
 import { getColormapTableRGBA, COLORMAP_SIZE } from './colormaps.js';
 import { buildOklchGlsl, DEFAULT_PHASE_CHROMA } from './oklch.js';
+import { FloatTable, BoundaryLut, BOUNDARY_LUT_WIDTH } from './gpuTables.js';
 
-/** Width of the source table texture; the table wraps onto further rows. */
-const SOURCE_TEXTURE_WIDTH = 1024;
+/** Texture units, fixed so the two summation programs bind identically. */
+const UNIT_DIRECTIONAL_GEOMETRY = 0;
+const UNIT_DIRECTIONAL_WEIGHTS = 1;
+const UNIT_ISOTROPIC_GEOMETRY = 2;
+const UNIT_ISOTROPIC_WEIGHTS = 3;
+const UNIT_EXTRA_A = 4;
+const UNIT_EXTRA_B = 5;
 
 const FULLSCREEN_VERTEX_SHADER = `#version 300 es
 // A single oversized triangle covering the viewport; no vertex buffer needed.
@@ -44,36 +59,114 @@ void main() {
 }
 `;
 
-const FIELD_FRAGMENT_SHADER = `#version 300 es
+/**
+ * The summation both the chain and the field passes perform.
+ *
+ * Sources are ordered directional-first, matching the CPU reference, so no
+ * per-source kind flag is needed: the first `uDirCount` entries came from an
+ * interface and re-radiate through the Rayleigh-Sommerfeld kernel, and the
+ * rest are isotropic point sources.
+ */
+const SUMMATION_GLSL = `
 precision highp float;
+precision highp int;
 precision highp sampler2D;
 
-uniform sampler2D uSources;
-uniform int uSourceCount;
-uniform vec2 uGridOrigin;
-uniform vec2 uGridStep;
+uniform sampler2D uDirGeometry;   // (x, y, nx, ny)
+uniform sampler2D uDirWeights;    // (Re, Im, -, -)
+uniform sampler2D uIsoGeometry;   // (x, y, -, -)
+uniform sampler2D uIsoWeights;    // (Re, Im, -, -)
+uniform int uDirCount;
+uniform int uDirWidth;
+uniform int uIsoCount;
+uniform int uIsoWidth;
 uniform float uWavenumber;
 uniform float uMinRadius;
 
+${buildHankelGlsl()}
+
+vec2 cmul(vec2 a, vec2 b) {
+  return vec2(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x);
+}
+
+vec2 sumField(vec2 p) {
+  vec2 total = vec2(0.0);
+
+  for (int i = 0; i < uDirCount; i++) {
+    ivec2 uv = ivec2(i % uDirWidth, i / uDirWidth);
+    vec4 site = texelFetch(uDirGeometry, uv, 0);
+    vec2 weight = texelFetch(uDirWeights, uv, 0).xy;
+    vec2 offset = p - site.xy;
+    float r = max(length(offset), uMinRadius);
+    float cosTheta = dot(site.zw, offset) / r;
+    total += cmul(rayleighSommerfeldKernel(uWavenumber * r, cosTheta, uWavenumber), weight);
+  }
+
+  for (int i = 0; i < uIsoCount; i++) {
+    ivec2 uv = ivec2(i % uIsoWidth, i / uIsoWidth);
+    vec2 position = texelFetch(uIsoGeometry, uv, 0).xy;
+    vec2 weight = texelFetch(uIsoWeights, uv, 0).xy;
+    float r = max(distance(p, position), uMinRadius);
+    total += cmul(greensFunction(uWavenumber * r), weight);
+  }
+
+  return total;
+}
+`;
+
+const CHAIN_FRAGMENT_SHADER = `#version 300 es
+${SUMMATION_GLSL}
+
+uniform sampler2D uSiteGeometry;      // (x, y, nx, ny) of this interface
+uniform sampler2D uSiteTransmission;  // (Re t, Im t, ds, -)
+
 out vec4 fragColor;
 
-${buildHankelGlsl()}
+void main() {
+  ivec2 uv = ivec2(gl_FragCoord.xy);
+  vec4 site = texelFetch(uSiteGeometry, uv, 0);
+  vec4 transmission = texelFetch(uSiteTransmission, uv, 0);
+
+  // Padding entries carry a zero transmission, so they contribute nothing.
+  vec2 incident = sumField(site.xy);
+  fragColor = vec4(cmul(transmission.xy, incident) * transmission.z, 0.0, 1.0);
+}
+`;
+
+const FIELD_FRAGMENT_SHADER = `#version 300 es
+${SUMMATION_GLSL}
+
+uniform vec2 uGridOrigin;
+uniform vec2 uGridStep;
+uniform sampler2D uLowerLut;
+uniform sampler2D uUpperLut;
+uniform vec4 uLowerRange;   // (yMin, yMax, z below yMin, z above yMax)
+uniform vec4 uUpperRange;
+uniform int uHasLower;
+uniform int uHasUpper;
+
+out vec4 fragColor;
+
+// Where an interface sits at a given transverse position. Past the ends it
+// holds the axial position of the nearer end, which is what makes a short
+// interface behave as an opaque screen continuing to the edges of the view.
+float boundaryZ(sampler2D lut, vec4 range, float y) {
+  if (y <= range.x) return range.z;
+  if (y >= range.y) return range.w;
+  float t = (y - range.x) / (range.y - range.x);
+  float u = mix(0.5 / ${BOUNDARY_LUT_WIDTH}.0, (${BOUNDARY_LUT_WIDTH}.0 - 0.5) / ${BOUNDARY_LUT_WIDTH}.0, t);
+  return texture(lut, vec2(u, 0.5)).r;
+}
 
 void main() {
   // uGridStep.y is negative: framebuffer row 0 is the bottom of the screen,
   // which is the largest scene y.
   vec2 p = uGridOrigin + uGridStep * (gl_FragCoord.xy - 0.5);
 
-  vec2 total = vec2(0.0);
-  for (int i = 0; i < uSourceCount; i++) {
-    vec4 source = texelFetch(uSources, ivec2(i % ${SOURCE_TEXTURE_WIDTH}, i / ${SOURCE_TEXTURE_WIDTH}), 0);
-    float r = max(distance(p, source.xy), uMinRadius);
-    vec2 g = greensFunction(uWavenumber * r);
-    // Complex multiply of the Green's function by the source weight.
-    total += vec2(g.x * source.z - g.y * source.w,
-                  g.x * source.w + g.y * source.z);
-  }
+  if (uHasLower == 1 && p.x < boundaryZ(uLowerLut, uLowerRange, p.y)) discard;
+  if (uHasUpper == 1 && p.x >= boundaryZ(uUpperLut, uUpperRange, p.y)) discard;
 
+  vec2 total = sumField(p);
   // The amplitude is stored alongside the complex field. The display pass
   // magnifies this texture with linear filtering, and interpolating a rapidly
   // oscillating Re/Im pair and *then* taking its magnitude loses amplitude
@@ -131,8 +224,8 @@ void main() {
     float value = fieldSample.x * cos(uPhase) + fieldSample.y * sin(uPhase);
     t = 0.5 + 0.5 * clamp(value / scale, -1.0, 1.0);
   } else {
-    // fieldSample.z is |U|, interpolated directly rather than recomputed from the
-    // interpolated Re/Im, which would ripple at the grid pitch.
+    // fieldSample.z is |U|, interpolated directly rather than recomputed from
+    // the interpolated Re/Im, which would ripple at the grid pitch.
     float intensity = fieldSample.z * fieldSample.z;
     float reference = scale * scale;
     if (uLogScale == 1) {
@@ -190,6 +283,25 @@ function linkProgram(gl, fragmentSource) {
 }
 
 /**
+ * Look up several uniform locations at once.
+ * @param {WebGL2RenderingContext} gl
+ * @param {WebGLProgram} program
+ * @param {string[]} names
+ * @returns {Object<string, WebGLUniformLocation>}
+ */
+function collectUniforms(gl, program, names) {
+  const uniforms = {};
+  for (const name of names) uniforms[name] = gl.getUniformLocation(program, name);
+  return uniforms;
+}
+
+const SUMMATION_UNIFORMS = [
+  'uDirGeometry', 'uDirWeights', 'uIsoGeometry', 'uIsoWeights',
+  'uDirCount', 'uDirWidth', 'uIsoCount', 'uIsoWidth',
+  'uWavenumber', 'uMinRadius',
+];
+
+/**
  * Obtain a WebGL2 context suitable for the wave renderer.
  * @param {HTMLCanvasElement} canvas
  * @returns {WebGL2RenderingContext}
@@ -231,28 +343,37 @@ class WaveFieldEngineWebGL2 {
     // the field is still correct, just blocky when magnified.
     this.hasLinearFloat = Boolean(gl.getExtension('OES_texture_float_linear'));
 
+    this.chainProgram = linkProgram(gl, CHAIN_FRAGMENT_SHADER);
     this.fieldProgram = linkProgram(gl, FIELD_FRAGMENT_SHADER);
     this.displayProgram = linkProgram(gl, DISPLAY_FRAGMENT_SHADER);
+
+    this.chainUniforms = collectUniforms(gl, this.chainProgram, [
+      ...SUMMATION_UNIFORMS, 'uSiteGeometry', 'uSiteTransmission',
+    ]);
     this.fieldUniforms = collectUniforms(gl, this.fieldProgram, [
-      'uSources', 'uSourceCount', 'uGridOrigin', 'uGridStep', 'uWavenumber', 'uMinRadius'
+      ...SUMMATION_UNIFORMS, 'uGridOrigin', 'uGridStep',
+      'uLowerLut', 'uUpperLut', 'uLowerRange', 'uUpperRange',
+      'uHasLower', 'uHasUpper',
     ]);
     this.displayUniforms = collectUniforms(gl, this.displayProgram, [
       'uField', 'uColormap', 'uResolution', 'uView', 'uScale',
-      'uLowerCutoff', 'uPhase', 'uLogScale', 'uDynamicRange', 'uChroma'
+      'uLowerCutoff', 'uPhase', 'uLogScale', 'uDynamicRange', 'uChroma',
     ]);
 
     // WebGL requires a bound vertex array even when the shader uses gl_VertexID.
     this.vertexArray = gl.createVertexArray();
 
-    this.sourceTexture = gl.createTexture();
     this.fieldTexture = gl.createTexture();
     this.framebuffer = gl.createFramebuffer();
     this.colormapTextures = new Map();
 
+    /** Per-subspace source tables, grown as scenes need them. */
+    this.subspaceTables = [];
+    /** Per-interface boundary lookup tables. */
+    this.boundaryLuts = [];
+
     this.fieldWidth = 0;
     this.fieldHeight = 0;
-    this.sourceRows = 0;
-    this.sourceBuffer = null;
     this.readbackBuffer = null;
 
     /** @property {Object|null} lastStats - Amplitude statistics of the last computed field. */
@@ -260,45 +381,37 @@ class WaveFieldEngineWebGL2 {
   }
 
   /**
-   * Upload the source table.
-   * @param {import('./waveSceneModel.js').WaveSource[]} sources
+   * The table set for one subspace, created on first use.
+   * @param {number} index
+   * @returns {Object}
    * @private
    */
-  uploadSources(sources) {
-    const gl = this.gl;
-    const rows = Math.max(1, Math.ceil(sources.length / SOURCE_TEXTURE_WIDTH));
-    const needed = SOURCE_TEXTURE_WIDTH * rows * 4;
-
-    if (!this.sourceBuffer || this.sourceBuffer.length < needed) {
-      this.sourceBuffer = new Float32Array(needed);
+  tablesFor(index) {
+    while (this.subspaceTables.length <= index) {
+      const gl = this.gl;
+      this.subspaceTables.push({
+        siteGeometry: new FloatTable(gl),
+        siteTransmission: new FloatTable(gl),
+        // The chain pass renders into this one.
+        siteWeights: new FloatTable(gl, true),
+        primaryGeometry: new FloatTable(gl),
+        primaryWeights: new FloatTable(gl),
+      });
     }
-    const buffer = this.sourceBuffer;
-    buffer.fill(0, 0, needed);
+    return this.subspaceTables[index];
+  }
 
-    for (let i = 0; i < sources.length; i++) {
-      const source = sources[i];
-      buffer[i * 4] = source.x;
-      buffer[i * 4 + 1] = source.y;
-      buffer[i * 4 + 2] = source.re;
-      buffer[i * 4 + 3] = source.im;
+  /**
+   * The lookup table for one interface, created on first use.
+   * @param {number} index
+   * @returns {BoundaryLut}
+   * @private
+   */
+  boundaryLutFor(index) {
+    while (this.boundaryLuts.length <= index) {
+      this.boundaryLuts.push(new BoundaryLut(this.gl, this.hasLinearFloat));
     }
-
-    gl.bindTexture(gl.TEXTURE_2D, this.sourceTexture);
-    if (this.sourceRows !== rows) {
-      gl.texImage2D(
-        gl.TEXTURE_2D, 0, gl.RGBA32F, SOURCE_TEXTURE_WIDTH, rows, 0,
-        gl.RGBA, gl.FLOAT, null
-      );
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      this.sourceRows = rows;
-    }
-    gl.texSubImage2D(
-      gl.TEXTURE_2D, 0, 0, 0, SOURCE_TEXTURE_WIDTH, rows,
-      gl.RGBA, gl.FLOAT, buffer, 0
-    );
+    return this.boundaryLuts[index];
   }
 
   /**
@@ -335,43 +448,173 @@ class WaveFieldEngineWebGL2 {
   }
 
   /**
-   * Compute the complex field over the grid and cache it in the float texture.
-   *
-   * @param {Object} options
-   * @param {import('./waveSceneModel.js').WaveSource[]} options.sources
-   * @param {import('./waveSceneModel.js').FieldGrid} options.grid
-   * @param {number} options.wavelength - Vacuum wavelength in scene units.
-   * @param {number} options.refractiveIndex
+   * Upload one subspace's sources.
+   * @param {number} index
+   * @param {Object} subspace
+   * @private
    */
-  computeField({ sources, grid, wavelength, refractiveIndex = 1 }) {
-    const gl = this.gl;
-    this.resizeField(grid.width, grid.height);
-    this.uploadSources(sources);
+  uploadSubspace(index, subspace) {
+    const tables = this.tablesFor(index);
+    const sites = subspace.surfaceSamples;
+    const primaries = subspace.primaries;
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
-    gl.viewport(0, 0, grid.width, grid.height);
+    tables.siteGeometry.fill(sites.length, (i, buffer, at) => {
+      buffer[at] = sites[i].x;
+      buffer[at + 1] = sites[i].y;
+      buffer[at + 2] = sites[i].nx;
+      buffer[at + 3] = sites[i].ny;
+    });
+    tables.siteTransmission.fill(sites.length, (i, buffer, at) => {
+      buffer[at] = sites[i].tRe;
+      buffer[at + 1] = sites[i].tIm;
+      buffer[at + 2] = sites[i].ds;
+    });
+    tables.siteWeights.allocate(sites.length);
+
+    tables.primaryGeometry.fill(primaries.length, (i, buffer, at) => {
+      buffer[at] = primaries[i].x;
+      buffer[at + 1] = primaries[i].y;
+    });
+    tables.primaryWeights.fill(primaries.length, (i, buffer, at) => {
+      buffer[at] = primaries[i].re;
+      buffer[at + 1] = primaries[i].im;
+    });
+  }
+
+  /**
+   * Bind one subspace's tables as the sources to sum over.
+   * @param {Object} uniforms
+   * @param {number} index
+   * @param {number} wavelength
+   * @param {number} refractiveIndex
+   * @private
+   */
+  bindSources(uniforms, index, wavelength, refractiveIndex) {
+    const gl = this.gl;
+    const tables = this.tablesFor(index);
+
+    const bind = (unit, table, location) => {
+      gl.activeTexture(gl.TEXTURE0 + unit);
+      gl.bindTexture(gl.TEXTURE_2D, table.texture);
+      gl.uniform1i(location, unit);
+    };
+    bind(UNIT_DIRECTIONAL_GEOMETRY, tables.siteGeometry, uniforms.uDirGeometry);
+    bind(UNIT_DIRECTIONAL_WEIGHTS, tables.siteWeights, uniforms.uDirWeights);
+    bind(UNIT_ISOTROPIC_GEOMETRY, tables.primaryGeometry, uniforms.uIsoGeometry);
+    bind(UNIT_ISOTROPIC_WEIGHTS, tables.primaryWeights, uniforms.uIsoWeights);
+
+    gl.uniform1i(uniforms.uDirCount, tables.siteGeometry.count);
+    gl.uniform1i(uniforms.uDirWidth, tables.siteGeometry.width);
+    gl.uniform1i(uniforms.uIsoCount, tables.primaryGeometry.count);
+    gl.uniform1i(uniforms.uIsoWidth, tables.primaryGeometry.width);
+    gl.uniform1f(uniforms.uWavenumber, wavenumber(wavelength, refractiveIndex));
+    gl.uniform1f(uniforms.uMinRadius, minimumRadius(wavelength, refractiveIndex));
+  }
+
+  /**
+   * Run the whole computation: the propagation chain, then the field.
+   *
+   * @param {Object} model - As built by `buildWaveModel`.
+   */
+  computeField(model) {
+    const gl = this.gl;
+    const { subspaces, interfaces, grid, settings } = model;
+
+    this.resizeField(grid.width, grid.height);
+    for (let j = 0; j < subspaces.length; j++) this.uploadSubspace(j, subspaces[j]);
+    for (let i = 0; i < interfaces.length; i++) {
+      this.boundaryLutFor(i).update(interfaces[i]);
+    }
+
     gl.disable(gl.BLEND);
     gl.disable(gl.DEPTH_TEST);
-
-    gl.useProgram(this.fieldProgram);
     gl.bindVertexArray(this.vertexArray);
 
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, this.sourceTexture);
-    gl.uniform1i(this.fieldUniforms.uSources, 0);
-    gl.uniform1i(this.fieldUniforms.uSourceCount, sources.length);
-    gl.uniform2f(this.fieldUniforms.uGridOrigin, grid.originX, grid.originY);
-    gl.uniform2f(this.fieldUniforms.uGridStep, grid.stepX, grid.stepY);
-    gl.uniform1f(this.fieldUniforms.uWavenumber, wavenumber(wavelength, refractiveIndex));
-    gl.uniform1f(this.fieldUniforms.uMinRadius, minimumRadius(wavelength, refractiveIndex));
-
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    this.runChainPasses(model);
+    this.runFieldPasses(model);
 
     gl.bindVertexArray(null);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
-    // The statistics belong to this field; force them to be recomputed.
     this.lastStats = null;
+  }
+
+  /**
+   * Carry the field across each interface in turn.
+   * @param {Object} model
+   * @private
+   */
+  runChainPasses({ subspaces, settings }) {
+    const gl = this.gl;
+    gl.useProgram(this.chainProgram);
+
+    for (let j = 1; j < subspaces.length; j++) {
+      const tables = this.tablesFor(j);
+      if (tables.siteGeometry.count === 0) continue;
+
+      // Sum over the subspace before this interface, in its medium.
+      this.bindSources(
+        this.chainUniforms, j - 1, settings.wavelength, subspaces[j - 1].refractiveIndex
+      );
+
+      gl.activeTexture(gl.TEXTURE0 + UNIT_EXTRA_A);
+      gl.bindTexture(gl.TEXTURE_2D, tables.siteGeometry.texture);
+      gl.uniform1i(this.chainUniforms.uSiteGeometry, UNIT_EXTRA_A);
+      gl.activeTexture(gl.TEXTURE0 + UNIT_EXTRA_B);
+      gl.bindTexture(gl.TEXTURE_2D, tables.siteTransmission.texture);
+      gl.uniform1i(this.chainUniforms.uSiteTransmission, UNIT_EXTRA_B);
+
+      gl.bindFramebuffer(gl.FRAMEBUFFER, tables.siteWeights.framebuffer);
+      gl.viewport(0, 0, tables.siteWeights.width, tables.siteWeights.height);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    }
+  }
+
+  /**
+   * Draw each subspace's field into the shared float texture.
+   * @param {Object} model
+   * @private
+   */
+  runFieldPasses({ subspaces, interfaces, grid, settings }) {
+    const gl = this.gl;
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
+    gl.viewport(0, 0, grid.width, grid.height);
+    // Any pixel no subspace claims stays zero, which is the honest result for a
+    // scene whose interfaces cross and so have no consistent ordering.
+    gl.clearColor(0, 0, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+
+    gl.useProgram(this.fieldProgram);
+    gl.uniform2f(this.fieldUniforms.uGridOrigin, grid.originX, grid.originY);
+    gl.uniform2f(this.fieldUniforms.uGridStep, grid.stepX, grid.stepY);
+
+    for (let j = 0; j < subspaces.length; j++) {
+      this.bindSources(
+        this.fieldUniforms, j, settings.wavelength, subspaces[j].refractiveIndex
+      );
+      this.bindBoundary(UNIT_EXTRA_A, j - 1, interfaces, 'uLowerLut', 'uLowerRange', 'uHasLower');
+      this.bindBoundary(UNIT_EXTRA_B, j, interfaces, 'uUpperLut', 'uUpperRange', 'uHasUpper');
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    }
+  }
+
+  /**
+   * Bind one of the two interfaces bounding the subspace being drawn.
+   * @private
+   */
+  bindBoundary(unit, interfaceIndex, interfaces, lutName, rangeName, flagName) {
+    const gl = this.gl;
+    const present = interfaceIndex >= 0 && interfaceIndex < interfaces.length;
+    gl.uniform1i(this.fieldUniforms[flagName], present ? 1 : 0);
+
+    // A sampler must still be bound to something valid even when unused.
+    const lut = this.boundaryLutFor(Math.max(0, Math.min(
+      interfaceIndex, Math.max(0, interfaces.length - 1)
+    )));
+    gl.activeTexture(gl.TEXTURE0 + unit);
+    gl.bindTexture(gl.TEXTURE_2D, lut.texture);
+    gl.uniform1i(this.fieldUniforms[lutName], unit);
+    if (present) gl.uniform4fv(this.fieldUniforms[rangeName], lut.range);
   }
 
   /**
@@ -394,9 +637,7 @@ class WaveFieldEngineWebGL2 {
       return { referenceAmplitude: 0, maxAmplitude: 0, sampleCount: 0 };
     }
 
-    if (!this.readbackBuffer) {
-      this.readbackBuffer = new Float32Array(count * 4);
-    }
+    if (!this.readbackBuffer) this.readbackBuffer = new Float32Array(count * 4);
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
     gl.readPixels(
       0, 0, this.fieldWidth, this.fieldHeight, gl.RGBA, gl.FLOAT, this.readbackBuffer
@@ -414,8 +655,7 @@ class WaveFieldEngineWebGL2 {
 
     amplitudes.sort();
     const index = Math.min(
-      count - 1,
-      Math.max(0, Math.round((percentile / 100) * (count - 1)))
+      count - 1, Math.max(0, Math.round((percentile / 100) * (count - 1)))
     );
 
     this.lastStats = {
@@ -443,8 +683,7 @@ class WaveFieldEngineWebGL2 {
    */
   render({
     view, colormap, referenceAmplitude, upperCutoff = 1, lowerCutoff = 0,
-    phase = 0, logScale = false, dynamicRange = 40,
-    chroma = DEFAULT_PHASE_CHROMA,
+    phase = 0, logScale = false, dynamicRange = 40, chroma = DEFAULT_PHASE_CHROMA,
   }) {
     const gl = this.gl;
     const canvas = gl.canvas;
@@ -516,32 +755,21 @@ class WaveFieldEngineWebGL2 {
   /** Release every GL object this engine owns. */
   destroy() {
     const gl = this.gl;
+    gl.deleteProgram(this.chainProgram);
     gl.deleteProgram(this.fieldProgram);
     gl.deleteProgram(this.displayProgram);
-    gl.deleteTexture(this.sourceTexture);
     gl.deleteTexture(this.fieldTexture);
     gl.deleteFramebuffer(this.framebuffer);
     gl.deleteVertexArray(this.vertexArray);
-    for (const texture of this.colormapTextures.values()) {
-      gl.deleteTexture(texture);
+    for (const tables of this.subspaceTables) {
+      for (const table of Object.values(tables)) table.destroy();
     }
+    this.subspaceTables = [];
+    for (const lut of this.boundaryLuts) lut.destroy();
+    this.boundaryLuts = [];
+    for (const texture of this.colormapTextures.values()) gl.deleteTexture(texture);
     this.colormapTextures.clear();
   }
-}
-
-/**
- * Look up several uniform locations at once.
- * @param {WebGL2RenderingContext} gl
- * @param {WebGLProgram} program
- * @param {string[]} names
- * @returns {Object<string, WebGLUniformLocation>}
- */
-function collectUniforms(gl, program, names) {
-  const uniforms = {};
-  for (const name of names) {
-    uniforms[name] = gl.getUniformLocation(program, name);
-  }
-  return uniforms;
 }
 
 export default WaveFieldEngineWebGL2;

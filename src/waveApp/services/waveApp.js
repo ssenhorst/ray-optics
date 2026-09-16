@@ -214,6 +214,7 @@ function bindSimulatorEvents() {
   simulator.on('fieldComputed', (e) => {
     emit('statusChange', {
       diagnostics: e.diagnostics,
+      warnings: e.warnings,
       gridWidth: e.gridWidth,
       gridHeight: e.gridHeight,
       computeMs: e.computeMs,

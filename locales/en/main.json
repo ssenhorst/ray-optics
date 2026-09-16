@@ -290,6 +290,10 @@
     "WaveLineSource": {
       "title": "Line source",
       "description": "A line of time-harmonic point sources, with amplitude and phase given as functions of the position along the line."
+    },
+    "WaveInterface": {
+      "title": "Interface",
+      "description": "A surface dividing space, transmitting the field from the subspace before it into the subspace after it. Outside its transverse extent it is opaque."
     }
   }
 }

@@ -164,6 +164,34 @@ export function greensFunction(kr) {
   return { re: -h.im / 4, im: h.re / 4 };
 }
 
+/**
+ * The 2D Rayleigh-Sommerfeld kernel of the first kind,
+ * `K = (i k / 2) H1(k r) cos(theta)`, which is what a point on an illuminated
+ * surface re-radiates.
+ *
+ * Its far-field limit is `sqrt(k / 2 pi i) e^{ikr} / sqrt(r) cos(theta)`, the
+ * standard 2D Fresnel kernel. That normalisation is what makes a fully
+ * transparent, index-matched surface reproduce the incident field exactly
+ * instead of rescaling it, provided the caller also weights each sample by the
+ * arc length it stands for.
+ *
+ * `cos(theta)` is clamped at zero: Rayleigh-Sommerfeld assumes the observer is
+ * in the forward half space, and without the clamp a point that ends up behind
+ * a curved surface would receive a spurious negative contribution.
+ *
+ * @param {number} kr - The argument `k r`, must be positive.
+ * @param {number} cosTheta - The cosine of the angle between the surface
+ *   normal and the direction to the observation point.
+ * @param {number} k - The wavenumber in the medium being radiated into.
+ * @returns {{re: number, im: number}}
+ */
+export function rayleighSommerfeldKernel(kr, cosTheta, k) {
+  const h = hankel1(kr);
+  const factor = k * Math.max(cosTheta, 0) / 2;
+  // (i/2) k cos(theta) (J1 + i Y1) = (k cos(theta) / 2) (-Y1 + i J1).
+  return { re: -factor * h.im, im: factor * h.re };
+}
+
 // --- GLSL generation ------------------------------------------------------
 
 /**
@@ -241,6 +269,14 @@ vec2 hankel1(float x) {
 vec2 greensFunction(float kr) {
   vec2 h = hankel0(kr);
   return vec2(-h.y, h.x) * 0.25;
+}
+
+// The 2D Rayleigh-Sommerfeld kernel (i k / 2) H1(kr) cos(theta). The cosine is
+// clamped at zero because the formula assumes a forward-half-space observer.
+vec2 rayleighSommerfeldKernel(float kr, float cosTheta, float k) {
+  vec2 h = hankel1(kr);
+  float f = k * max(cosTheta, 0.0) * 0.5;
+  return vec2(-h.y, h.x) * f;
 }
 `;
 }

@@ -47,6 +47,12 @@
       wavelength. Shorten the sources or lower the density to control this.
     </div>
 
+    <div v-if="status.warnings.includes('interfacesOverlap')" class="wave-status-warning">
+      Interfaces overlap along the optical axis, so their order &mdash; and the
+      subspace each point belongs to &mdash; is ambiguous. Separate them, or
+      reduce the sag, to get a meaningful result.
+    </div>
+
     <div v-if="status.isPhaseUnreliable" class="wave-status-warning">
       The viewport spans more than ~10⁴ wavelengths, so float32 can no longer
       carry the phase accurately.
@@ -54,6 +60,9 @@
 
     <div class="wave-status-line">
       <span>{{ status.sourceCount }} source{{ status.sourceCount === 1 ? '' : 's' }}</span>
+      <span v-if="status.interfaceCount">
+        {{ status.interfaceCount }} interface{{ status.interfaceCount === 1 ? '' : 's' }}
+      </span>
       <span>{{ status.gridWidth }}&times;{{ status.gridHeight }} grid</span>
       <span>{{ status.pixelsPerWavelength.toFixed(1) }} px/&lambda;</span>
       <span>{{ status.samplesPerWavelength.toFixed(1) }} samples/&lambda;</span>

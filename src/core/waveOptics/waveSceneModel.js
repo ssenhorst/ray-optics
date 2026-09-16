@@ -38,6 +38,16 @@ import { DEFAULT_PHASE_CHROMA } from './oklch.js';
  */
 
 /**
+ * @typedef {Object} Subspace
+ * @property {number} refractiveIndex - Index of the medium filling this subspace.
+ * @property {Array<Object>} surfaceSamples - Sites on the interface bounding this
+ *   subspace from below, which re-radiate into it. Empty for the first subspace.
+ * @property {WaveSource[]} primaries - Isotropic sources located in this subspace.
+ * @property {Object|null} lowerBoundary - The interface before this subspace.
+ * @property {Object|null} upperBoundary - The interface after this subspace.
+ */
+
+/**
  * @typedef {Object} FieldGrid
  * @property {number} width - Samples across the grid.
  * @property {number} height - Samples down the grid.
@@ -101,7 +111,8 @@ export function collectWaveSources(scene, context = {}) {
 
 /**
  * How many point sources a scene would produce at a given sampling density,
- * without doing the sampling.
+ * without doing the sampling. Counts both the primary sources and the sites on
+ * every interface, since both are summed over by the field pass.
  *
  * @param {Scene} scene
  * @param {Object} context
@@ -110,12 +121,118 @@ export function collectWaveSources(scene, context = {}) {
 export function countWaveSources(scene, context = {}) {
   let total = 0;
   for (const obj of scene.objs ?? []) {
-    if (typeof obj?.getWaveSources !== 'function') continue;
-    total += typeof obj.getWaveSourceCount === 'function'
-      ? obj.getWaveSourceCount(context)
-      : 1;
+    if (typeof obj?.getWaveSources === 'function') {
+      total += typeof obj.getWaveSourceCount === 'function'
+        ? obj.getWaveSourceCount(context)
+        : 1;
+    }
+  }
+
+  // Interfaces are sampled with the larger of the two indices bounding them,
+  // which the ordered stack knows; approximating with the background index
+  // here is enough for a budget estimate and avoids building the stack twice.
+  let previousIndex = context.settings?.refractiveIndex ?? 1;
+  for (const surface of collectInterfaces(scene)) {
+    total += surface.getSurfaceSampleCount({
+      ...context, refractiveIndexBefore: previousIndex
+    });
+    previousIndex = surface.refractiveIndexAfter;
   }
   return total;
+}
+
+/**
+ * The valid interfaces in a scene, ordered along the optical axis.
+ *
+ * @param {Scene} scene
+ * @returns {Array<Object>}
+ */
+export function collectInterfaces(scene) {
+  return (scene.objs ?? [])
+    .filter((obj) => typeof obj?.getSurfaceSamples === 'function' && obj.isValid?.())
+    .sort((a, b) => a.meanZ() - b.meanZ());
+}
+
+/**
+ * Build the ordered stack of subspaces.
+ *
+ * Space is divided by the interfaces into subspaces numbered along the optical
+ * axis. Each holds the sites on the interface that precedes it, which radiate
+ * into it, plus whatever primary sources sit inside it. The field in a subspace
+ * is the sum over exactly those, using that subspace's refractive index; there
+ * is no backward propagation and no interaction between interfaces other than
+ * through this chain.
+ *
+ * @param {Scene} scene
+ * @param {Object} settings - Resolved wave settings.
+ * @param {number} samplesPerWavelength
+ * @returns {{subspaces: Subspace[], interfaces: Array<Object>, warnings: string[]}}
+ */
+export function buildSubspaceStack(scene, settings, samplesPerWavelength) {
+  const interfaces = collectInterfaces(scene);
+  const warnings = [];
+
+  const subspaces = [{
+    refractiveIndex: settings.refractiveIndex,
+    surfaceSamples: [],
+    primaries: [],
+    lowerBoundary: null,
+    upperBoundary: interfaces[0] ?? null,
+  }];
+
+  for (let i = 0; i < interfaces.length; i++) {
+    const surface = interfaces[i];
+    const before = subspaces[i].refractiveIndex;
+    subspaces.push({
+      refractiveIndex: positiveOr(surface.refractiveIndexAfter, 1),
+      surfaceSamples: surface.getSurfaceSamples({
+        scene, settings, samplesPerWavelength, refractiveIndexBefore: before
+      }),
+      primaries: [],
+      lowerBoundary: surface,
+      upperBoundary: interfaces[i + 1] ?? null,
+    });
+
+    // Overlapping interfaces have no well-defined order, so the subspace a
+    // point belongs to becomes ambiguous.
+    if (i > 0) {
+      const previous = interfaces[i - 1].getAxialRange();
+      const current = surface.getAxialRange();
+      if (previous && current && current.min < previous.max) {
+        warnings.push('interfacesOverlap');
+      }
+    }
+  }
+
+  // Place each primary source in the subspace it sits in.
+  for (const obj of scene.objs ?? []) {
+    if (typeof obj?.getWaveSources !== 'function') continue;
+    const contributed = obj.getWaveSources({ scene, settings, samplesPerWavelength });
+    if (!contributed?.length) continue;
+    for (const source of contributed) {
+      if (!Number.isFinite(source.x) || !Number.isFinite(source.y) ||
+        !Number.isFinite(source.re) || !Number.isFinite(source.im)) continue;
+      subspaces[subspaceIndexAt(interfaces, source.x, source.y)].primaries.push(source);
+    }
+  }
+
+  return { subspaces, interfaces, warnings: [...new Set(warnings)] };
+}
+
+/**
+ * Which subspace a point lies in.
+ *
+ * @param {Array<Object>} interfaces - Ordered interfaces.
+ * @param {number} z - Position along the optical axis.
+ * @param {number} y - Transverse position.
+ * @returns {number}
+ */
+export function subspaceIndexAt(interfaces, z, y) {
+  let index = 0;
+  for (const surface of interfaces) {
+    if (z >= surface.zAt(y)) index++; else break;
+  }
+  return index;
 }
 
 /**
@@ -223,21 +340,33 @@ export function buildWaveModel(scene, { resolution } = {}) {
   const settings = resolveWaveSettings(scene);
   const grid = computeFieldGrid(scene, resolution ?? settings.gridResolution);
   const density = resolveSourceDensity(scene, settings);
-  const sources = collectWaveSources(scene, {
-    scene, settings, samplesPerWavelength: density.samplesPerWavelength
-  });
+  const { subspaces, interfaces, warnings } = buildSubspaceStack(
+    scene, settings, density.samplesPerWavelength
+  );
+
+  let sourceCount = 0;
+  let largestIndex = settings.refractiveIndex;
+  for (const subspace of subspaces) {
+    sourceCount += subspace.surfaceSamples.length + subspace.primaries.length;
+    largestIndex = Math.max(largestIndex, subspace.refractiveIndex);
+  }
 
   return {
     settings,
-    sources,
+    subspaces,
+    interfaces,
     grid,
+    warnings,
     diagnostics: {
-      sourceCount: sources.length,
+      sourceCount,
+      interfaceCount: interfaces.length,
       isDensityReduced: density.isReduced,
       ...samplingDiagnostics({
         gridSpacing: grid.spacing,
         wavelength: settings.wavelength,
-        refractiveIndex: settings.refractiveIndex,
+        // The shortest wavelength anywhere in the scene sets the sampling
+        // requirement, so the diagnostics use the largest index present.
+        refractiveIndex: largestIndex,
         sceneExtent: grid.extent,
         samplesPerWavelength: density.samplesPerWavelength,
         view: settings.view,

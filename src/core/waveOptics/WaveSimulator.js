@@ -201,12 +201,7 @@ class WaveSimulator {
     this.lastModel = model;
 
     try {
-      this.engine.computeField({
-        sources: model.sources,
-        grid: model.grid,
-        wavelength: model.settings.wavelength,
-        refractiveIndex: model.settings.refractiveIndex,
-      });
+      this.engine.computeField(model);
 
       // The percentile readback stalls the pipeline, so it is done only on the
       // full-resolution pass. During a drag the previous scale is reused, which
@@ -225,6 +220,7 @@ class WaveSimulator {
 
     this.emit('fieldComputed', {
       diagnostics: model.diagnostics,
+      warnings: model.warnings,
       resolution,
       gridWidth: model.grid.width,
       gridHeight: model.grid.height,
@@ -241,7 +237,7 @@ class WaveSimulator {
     if (!this.engine) return;
     const settings = resolveWaveSettings(this.scene);
 
-    if (!this.lastModel || this.lastModel.sources.length === 0) {
+    if (!this.lastModel || this.lastModel.diagnostics.sourceCount === 0) {
       this.engine.clear();
       return;
     }

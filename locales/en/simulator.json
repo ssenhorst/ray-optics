@@ -978,7 +978,11 @@
       "phase": "Phase",
       "uInfo": "The variable <code>u</code> is the distance along the line from its centre, in the same length units as the canvas, and is negative on the side towards the first endpoint.",
       "amplitudeDensityInfo": "An overall multiplier on A(u). Because the line is a continuous source, this is an amplitude per unit length, so a longer line of the same amplitude radiates more.",
-      "phaseRadiansInfo": "The phase is in radians. A linear ramp steers the radiation, and a negative quadratic brings it to a focus."
+      "phaseRadiansInfo": "The phase is in radians. A linear ramp steers the radiation, and a negative quadratic brings it to a focus.",
+      "yInfo": "The variable <code>y</code> is the transverse distance from the centre of the interface, in the same length units as the canvas.",
+      "refractiveIndexAfter": "Index after",
+      "refractiveIndexAfterInfo": "The refractive index of the subspace beyond this interface. The index before it comes from the previous interface, or from the scene background for the first one.",
+      "sagInfo": "The position of the surface along the optical axis, relative to the straight line between its endpoints. A spherical surface of radius R is <code>y^2/(2R)</code>."
     }
   }
 }

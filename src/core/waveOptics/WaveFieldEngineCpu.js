@@ -25,21 +25,35 @@
  * only for the summation itself — which is exactly what needs checking.
  */
 
-import { greensFunction } from './hankel.js';
+import { greensFunction, rayleighSommerfeldKernel } from './hankel.js';
 import { wavenumber, minimumRadius } from './conventions.js';
-import { gridSamplePosition } from './waveSceneModel.js';
+import { gridSamplePosition, subspaceIndexAt } from './waveSceneModel.js';
 
 /**
  * Evaluate the field at a list of points.
+ *
+ * Sources come in two kinds and are always ordered with the directional ones
+ * first, matching the layout the GPU backend uses so the two cannot disagree
+ * about which source is which:
+ *
+ * - The first `directionalCount` entries are points on an illuminated surface.
+ *   They carry a forward normal `(nx, ny)` and re-radiate through the
+ *   Rayleigh-Sommerfeld kernel, with the arc length they stand for already
+ *   folded into their weight.
+ * - The rest are isotropic point sources radiating the free-space Green's
+ *   function.
  *
  * @param {Array<{x: number, y: number}>} points - Where to evaluate.
  * @param {Object} params
  * @param {import('./waveSceneModel.js').WaveSource[]} params.sources
  * @param {number} params.wavelength - Vacuum wavelength in scene units.
- * @param {number} params.refractiveIndex - Index of the medium.
+ * @param {number} params.refractiveIndex - Index of the medium radiated into.
+ * @param {number} [params.directionalCount=0] - How many leading sources are directional.
  * @returns {Float64Array} Interleaved real and imaginary parts, `2 * points.length` long.
  */
-export function computeFieldAt(points, { sources, wavelength, refractiveIndex = 1 }) {
+export function computeFieldAt(points, {
+  sources, wavelength, refractiveIndex = 1, directionalCount = 0
+}) {
   const k = wavenumber(wavelength, refractiveIndex);
   const rMin = minimumRadius(wavelength, refractiveIndex);
   const out = new Float64Array(points.length * 2);
@@ -54,10 +68,14 @@ export function computeFieldAt(points, { sources, wavelength, refractiveIndex = 
       const dx = x - source.x;
       const dy = y - source.y;
       const r = Math.max(Math.hypot(dx, dy), rMin);
-      const g = greensFunction(k * r);
-      // Complex multiply: g * w.
-      re += g.re * source.re - g.im * source.im;
-      im += g.re * source.im + g.im * source.re;
+
+      const kernel = s < directionalCount
+        ? rayleighSommerfeldKernel(k * r, (source.nx * dx + source.ny * dy) / r, k)
+        : greensFunction(k * r);
+
+      // Complex multiply: kernel * weight.
+      re += kernel.re * source.re - kernel.im * source.im;
+      im += kernel.re * source.im + kernel.im * source.re;
     }
 
     out[p * 2] = re;
@@ -83,6 +101,105 @@ export function computeFieldGrid(grid, params) {
     }
   }
   return computeFieldAt(points, params);
+}
+
+/**
+ * Run the propagation chain over a model's subspaces.
+ *
+ * Subspace by subspace along the optical axis, the field arriving at the next
+ * interface is evaluated at each of its sample sites, multiplied by the complex
+ * transmission there and by the arc length the site stands for, and becomes a
+ * secondary source radiating into the subspace beyond. The incident field is
+ * evaluated with the wavenumber of the medium it travelled through, and the
+ * re-radiation uses the wavenumber of the medium it enters; that difference is
+ * the whole of the refraction in this model.
+ *
+ * This is the reference implementation. The GPU backend does the same thing,
+ * but the chain here is what the tests check against closed-form results.
+ *
+ * @param {Object} model - As built by `buildWaveModel`.
+ * @returns {Array<{refractiveIndex: number, sources: Array, directionalCount: number,
+ *   lowerBoundary: Object|null, upperBoundary: Object|null}>}
+ */
+export function propagateChain(model) {
+  const { subspaces, settings } = model;
+  const resolved = [];
+
+  for (let j = 0; j < subspaces.length; j++) {
+    const subspace = subspaces[j];
+    let directional = [];
+
+    if (j > 0 && subspace.surfaceSamples.length > 0) {
+      const previous = resolved[j - 1];
+      const incident = computeFieldAt(subspace.surfaceSamples, {
+        sources: previous.sources,
+        wavelength: settings.wavelength,
+        refractiveIndex: subspaces[j - 1].refractiveIndex,
+        directionalCount: previous.directionalCount,
+      });
+
+      directional = subspace.surfaceSamples.map((site, i) => {
+        const incidentRe = incident[i * 2];
+        const incidentIm = incident[i * 2 + 1];
+        // weight = transmission * incident field * arc length.
+        return {
+          x: site.x,
+          y: site.y,
+          nx: site.nx,
+          ny: site.ny,
+          re: (site.tRe * incidentRe - site.tIm * incidentIm) * site.ds,
+          im: (site.tRe * incidentIm + site.tIm * incidentRe) * site.ds,
+        };
+      });
+    }
+
+    resolved.push({
+      refractiveIndex: subspace.refractiveIndex,
+      sources: [...directional, ...subspace.primaries],
+      directionalCount: directional.length,
+      lowerBoundary: subspace.lowerBoundary,
+      upperBoundary: subspace.upperBoundary,
+    });
+  }
+
+  return resolved;
+}
+
+/**
+ * Evaluate a propagated model at arbitrary points, using each point's own
+ * subspace.
+ *
+ * @param {Object} model - As built by `buildWaveModel`.
+ * @param {Array<{x: number, y: number}>} points
+ * @returns {Float64Array} Interleaved real and imaginary parts.
+ */
+export function computeModelFieldAt(model, points) {
+  const resolved = propagateChain(model);
+  const out = new Float64Array(points.length * 2);
+
+  // Group the points by subspace so each subspace is summed over once.
+  const bySubspace = new Map();
+  points.forEach((point, index) => {
+    const j = subspaceIndexAt(model.interfaces, point.x, point.y);
+    if (!bySubspace.has(j)) bySubspace.set(j, []);
+    bySubspace.get(j).push(index);
+  });
+
+  for (const [j, indices] of bySubspace) {
+    const subspace = resolved[j];
+    const values = computeFieldAt(indices.map((i) => points[i]), {
+      sources: subspace.sources,
+      wavelength: model.settings.wavelength,
+      refractiveIndex: subspace.refractiveIndex,
+      directionalCount: subspace.directionalCount,
+    });
+    indices.forEach((pointIndex, k) => {
+      out[pointIndex * 2] = values[k * 2];
+      out[pointIndex * 2 + 1] = values[k * 2 + 1];
+    });
+  }
+
+  return out;
 }
 
 /**
@@ -117,6 +234,8 @@ export function instantaneousField(field, phase) {
 export default {
   computeFieldAt,
   computeFieldGrid,
+  propagateChain,
+  computeModelFieldAt,
   fieldAmplitudes,
   instantaneousField,
 };

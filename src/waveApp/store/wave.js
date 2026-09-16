@@ -63,6 +63,8 @@ export const useWaveStore = () => {
       isSourceCoarse: false,
       isDensityReduced: false,
       isPhaseUnreliable: false,
+      interfaceCount: 0,
+      warnings: [],
       gridWidth: 0,
       gridHeight: 0,
       computeMs: 0,
@@ -155,12 +157,14 @@ export const useWaveStore = () => {
       state.status.isSourceCoarse = detail.diagnostics.isSourceCoarse;
       state.status.isDensityReduced = detail.diagnostics.isDensityReduced;
       state.status.isPhaseUnreliable = detail.diagnostics.isPhaseUnreliable;
+      state.status.interfaceCount = detail.diagnostics.interfaceCount ?? 0;
     }
     if (detail.gridWidth !== undefined) {
       state.status.gridWidth = detail.gridWidth;
       state.status.gridHeight = detail.gridHeight;
       state.status.computeMs = detail.computeMs;
     }
+    if (detail.warnings !== undefined) state.status.warnings = detail.warnings;
     if (detail.mousePos !== undefined) state.status.mousePos = detail.mousePos;
     if (detail.error !== undefined) state.status.error = detail.error;
   });
