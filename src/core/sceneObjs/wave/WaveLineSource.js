@@ -20,6 +20,9 @@ import geometry from '../../geometry.js';
 import i18next from 'i18next';
 import { evaluateLatex } from '../../equation.js';
 import { wavelengthInMedium } from '../../waveOptics/conventions.js';
+import {
+  equationInfo, amplitudeExamples, phaseExamples
+} from './waveEquationInfo.js';
 
 /**
  * A line of time-harmonic point sources: the wave-optics counterpart of a beam.
@@ -60,18 +63,31 @@ class WaveLineSource extends LineObjMixin(BaseSceneObj) {
     return i18next.t('main:waveTools.WaveLineSource.title');
   }
 
+  /** Popover content for the two equation fields. */
+  static equationHelp(scene) {
+    const variable = i18next.t('simulator:waveSceneObjs.common.uInfo');
+    return {
+      amplitude: equationInfo({ variable, examples: amplitudeExamples('u') }),
+      phase: equationInfo({
+        role: i18next.t('simulator:waveSceneObjs.common.phaseRadiansInfo'),
+        variable,
+        examples: phaseExamples('u', scene),
+      }),
+    };
+  }
+
   static getPropertySchema(objData, scene) {
-    const info = '<p>' + i18next.t('simulator:waveSceneObjs.common.uInfo') + '</p>';
+    const help = WaveLineSource.equationHelp(scene);
     return [
       ...super.getPropertySchema(objData, scene),
       { key: 'amplitude', type: 'number', label: i18next.t('simulator:waveSceneObjs.common.amplitude') },
-      { key: 'eqnAmplitude', type: 'equation', label: 'A(u)', variables: ['u'], info },
-      { key: 'eqnPhase', type: 'equation', label: 'φ(u)', variables: ['u'], info },
+      { key: 'eqnAmplitude', type: 'equation', label: 'A(u)', variables: ['u'], info: help.amplitude },
+      { key: 'eqnPhase', type: 'equation', label: 'φ(u)', variables: ['u'], info: help.phase },
     ];
   }
 
   populateObjBar(objBar) {
-    const info = '<p>' + i18next.t('simulator:waveSceneObjs.common.uInfo') + '</p>';
+    const help = WaveLineSource.equationHelp(this.scene);
     objBar.setTitle(i18next.t('main:waveTools.WaveLineSource.title'));
     objBar.createNumber(
       i18next.t('simulator:waveSceneObjs.common.amplitude'), 0, 5, 0.01, this.amplitude,
@@ -80,10 +96,10 @@ class WaveLineSource extends LineObjMixin(BaseSceneObj) {
     );
     objBar.createEquation('A(u)', this.eqnAmplitude, function (obj, value) {
       obj.eqnAmplitude = value;
-    }, info);
+    }, help.amplitude);
     objBar.createEquation('φ(u)', this.eqnPhase, function (obj, value) {
       obj.eqnPhase = value;
-    }, '<p>' + i18next.t('simulator:waveSceneObjs.common.phaseRadiansInfo') + '</p>' + info);
+    }, help.phase);
   }
 
   draw(canvasRenderer, isAboveLight, isHovered) {

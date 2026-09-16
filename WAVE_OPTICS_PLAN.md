@@ -467,12 +467,21 @@ coded, measured at 18.7° against the predicted 18.2° for n = 1.6; a slab resto
 original beam direction; a short interface gives clean single-slit diffraction; and a
 quadratic `t(y)` focuses at the expected distance.
 
-**M5 — Pulses.** Frequency decomposition, per-component cached field textures, animated
-recombination, Gaussian pulse UI.
+**M6 — Polish and documentation. ✅ Done.** Eight worked examples in the toolbar (two
+point sources, single slit, double slit, lens, refraction, glass slab, curved surface,
+beam steering), built against the current viewport so each fills the window it is loaded
+into rather than arriving half off-screen. Save/load round-trip coverage for the new
+object types and the nested `waveOptics` settings. Docs in `src/waveApp/README.md`.
+Progressive resolution and the status-bar instrumentation landed with M1 and M3.
 
-**M6 — Polish and performance.** Progressive resolution during pan/zoom, full status-bar
-instrumentation, sample scenes (single slit, double slit, lens, prism), save/load and
-URL sharing verified, docs.
+*The equation fields were enlarged and each now carries a worked example of the optics it
+is normally used for, written the way it is typed rather than as LaTeX, with coefficients
+computed from the scene's current wavelength so they can be copied straight in.*
+
+**M5 — Pulses. Deferred.** Frequency decomposition, per-component cached field textures,
+animated recombination, Gaussian pulse UI. The per-frequency architecture is already in
+place, so this is a loop over cached field textures; note that the chain cost multiplies
+by the number of components, so the source budget will need to account for it.
 
 Tests land with the milestone they cover, not at the end.
 

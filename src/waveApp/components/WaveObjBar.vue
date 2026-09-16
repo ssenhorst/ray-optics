@@ -69,8 +69,9 @@ export default {
   width: 100%;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
-  padding: 5px 12px;
+  padding: 7px 12px;
   background-color: rgba(30, 33, 38, 0.92);
   backdrop-filter: blur(4px);
   color: white;
@@ -93,5 +94,93 @@ export default {
   --bs-btn-padding-y: 0.15rem;
   --bs-btn-padding-x: 0.45rem;
   --bs-btn-font-size: 0.75rem;
+}
+</style>
+
+<!--
+  The controls inside #wave_obj_bar_main are created imperatively by the objBar
+  service, so they never receive this component's scoped attribute and have to
+  be styled globally. The ray app's equivalent rules live in its own ObjBar
+  component, which this app does not load.
+-->
+<style>
+#wave_obj_bar_main {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+#wave_obj_bar_main .obj-bar-nobr {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.wave-obj-bar .obj-bar-editable {
+  color: white;
+  background-color: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 3px;
+  text-align: center;
+}
+
+.wave-obj-bar .obj-bar-editable::selection {
+  background-color: gray;
+  color: white;
+}
+
+/* The equations are the main way these objects are configured, so they get
+   room to read rather than the toolbar's compact size. */
+.wave-obj-bar .mq-editable-field {
+  font-size: 17px;
+  min-width: 110px;
+  padding: 4px 8px;
+  line-height: 1.35;
+}
+
+.wave-obj-bar .mq-editable-field.mq-focused {
+  box-shadow: none;
+  border-color: rgba(120, 175, 255, 0.9);
+  background-color: rgba(255, 255, 255, 0.22);
+}
+
+.wave-obj-bar .mq-cursor {
+  border-color: white !important;
+}
+
+.wave-obj-bar .obj-bar-number {
+  width: 62px;
+  font-size: 15px;
+  padding: 3px 2px;
+}
+
+.wave-obj-bar .info-icon {
+  color: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+}
+
+.wave-obj-bar .info-icon:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* The equation help lists worked examples, which need to be legible. Bootstrap
+   popovers are light, so the code colour is chosen for contrast on white. */
+.popover-body code {
+  color: #0a4ea3;
+  background-color: rgba(10, 78, 163, 0.08);
+  padding: 0 3px;
+  border-radius: 2px;
+  font-size: 12px;
+}
+
+.popover-body ul {
+  margin-bottom: 4px;
+  padding-left: 18px;
+}
+
+.popover-body li {
+  margin-bottom: 2px;
 }
 </style>

@@ -33,6 +33,7 @@ import WaveSimulator from '../../core/waveOptics/WaveSimulator.js';
 import { createWaveRenderingContext } from '../../core/waveOptics/WaveFieldEngineWebGL2.js';
 import { objBar } from '../../app/services/objBar.js';
 import { saveAs } from 'file-saver';
+import { buildExampleScene } from '../exampleScenes.js';
 
 /** Scene object types the wave app offers as tools. */
 export const WAVE_TOOL_TYPES = ['WavePointSource'];
@@ -272,6 +273,24 @@ function clearScene() {
   emit('sceneChange', null);
 }
 
+/**
+ * Replace the scene with one of the built-in examples.
+ *
+ * The example is built against the current viewport, so it fills whatever
+ * window it is loaded into. With the scene at unit scale and the origin at the
+ * corner, scene length units and CSS pixels coincide.
+ *
+ * @param {string} id
+ */
+function loadExample(id) {
+  if (!scene || !editor) return;
+  const json = buildExampleScene(id, scene.width, scene.height);
+  if (!json) return;
+  editor.loadJSON(json);
+  editor.onActionComplete();
+  emit('sceneChange', null);
+}
+
 /** Download the scene as JSON. */
 function saveScene() {
   const blob = new Blob([scene.toJSON()], { type: 'application/json;charset=utf-8' });
@@ -309,6 +328,7 @@ export const app = {
   setTool,
   refresh,
   clearScene,
+  loadExample,
   saveScene,
   openScene,
   sceneObjs,

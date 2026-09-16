@@ -983,6 +983,20 @@
       "refractiveIndexAfter": "Index after",
       "refractiveIndexAfterInfo": "The refractive index of the subspace beyond this interface. The index before it comes from the previous interface, or from the scene background for the first one.",
       "sagInfo": "The position of the surface along the optical axis, relative to the straight line between its endpoints. A spherical surface of radius R is <code>y^2/(2R)</code>."
+    },
+    "eqnInfo": {
+      "examples": "For example:",
+      "uniform": "uniform",
+      "gaussian": "a Gaussian profile",
+      "grating": "a sinusoidal grating",
+      "flat": "no phase variation",
+      "tilt": "radiate at {{degrees}}° (a linear ramp steers the beam)",
+      "focus": "converge at a distance of {{distance}} (a negative quadratic focuses)",
+      "planar": "a flat surface",
+      "spherical": "a spherical surface of radius {{radius}}",
+      "tilted": "a surface tilted relative to its endpoints",
+      "aperture": "a hard-edged opening of half-width {{half}}, opaque outside it",
+      "typingNote": "Type them as written: <code>*</code> becomes a multiplication dot and <code>^</code> starts a power."
     }
   }
 }

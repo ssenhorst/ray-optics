@@ -27,6 +27,21 @@
         <div class="wave-group-title">File</div>
       </div>
 
+      <!-- Examples -->
+      <div class="wave-group">
+        <div class="wave-group-body">
+          <select class="form-select form-select-sm wave-select" v-model="example"
+            @change="onExampleChosen">
+            <option value="">Choose&hellip;</option>
+            <option v-for="entry in examples" :key="entry.id" :value="entry.id"
+              :title="entry.description">
+              {{ entry.name }}
+            </option>
+          </select>
+        </div>
+        <div class="wave-group-title">Examples</div>
+      </div>
+
       <!-- Tools -->
       <div class="wave-group">
         <div class="wave-group-body btn-group">
@@ -209,12 +224,14 @@ import {
 } from '../../core/waveOptics/colormaps.js';
 import { phaseWheelCssGradient } from '../../core/waveOptics/oklch.js';
 import { GRID_RESOLUTIONS } from '../../core/waveOptics/conventions.js';
+import { EXAMPLE_SCENES } from '../exampleScenes.js';
 
 export default {
   name: 'WaveToolbar',
   setup() {
     const store = useWaveStore();
     const fileInput = ref(null);
+    const example = ref('');
 
     const view = store.view;
 
@@ -253,6 +270,8 @@ export default {
     return {
       store,
       fileInput,
+      example,
+      examples: EXAMPLE_SCENES,
       tool: store.tool,
       view,
       colormap,
@@ -296,7 +315,12 @@ export default {
       return colormapDisplayName(name);
     },
     onNew() {
+      this.example = '';
       app.clearScene();
+    },
+    onExampleChosen(event) {
+      const id = event.target.value;
+      if (id) app.loadExample(id);
     },
     onOpen() {
       this.fileInput.click();

@@ -19,6 +19,9 @@ import LineObjMixin from '../LineObjMixin.js';
 import i18next from 'i18next';
 import { evaluateLatex } from '../../equation.js';
 import { wavelengthInMedium } from '../../waveOptics/conventions.js';
+import {
+  equationInfo, amplitudeExamples, phaseExamples, sagExamples
+} from './waveEquationInfo.js';
 
 /** Samples used when scanning the curve for its steepest point. */
 const SLOPE_SCAN_SAMPLES = 64;
@@ -72,22 +75,40 @@ class WaveInterface extends LineObjMixin(BaseSceneObj) {
     return i18next.t('main:waveTools.WaveInterface.title');
   }
 
+  /** Popover content for the three equation fields. */
+  static equationHelp(scene) {
+    const variable = i18next.t('simulator:waveSceneObjs.common.yInfo');
+    return {
+      sag: equationInfo({
+        role: i18next.t('simulator:waveSceneObjs.common.sagInfo'),
+        variable,
+        examples: sagExamples(),
+      }),
+      amplitude: equationInfo({ variable, examples: amplitudeExamples('y') }),
+      phase: equationInfo({
+        role: i18next.t('simulator:waveSceneObjs.common.phaseRadiansInfo'),
+        variable,
+        examples: phaseExamples('y', scene),
+      }),
+    };
+  }
+
   static getPropertySchema(objData, scene) {
-    const info = '<p>' + i18next.t('simulator:waveSceneObjs.common.yInfo') + '</p>';
+    const help = WaveInterface.equationHelp(scene);
     return [
       ...super.getPropertySchema(objData, scene),
       {
         key: 'refractiveIndexAfter', type: 'number',
         label: i18next.t('simulator:waveSceneObjs.common.refractiveIndexAfter')
       },
-      { key: 'eqnSag', type: 'equation', label: 'z(y)', variables: ['y'], info },
-      { key: 'eqnAmplitude', type: 'equation', label: '|t|(y)', variables: ['y'], info },
-      { key: 'eqnPhase', type: 'equation', label: 'arg t(y)', variables: ['y'], info },
+      { key: 'eqnSag', type: 'equation', label: 'z(y)', variables: ['y'], info: help.sag },
+      { key: 'eqnAmplitude', type: 'equation', label: '|t|(y)', variables: ['y'], info: help.amplitude },
+      { key: 'eqnPhase', type: 'equation', label: 'arg t(y)', variables: ['y'], info: help.phase },
     ];
   }
 
   populateObjBar(objBar) {
-    const info = '<p>' + i18next.t('simulator:waveSceneObjs.common.yInfo') + '</p>';
+    const help = WaveInterface.equationHelp(this.scene);
     objBar.setTitle(i18next.t('main:waveTools.WaveInterface.title'));
     objBar.createNumber(
       i18next.t('simulator:waveSceneObjs.common.refractiveIndexAfter'),
@@ -97,13 +118,13 @@ class WaveInterface extends LineObjMixin(BaseSceneObj) {
     );
     objBar.createEquation('z(y)', this.eqnSag, function (obj, value) {
       obj.eqnSag = value;
-    }, '<p>' + i18next.t('simulator:waveSceneObjs.common.sagInfo') + '</p>' + info);
+    }, help.sag);
     objBar.createEquation('|t|(y)', this.eqnAmplitude, function (obj, value) {
       obj.eqnAmplitude = value;
-    }, info);
+    }, help.amplitude);
     objBar.createEquation('arg t(y)', this.eqnPhase, function (obj, value) {
       obj.eqnPhase = value;
-    }, '<p>' + i18next.t('simulator:waveSceneObjs.common.phaseRadiansInfo') + '</p>' + info);
+    }, help.phase);
   }
 
   /**
