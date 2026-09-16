@@ -971,5 +971,11 @@
         "contribute": "Direct contributions are also welcome (see [the contribution guide](/contributing))."
       }
     }
+  },
+  "waveSceneObjs": {
+    "common": {
+      "amplitude": "Amplitude",
+      "phase": "Phase"
+    }
   }
 }

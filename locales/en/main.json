@@ -280,5 +280,12 @@
     "parentheses": "{{main}} ({{sub}})",
     "colon": "{{name}}: {{value}}",
     "list": "{{first}}, {{others}}"
+  },
+  "waveTools": {
+    "title": "Sources",
+    "WavePointSource": {
+      "title": "Point source",
+      "description": "A time-harmonic point source: the 2D Green’s function, whose amplitude falls as 1/√r."
+    }
   }
 }

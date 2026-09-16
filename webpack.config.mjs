@@ -51,9 +51,10 @@ export default (env, argv) => {
   return {
     entry: {
       simulator: './src/app/main.js',
+      wave: './src/waveApp/main.js',
     },
     output: {
-      filename: 'simulator/main.js',
+      filename: '[name]/main.js',
       path: path.resolve('dist'),
       assetModuleFilename: (pathData) => {
         const filepath = path.dirname(pathData.filename).split('/').slice(1).join('/');
@@ -98,6 +99,12 @@ export default (env, argv) => {
           const localeData = buildInlineLocaleData();
           return templateContent.replace('{ /* LOCALE DATA */ }', JSON.stringify(localeData));
         },
+      }),
+      // The wave-optics app is a second entry point sharing the core library.
+      new HtmlWebpackPlugin({
+        template: './src/waveApp/index.html',
+        filename: 'wave/index.html',
+        chunks: ['wave'],
       }),
       new CopyWebpackPlugin({
         patterns: [
