@@ -25,6 +25,7 @@ import { app } from '../services/waveApp.js';
  */
 const RECOMPUTE_KEYS = new Set([
   'wavelength', 'refractiveIndex', 'gridResolution', 'scalePercentile',
+  'sourceDensity',
 ]);
 
 let storeInstance = null;
@@ -54,8 +55,13 @@ export const useWaveStore = () => {
       error: null,
       sourceCount: 0,
       pixelsPerWavelength: 0,
+      samplesPerWavelength: 0,
+      comfortablePixels: 4,
       isAliasing: false,
       isCoarse: false,
+      isSourceUndersampled: false,
+      isSourceCoarse: false,
+      isDensityReduced: false,
       isPhaseUnreliable: false,
       gridWidth: 0,
       gridHeight: 0,
@@ -141,8 +147,13 @@ export const useWaveStore = () => {
     if (detail.diagnostics) {
       state.status.sourceCount = detail.diagnostics.sourceCount;
       state.status.pixelsPerWavelength = detail.diagnostics.pixelsPerWavelength;
+      state.status.samplesPerWavelength = detail.diagnostics.samplesPerWavelength;
+      state.status.comfortablePixels = detail.diagnostics.comfortablePixels;
       state.status.isAliasing = detail.diagnostics.isAliasing;
       state.status.isCoarse = detail.diagnostics.isCoarse;
+      state.status.isSourceUndersampled = detail.diagnostics.isSourceUndersampled;
+      state.status.isSourceCoarse = detail.diagnostics.isSourceCoarse;
+      state.status.isDensityReduced = detail.diagnostics.isDensityReduced;
       state.status.isPhaseUnreliable = detail.diagnostics.isPhaseUnreliable;
     }
     if (detail.gridWidth !== undefined) {

@@ -975,7 +975,10 @@
   "waveSceneObjs": {
     "common": {
       "amplitude": "Amplitude",
-      "phase": "Phase"
+      "phase": "Phase",
+      "uInfo": "The variable <code>u</code> is the distance along the line from its centre, in the same length units as the canvas, and is negative on the side towards the first endpoint.",
+      "amplitudeDensityInfo": "An overall multiplier on A(u). Because the line is a continuous source, this is an amplitude per unit length, so a longer line of the same amplitude radiates more.",
+      "phaseRadiansInfo": "The phase is in radians. A linear ramp steers the radiation, and a negative quadratic brings it to a focus."
     }
   }
 }

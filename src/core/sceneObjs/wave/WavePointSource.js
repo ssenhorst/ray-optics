@@ -177,6 +177,12 @@ class WavePointSource extends BaseSceneObj {
     }];
   }
 
+  /** @returns {number} The number of wave sources this object contributes. */
+  getWaveSourceCount(context) {
+    return this.amplitude > 0 &&
+      Number.isFinite(this.x) && Number.isFinite(this.y) ? 1 : 0;
+  }
+
   /**
    * Wave objects do not take part in ray tracing; the ray simulator must not
    * try to intersect them.

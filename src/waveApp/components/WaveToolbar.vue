@@ -58,7 +58,7 @@
       </div>
 
       <!-- Colormap -->
-      <div class="wave-group">
+      <div class="wave-group" v-if="view !== 'amplitudePhase'">
         <div class="wave-group-body">
           <select class="form-select form-select-sm wave-select" v-model="colormap">
             <option v-for="name in colormapOptions" :key="name" :value="name">
@@ -68,6 +68,24 @@
           <span class="wave-colormap-preview" :style="{ background: colormapGradient }"></span>
         </div>
         <div class="wave-group-title">Colormap</div>
+      </div>
+
+      <!-- Amplitude/phase mapping -->
+      <div class="wave-group" v-if="view === 'amplitudePhase'">
+        <div class="wave-group-body">
+          <span class="wave-phase-wheel" :style="{ background: phaseWheel }"
+            title="Hue shows the phase: 0 to the right, increasing anticlockwise"></span>
+          <label class="wave-field wave-field-slider">
+            <span>Chroma</span>
+            <input type="range" class="form-range wave-range" min="0" max="0.35" step="0.005"
+              v-model.number="phaseChroma">
+            <output>{{ phaseChroma.toFixed(3) }}</output>
+          </label>
+        </div>
+        <div class="wave-group-title">
+          Hue = phase, lightness = amplitude. Chroma is reduced where sRGB
+          cannot hold it, so lightness and hue stay exact
+        </div>
       </div>
 
       <!-- Optics -->
@@ -87,7 +105,7 @@
         <div class="wave-group-title">Optics (scene units)</div>
       </div>
 
-      <!-- Grid resolution -->
+      <!-- Sampling -->
       <div class="wave-group">
         <div class="wave-group-body">
           <select class="form-select form-select-sm wave-select" v-model.number="gridResolution">
@@ -95,20 +113,29 @@
               {{ value }}
             </option>
           </select>
+          <label class="wave-field wave-field-slider">
+            <span>Sources</span>
+            <input type="range" class="form-range wave-range" min="1" max="32" step="0.5"
+              v-model.number="sourceDensity">
+            <output>{{ sourceDensity }}/&lambda;</output>
+          </label>
         </div>
-        <div class="wave-group-title">Field samples</div>
+        <div class="wave-group-title">
+          Field samples across the view, and samples per wavelength on extended
+          sources
+        </div>
       </div>
 
       <!-- Animation -->
       <div class="wave-group">
         <div class="wave-group-body">
           <button class="btn btn-sm" :class="isAnimating ? 'btn-primary' : 'btn-outline-light'"
-            @click="toggleAnimation" :disabled="view !== 'field'"
-            :title="view !== 'field' ? 'Animation applies to the instantaneous field view' : ''">
+            @click="toggleAnimation" :disabled="!isTimeResolved"
+            :title="isTimeResolved ? '' : 'The intensity view is time-averaged, so there is nothing to animate'">
             {{ isAnimating ? 'Pause' : 'Play' }}
           </button>
           <input type="range" class="form-range wave-range" min="0" max="1" step="0.002"
-            :value="timeFraction" @input="onScrubTime" :disabled="view !== 'field'">
+            :value="timeFraction" @input="onScrubTime" :disabled="!isTimeResolved">
         </div>
         <div class="wave-group-title">Time ({{ timeLabel }})</div>
       </div>
@@ -180,6 +207,7 @@ import { useWaveStore } from '../store/wave.js';
 import {
   listColormapsForView, colormapDisplayName, colormapCssGradient
 } from '../../core/waveOptics/colormaps.js';
+import { phaseWheelCssGradient } from '../../core/waveOptics/oklch.js';
 import { GRID_RESOLUTIONS } from '../../core/waveOptics/conventions.js';
 
 export default {
@@ -209,6 +237,10 @@ export default {
 
     const colormapOptions = computed(() => listColormapsForView(view.value));
     const colormapGradient = computed(() => colormapCssGradient(colormap.value));
+    const phaseWheel = computed(() => phaseWheelCssGradient(store.phaseChroma.value));
+
+    // The intensity view is time-averaged; the other two show an instant.
+    const isTimeResolved = computed(() => view.value !== 'intensity');
 
     // The field view shows one optical cycle; the scrubber spans exactly that.
     const timeFraction = computed(() => store.state.time - Math.floor(store.state.time));
@@ -226,9 +258,13 @@ export default {
       colormap,
       colormapOptions,
       colormapGradient,
+      phaseWheel,
+      isTimeResolved,
+      phaseChroma: store.phaseChroma,
       wavelength: store.wavelength,
       refractiveIndex: store.refractiveIndex,
       gridResolution: store.gridResolution,
+      sourceDensity: store.sourceDensity,
       upperCutoff: store.upperCutoff,
       lowerCutoff: store.lowerCutoff,
       logScale: store.logScale,
@@ -244,11 +280,13 @@ export default {
       resolutions: GRID_RESOLUTIONS,
       tools: [
         { type: '', label: 'Move view', hint: 'Drag to pan, scroll to zoom' },
-        { type: 'WavePointSource', label: 'Point source', hint: 'Click to place a time-harmonic point source' },
+        { type: 'WavePointSource', label: 'Point', hint: 'Click to place a time-harmonic point source' },
+        { type: 'WaveLineSource', label: 'Line', hint: 'Drag to draw a line of point sources with A(u) and phi(u)' },
       ],
       views: [
         { value: 'intensity', label: 'Intensity', hint: 'The time-averaged intensity |U|²' },
         { value: 'field', label: 'Field', hint: 'The instantaneous field Re{U e^{-iωt}}' },
+        { value: 'amplitudePhase', label: 'Amp+phase', hint: 'Amplitude and phase together, in Oklch' },
       ],
     };
   },
@@ -354,6 +392,14 @@ export default {
 .wave-range {
   width: 120px;
   padding-top: 3px;
+}
+
+.wave-phase-wheel {
+  display: inline-block;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
 }
 
 .wave-colormap-preview {

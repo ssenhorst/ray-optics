@@ -416,13 +416,29 @@ analytic Green's function, two-slit fringe positions, and the colormap tables.
 once the field texture exists they cost only a display shader, and they exercise the
 "animation is free" claim early.*
 
-**M2 — Amplitude-phase view.** The bivariate Oklch view (hue = phase, amplitude driving
-`L` and `C`) with in-shader gamut mapping. The rest of the original M2 — the
+**M2 — Amplitude-phase view. ✅ Done.** The bivariate Oklch view: hue = phase, lightness
+= amplitude, chroma following an envelope that vanishes at both ends where sRGB has no
+room for it, with an 8-step in-shader binary search reducing chroma until the colour is
+representable. Lightness and hue are preserved exactly, so both readings stay faithful.
+A phase wheel in the toolbar serves as the legend. The rest of the original M2 — the
 time-dependent view, the animation loop, the colormap picker, log intensity and the
 percentile auto-scale — landed with M1.
 
-**M3 — Line sources.** `WaveLineSource` with `A(u)`/`φ(u)` equations, source density
-slider, `Δu` normalization, Nyquist warnings in the status bar.
+*The "comfortable" grid-density threshold is now view-dependent: the amplitude-phase
+view wants 8 samples per wavelength where the others want 4, because hue wraps once per
+wavelength and turns to colour noise well before a twilight-mapped real field looks
+wrong.*
+
+**M3 — Line sources. ✅ Done.** `WaveLineSource`, drawn by dragging, with `A(u)` and
+`φ(u)` as LaTeX equations in the arc length from the line's centre. A scene-level source
+density in **samples per wavelength** (not per unit length, so it stays meaningful when
+λ changes), the `Δu` weighting, and Nyquist warnings. A source budget caps the total
+point count by lowering the density uniformly rather than truncating the source list,
+which would silently delete part of a source.
+
+Verified: a linear phase ramp steers the far field to the predicted angle; a quadratic
+ramp focuses, with the peak at the Fresnel-shifted position and a waist of 36 units
+against the diffraction limit `λf/2a` = 30.
 
 **M4 — Interfaces and subspaces.** `WaveInterface` as an open Bézier curve; z-ordering
 validation; per-subspace refractive index; the chained RS propagation; `t(y)`; subspace

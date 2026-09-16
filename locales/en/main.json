@@ -286,6 +286,10 @@
     "WavePointSource": {
       "title": "Point source",
       "description": "A time-harmonic point source: the 2D Green’s function, whose amplitude falls as 1/√r."
+    },
+    "WaveLineSource": {
+      "title": "Line source",
+      "description": "A line of time-harmonic point sources, with amplitude and phase given as functions of the position along the line."
     }
   }
 }

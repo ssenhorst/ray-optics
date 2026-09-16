@@ -26,7 +26,25 @@
     </div>
     <div v-else-if="status.isCoarse" class="wave-status-note">
       Coarse: {{ status.pixelsPerWavelength.toFixed(1) }} samples per wavelength.
-      Above 4 looks noticeably cleaner.
+      This view wants {{ status.comfortablePixels }} or more &mdash; raise the
+      field samples or the wavelength.
+    </div>
+
+    <div v-if="status.isSourceUndersampled" class="wave-status-warning">
+      Sources undersampled: {{ status.samplesPerWavelength.toFixed(1) }} samples
+      per wavelength. Below 2 a line source behaves like a grating and radiates
+      spurious orders that look like real diffraction.
+    </div>
+    <div v-else-if="status.isSourceCoarse" class="wave-status-note">
+      Source sampling is marginal at
+      {{ status.samplesPerWavelength.toFixed(1) }} samples per wavelength; 4 or
+      more is safe.
+    </div>
+
+    <div v-if="status.isDensityReduced" class="wave-status-warning">
+      The source budget was reached, so the sampling density was lowered for
+      every source to {{ status.samplesPerWavelength.toFixed(1) }} per
+      wavelength. Shorten the sources or lower the density to control this.
     </div>
 
     <div v-if="status.isPhaseUnreliable" class="wave-status-warning">
@@ -38,6 +56,7 @@
       <span>{{ status.sourceCount }} source{{ status.sourceCount === 1 ? '' : 's' }}</span>
       <span>{{ status.gridWidth }}&times;{{ status.gridHeight }} grid</span>
       <span>{{ status.pixelsPerWavelength.toFixed(1) }} px/&lambda;</span>
+      <span>{{ status.samplesPerWavelength.toFixed(1) }} samples/&lambda;</span>
       <span>{{ status.computeMs.toFixed(1) }} ms</span>
       <span v-if="status.mousePos">
         ({{ status.mousePos.x.toFixed(0) }}, {{ status.mousePos.y.toFixed(0) }})

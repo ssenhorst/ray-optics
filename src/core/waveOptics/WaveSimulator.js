@@ -251,6 +251,7 @@ class WaveSimulator {
       colormap: settings.view === 'field'
         ? settings.fieldColormap
         : settings.intensityColormap,
+      chroma: settings.phaseChroma,
       referenceAmplitude: this.referenceAmplitude,
       upperCutoff: settings.upperCutoff,
       lowerCutoff: settings.lowerCutoff,

@@ -25,8 +25,9 @@
 
 import {
   DEFAULT_WAVELENGTH, DEFAULT_REFRACTIVE_INDEX, DEFAULT_GRID_RESOLUTION,
-  samplingDiagnostics
+  DEFAULT_SOURCE_DENSITY, MAX_SOURCES, samplingDiagnostics
 } from './conventions.js';
+import { DEFAULT_PHASE_CHROMA } from './oklch.js';
 
 /**
  * @typedef {Object} WaveSource
@@ -59,9 +60,11 @@ export function resolveWaveSettings(scene) {
     wavelength: positiveOr(stored.wavelength, DEFAULT_WAVELENGTH),
     refractiveIndex: positiveOr(stored.refractiveIndex, DEFAULT_REFRACTIVE_INDEX),
     gridResolution: positiveOr(stored.gridResolution, DEFAULT_GRID_RESOLUTION),
+    sourceDensity: positiveOr(stored.sourceDensity, DEFAULT_SOURCE_DENSITY),
     view: stored.view ?? 'intensity',
     intensityColormap: stored.intensityColormap ?? 'magma',
     fieldColormap: stored.fieldColormap ?? 'twilight',
+    phaseChroma: clamp(stored.phaseChroma ?? DEFAULT_PHASE_CHROMA, 0, 0.4),
     scalePercentile: clamp(stored.scalePercentile ?? 99, 1, 100),
     upperCutoff: positiveOr(stored.upperCutoff, 1),
     lowerCutoff: clamp(stored.lowerCutoff ?? 0, 0, 0.999),
@@ -94,6 +97,51 @@ export function collectWaveSources(scene, context = {}) {
     }
   }
   return sources;
+}
+
+/**
+ * How many point sources a scene would produce at a given sampling density,
+ * without doing the sampling.
+ *
+ * @param {Scene} scene
+ * @param {Object} context
+ * @returns {number}
+ */
+export function countWaveSources(scene, context = {}) {
+  let total = 0;
+  for (const obj of scene.objs ?? []) {
+    if (typeof obj?.getWaveSources !== 'function') continue;
+    total += typeof obj.getWaveSourceCount === 'function'
+      ? obj.getWaveSourceCount(context)
+      : 1;
+  }
+  return total;
+}
+
+/**
+ * Choose the sampling density that fits within the source budget.
+ *
+ * Exceeding the budget is reduced by lowering the density for every source
+ * uniformly, rather than by truncating the source list: a shorter list would
+ * silently delete part of a source, whereas a lower density degrades the whole
+ * scene in a way the diagnostics can report honestly.
+ *
+ * @param {Scene} scene
+ * @param {Object} settings - Resolved wave settings.
+ * @returns {{samplesPerWavelength: number, isReduced: boolean}}
+ */
+export function resolveSourceDensity(scene, settings) {
+  const requested = settings.sourceDensity;
+  const count = countWaveSources(scene, {
+    scene, settings, samplesPerWavelength: requested
+  });
+  if (count <= MAX_SOURCES) {
+    return { samplesPerWavelength: requested, isReduced: false };
+  }
+  return {
+    samplesPerWavelength: requested * (MAX_SOURCES / count),
+    isReduced: true,
+  };
 }
 
 /**
@@ -174,7 +222,10 @@ export function gridSamplePosition(grid, i, j) {
 export function buildWaveModel(scene, { resolution } = {}) {
   const settings = resolveWaveSettings(scene);
   const grid = computeFieldGrid(scene, resolution ?? settings.gridResolution);
-  const sources = collectWaveSources(scene, { scene, settings });
+  const density = resolveSourceDensity(scene, settings);
+  const sources = collectWaveSources(scene, {
+    scene, settings, samplesPerWavelength: density.samplesPerWavelength
+  });
 
   return {
     settings,
@@ -182,11 +233,14 @@ export function buildWaveModel(scene, { resolution } = {}) {
     grid,
     diagnostics: {
       sourceCount: sources.length,
+      isDensityReduced: density.isReduced,
       ...samplingDiagnostics({
         gridSpacing: grid.spacing,
         wavelength: settings.wavelength,
         refractiveIndex: settings.refractiveIndex,
         sceneExtent: grid.extent,
+        samplesPerWavelength: density.samplesPerWavelength,
+        view: settings.view,
       }),
     },
   };

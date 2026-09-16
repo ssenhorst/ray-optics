@@ -31,6 +31,7 @@
 import { buildHankelGlsl } from './hankel.js';
 import { wavenumber, minimumRadius } from './conventions.js';
 import { getColormapTableRGBA, COLORMAP_SIZE } from './colormaps.js';
+import { buildOklchGlsl, DEFAULT_PHASE_CHROMA } from './oklch.js';
 
 /** Width of the source table texture; the table wraps onto further rows. */
 const SOURCE_TEXTURE_WIDTH = 1024;
@@ -89,16 +90,19 @@ precision highp sampler2D;
 uniform sampler2D uField;
 uniform sampler2D uColormap;
 uniform vec2 uResolution;
-uniform int uView;          // 0 = intensity, 1 = instantaneous field
+uniform int uView;          // 0 = intensity, 1 = field, 2 = amplitude/phase
 uniform float uScale;       // reference amplitude the colour scale saturates at
 uniform float uLowerCutoff; // intensity floor, as a fraction of full scale
 uniform float uPhase;       // w t
 uniform int uLogScale;
 uniform float uDynamicRange; // decibels, when uLogScale is set
+uniform float uChroma;       // peak chroma of the amplitude/phase view
 
 out vec4 fragColor;
 
 const float LN10 = 2.302585092994046;
+
+${buildOklchGlsl()}
 
 // Sample the colormap at texel centres so the ends are not half-clipped.
 vec3 applyColormap(float t) {
@@ -109,6 +113,17 @@ vec3 applyColormap(float t) {
 void main() {
   vec4 fieldSample = texture(uField, gl_FragCoord.xy / uResolution);
   float scale = max(uScale, 1e-30);
+
+  if (uView == 2) {
+    // Amplitude and phase at once: |U| drives lightness, arg(U) becomes hue.
+    // The time factor e^{-i w t} rotates the phase, so Play turns this into a
+    // travelling-wave animation that still shows the amplitude envelope.
+    float amplitude = clamp(fieldSample.z / scale, 0.0, 1.0);
+    float phase = atan(fieldSample.y, fieldSample.x) - uPhase;
+    fragColor = vec4(amplitudePhaseColor(amplitude, phase, uChroma), 1.0);
+    return;
+  }
+
   float t;
 
   if (uView == 1) {
@@ -223,7 +238,7 @@ class WaveFieldEngineWebGL2 {
     ]);
     this.displayUniforms = collectUniforms(gl, this.displayProgram, [
       'uField', 'uColormap', 'uResolution', 'uView', 'uScale',
-      'uLowerCutoff', 'uPhase', 'uLogScale', 'uDynamicRange'
+      'uLowerCutoff', 'uPhase', 'uLogScale', 'uDynamicRange', 'uChroma'
     ]);
 
     // WebGL requires a bound vertex array even when the shader uses gl_VertexID.
@@ -415,18 +430,21 @@ class WaveFieldEngineWebGL2 {
    * Colour the cached field onto the canvas.
    *
    * @param {Object} options
-   * @param {string} options.view - 'intensity' or 'field'.
-   * @param {string} options.colormap - Colormap identifier.
+   * @param {string} options.view - 'intensity', 'field' or 'amplitudePhase'.
+   * @param {string} options.colormap - Colormap identifier; unused by the
+   *   amplitude-phase view, which has its own fixed bivariate mapping.
    * @param {number} options.referenceAmplitude - Amplitude the scale saturates at.
    * @param {number} [options.upperCutoff=1] - Multiplies the reference amplitude.
    * @param {number} [options.lowerCutoff=0] - Intensity floor, as a fraction of full scale.
-   * @param {number} [options.phase=0] - The quantity `w t`, for the field view.
+   * @param {number} [options.phase=0] - The quantity `w t`.
    * @param {boolean} [options.logScale=false]
    * @param {number} [options.dynamicRange=40] - Decibels shown when `logScale` is set.
+   * @param {number} [options.chroma] - Peak chroma of the amplitude-phase view.
    */
   render({
     view, colormap, referenceAmplitude, upperCutoff = 1, lowerCutoff = 0,
     phase = 0, logScale = false, dynamicRange = 40,
+    chroma = DEFAULT_PHASE_CHROMA,
   }) {
     const gl = this.gl;
     const canvas = gl.canvas;
@@ -447,8 +465,10 @@ class WaveFieldEngineWebGL2 {
     gl.bindTexture(gl.TEXTURE_2D, this.getColormapTexture(colormap));
     gl.uniform1i(this.displayUniforms.uColormap, 1);
 
+    const viewIndex = view === 'field' ? 1 : (view === 'amplitudePhase' ? 2 : 0);
     gl.uniform2f(this.displayUniforms.uResolution, canvas.width, canvas.height);
-    gl.uniform1i(this.displayUniforms.uView, view === 'field' ? 1 : 0);
+    gl.uniform1i(this.displayUniforms.uView, viewIndex);
+    gl.uniform1f(this.displayUniforms.uChroma, chroma);
     gl.uniform1f(this.displayUniforms.uScale, referenceAmplitude * upperCutoff);
     gl.uniform1f(this.displayUniforms.uLowerCutoff, lowerCutoff);
     gl.uniform1f(this.displayUniforms.uPhase, phase);
