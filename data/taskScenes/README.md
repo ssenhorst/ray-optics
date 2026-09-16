@@ -15,11 +15,37 @@ in `dist/tasks/` with no external references at all, which is what platforms suc
 ## Building and previewing
 
 ```bash
+npm run build-task-editor    # the designer: the full editor, opened on a task scene
 npm run build-tasks          # dist/tasks/<scene>.html, one self-contained file per scene
 npm run start                # then open /widget/index.html?scene=<name> to iterate on a scene
 ```
 
 The dev page reads the scene list from `index.json` in this directory, so add new scenes there.
+
+## Designing a task without editing JSON
+
+`npm run build-task-editor` builds the ordinary web app together with a launcher at
+`dist/task-editor/`. Serve `dist/` and open it; it lists the scenes in this directory and opens each
+one in the editor with `?design=1`.
+
+In that mode the scene's own `interaction` and `ui` settings are read, written and saved as usual but
+are **not enforced**, so every object can be selected, moved and edited however the task restricts the
+student. Everything the editor already does applies: create objects from the toolbar, drag them,
+change their properties in the object bar, undo, and the JSON tab if you want to see the file.
+
+Two things are specific to the designer:
+
+- **Goal targets are handles on the canvas** — the amber dots, with their tolerance as a dashed circle
+  and the goal's label next to them. Drag one to place it; the coordinates in the file follow.
+- **A "Task" tab** in the sidebar edits everything that is not an object: the task's title,
+  description, hint and success message; the list of goals and their fields; the illustration; the
+  scene-wide interaction and interface settings; and the interaction settings of whichever object is
+  selected. Each interaction and interface key is a three-way choice — *default* leaves the key out of
+  the file altogether, which means "allowed".
+
+**File → Save** writes an ordinary scene file. Put it in `data/taskScenes/`, add its name to
+`index.json`, and run `npm run build-tasks`. The designer has to be served over HTTP rather than
+opened from disk, because the app fetches its translations at runtime.
 
 ## `interaction` — what the student may change
 
@@ -30,6 +56,8 @@ Categories, all booleans:
 | `enabled`   | scene+object | Wildcard standing for every key the same level does not mention.      |
 | `select`    | scene+object | The object can be selected and highlighted.                           |
 | `move`      | scene+object | The object can be dragged as a whole.                                 |
+| `moveX`     | scene+object | That movement may change the x coordinate.                            |
+| `moveY`     | scene+object | That movement may change the y coordinate.                            |
 | `reshape`   | scene+object | Its defining points (endpoints, vertices, arc points) can be dragged. |
 | `edit`      | scene+object | Its numeric and boolean properties can be edited.                     |
 | `remove`    | scene+object | It can be deleted.                                                    |
@@ -69,18 +97,105 @@ means only the second endpoint may be dragged, and
 means everything but the focal length may be edited. An object is selectable whenever it allows
 anything else, unless some level states `select` explicitly.
 
+`moveX` and `moveY` refine `move` rather than replacing it, and each falls back to `move` at its own
+level before the chain continues to the scene. This is how an element is confined to an optical axis:
+
+```json
+"interaction": { "move": true, "moveY": false, "reshape": false }
+```
+
 Two things follow from a pinned point that are worth knowing when authoring:
 
 - A control point the student may not move never shows a drag cursor. If the object itself can be
   moved, grabbing that point moves the whole object instead, so the most obvious place to grab an
   object is never dead.
-- The ideal lens and the ideal curved mirror put their focal points on the canvas as drag handles
-  under the name `focalLength`, so an exercise about focal length needs no number box:
+- The ideal lens, the ideal curved mirror, and a spherical lens defined by its focal length put their
+  focal points on the canvas as drag handles under the name `focalLength`, so an exercise about focal
+  length needs no number box:
 
   ```json
   { "type": "IdealLens", "name": "Relay",
     "interaction": { "move": true, "reshape": false, "properties": { "focalLength": true } } }
   ```
+
+## Lenses, axes and focal points
+
+### An ideal lens that looks like glass
+
+An ideal lens obeys the lens equation exactly, which is what makes it usable for an exercise: the
+image is where the formula says, with no aberration to fight. But a line with two arrowheads does not
+look like a lens. `IdealLens` can therefore be drawn as the piece of glass its focal length implies,
+while still being traced ideally:
+
+```json
+{ "type": "IdealLens", "name": "Objective",
+  "p1": { "x": 600, "y": 275 }, "p2": { "x": 600, "y": 525 },
+  "focalLength": 160,
+  "appearance": "realistic", "curvedSurfaces": "both", "refIndex": 1.9 }
+```
+
+| Property         | Meaning                                                                        |
+|------------------|---------------------------------------------------------------------------------|
+| `appearance`     | `"basic"` (default) or `"realistic"`.                                            |
+| `curvedSurfaces` | `"both"` for a symmetric lens, `"front"` or `"back"` for a plano lens.           |
+| `refIndex`       | The index the shape is drawn for. Drawing only — it does not affect the rays.    |
+| `lensThickness`  | The centre thickness, or 0 to pick one that suits the shape.                     |
+
+The radii come from the lens maker's equation, so the drawing reflects the focal length: shorten it
+and the lens gets fatter, make it negative and the lens becomes biconcave. A short focal length over a
+tall aperture is a very fast lens and is drawn nearly circular, which is honest — raise `refIndex` if
+you want a flatter shape at the same focal length. This is the way to build an imaging exercise: real
+single-element lenses at these apertures aberrate far too much to bring an extended object to a
+usable focus.
+
+### A real lens given by its focal length
+
+A `SphericalLens` — a real piece of glass, not an idealisation — can be given as a thickness and an
+effective focal length instead of radii of curvature. The lens is then symmetric, and the radius
+follows from the thick-lens maker's equation, so the focal length is exactly the one asked for:
+
+```json
+{ "type": "SphericalLens", "defBy": "DF",
+  "p1": { "x": 600, "y": 370 }, "p2": { "x": 600, "y": 430 },
+  "params": { "d": 20, "f": 200 }, "refIndex": 1.9 }
+```
+
+A negative `f` gives a diverging lens. `d` is the centre thickness: a short focal length over a wide
+aperture needs a fat lens, and the object reports a warning when the surfaces would meet before the
+rim. Setting `partialReflect` to false keeps the diagram clear of the faint reflections off the glass.
+
+### Reference marks
+
+`IdealLens`, `IdealMirror` and `SphericalLens` each take two reference marks, off by default:
+
+| Property          | What it draws                                                              |
+|-------------------|-----------------------------------------------------------------------------|
+| `showOpticalAxis` | A dashed line through the element along its axis, across the whole viewport. |
+| `showFocalPoints` | The focal points, permanently rather than only while the element is hovered. |
+
+Both are themeable through the scene's `theme.opticalAxis` and `theme.focalPoint`.
+
+## `illustration` — showing the object and its image
+
+A ray diagram says where an image is, not what it looks like. `illustration` draws a picture at the
+object and a second one, scaled and flipped by the magnification the simulation actually produces,
+at the image:
+
+```json
+"illustration": {
+  "picture": "church",
+  "top": "Tip",
+  "bottom": "Base",
+  "imageGoals": ["tip", "base"],
+  "opacity": 0.9
+}
+```
+
+`top` and `bottom` name the two light sources that stand for the ends of the object; the picture is
+drawn between them. `imageGoals` names two `raysConverge` goals, whose measured convergence points
+locate the same two ends of the image — so the second picture follows the rays rather than any
+assumption about the optics, and turns upside down exactly when the image does. Leave `imageGoals`
+out, or set `showImage` to false, to draw only the object.
 
 ## `ui` — what is shown
 

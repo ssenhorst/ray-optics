@@ -68,6 +68,7 @@
     "build-app": "webpack --mode=production",
     "build-widget-bundle": "webpack --config webpack.widget.config.mjs",
     "build-tasks": "npm run build-widget-bundle && node ./scripts/buildTaskWidget.mjs",
+    "build-task-editor": "npm run build-app && node ./scripts/buildTaskEditor.mjs",
     "build-simulator": "webpack --mode=development",
     "build-integrations": "npm run build-node && node ./scripts/buildIntegrations.mjs",
     "build-integrations:release": "npm run build-node && node ./scripts/buildIntegrations.mjs --release",

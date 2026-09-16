@@ -45,6 +45,8 @@
  * | `enabled`   | scene+object | Master switch. When false, none of the other categories apply.      |
  * | `select`    | scene+object | Whether the object can be selected/highlighted.                     |
  * | `move`      | scene+object | Whether the object can be dragged as a whole.                       |
+ * | `moveX`     | scene+object | Whether that movement may change the x coordinate.                  |
+ * | `moveY`     | scene+object | Whether that movement may change the y coordinate.                  |
  * | `reshape`   | scene+object | Whether the defining points (endpoints, vertices, ...) can be dragged. |
  * | `edit`      | scene+object | Whether numeric/boolean properties can be edited in the UI.         |
  * | `remove`    | scene+object | Whether the object can be deleted.                                  |
@@ -60,8 +62,15 @@
  * part index reported by `checkMouseOver`. So `{"reshape": false, "properties": {"p2": true}}` means
  * "only the second endpoint may be dragged".
  *
+ * A scene opened in a task designer sets `scene.designMode`, and then nothing here is enforced: the
+ * settings are still read, written and saved, but the designer can reach everything.
+ *
  * `select` is special: when no level states it, an object is selectable if it allows anything else,
  * since selecting is how the user reaches an object's controls.
+ *
+ * `moveX` and `moveY` refine `move` rather than replacing it: an object that may be moved but has
+ * `"moveY": false` slides along one axis only, which is how an element is confined to an optical
+ * axis. Each falls back to `move` at the same level before the chain continues to the scene.
  */
 
 /**
@@ -72,9 +81,21 @@ export const OBJECT_INTERACTION_DEFAULTS = {
   enabled: true,
   select: true,
   move: true,
+  moveX: true,
+  moveY: true,
   reshape: true,
   edit: true,
   remove: true,
+};
+
+/**
+ * The keys tried at each level for a category, most specific first. A category not listed here falls
+ * back only to the `enabled` wildcard.
+ * @const {Object<string, Array<string>>}
+ */
+const CATEGORY_FALLBACKS = {
+  moveX: ['moveX', 'move', 'enabled'],
+  moveY: ['moveY', 'move', 'enabled'],
 };
 
 /**
@@ -147,13 +168,15 @@ export function validateInteraction(raw, isScene) {
  * @returns {boolean|undefined} The setting, or undefined if no level mentions it.
  */
 function lookup(sceneInteraction, objInteraction, category, propertyKey) {
+  const keys = CATEGORY_FALLBACKS[category] || [category, 'enabled'];
   for (const level of [objInteraction, sceneInteraction]) {
     if (!level) continue;
     if (propertyKey != null && typeof level.properties?.[propertyKey] === 'boolean') {
       return level.properties[propertyKey];
     }
-    if (typeof level[category] === 'boolean') return level[category];
-    if (typeof level.enabled === 'boolean') return level.enabled;
+    for (const key of keys) {
+      if (typeof level[key] === 'boolean') return level[key];
+    }
   }
   return undefined;
 }
@@ -192,6 +215,7 @@ export function resolveInteraction(sceneInteraction, objInteraction) {
  */
 export function objAllows(obj, category) {
   if (!obj) return false;
+  if (obj.scene?.designMode) return true;
   return resolveInteraction(obj.scene?.interaction, obj.interaction)[category];
 }
 
@@ -206,6 +230,7 @@ export function objAllows(obj, category) {
  */
 export function objAllowsProperty(obj, category, propertyKey) {
   if (!obj) return false;
+  if (obj.scene?.designMode) return true;
   if (propertyKey == null) return objAllows(obj, category);
   const value = lookup(obj.scene?.interaction, obj.interaction, category, propertyKey);
   return value ?? OBJECT_INTERACTION_DEFAULTS[category];
@@ -218,6 +243,7 @@ export function objAllowsProperty(obj, category, propertyKey) {
  * @returns {boolean}
  */
 export function sceneAllows(scene, category) {
+  if (scene?.designMode) return true;
   const raw = scene?.interaction;
   if (!raw) return SCENE_INTERACTION_DEFAULTS[category];
   if (typeof raw[category] === 'boolean') return raw[category];

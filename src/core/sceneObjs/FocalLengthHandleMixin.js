@@ -15,6 +15,7 @@
  */
 
 import geometry from '../geometry.js';
+import { drawOpticalAxis, drawFocalPoints } from './opticalAxisDecoration.js';
 
 /**
  * The mixin for line-shaped ideal elements whose focal length can be dragged directly on the canvas.
@@ -109,11 +110,21 @@ const FocalLengthHandleMixin = Base => class extends Base {
    * @param {CanvasRenderer} canvasRenderer - The renderer.
    */
   drawFocalHandles(canvasRenderer) {
-    const ctx = canvasRenderer.ctx;
-    const ls = canvasRenderer.lengthScale;
-    ctx.fillStyle = 'rgb(255,0,255)';
-    for (const point of this.getFocalPoints()) {
-      ctx.fillRect(point.x - 1.5 * ls, point.y - 1.5 * ls, 3 * ls, 3 * ls);
+    drawFocalPoints(canvasRenderer, this.scene, this.getFocalPoints());
+  }
+
+  /**
+   * Draw the reference marks the scene asked for: the optical axis through the centre of the element
+   * and its focal points. Unlike the focal handles these do not depend on hovering, since their
+   * purpose is to be a fixed reference while the student works on something else.
+   * @param {CanvasRenderer} canvasRenderer - The renderer.
+   */
+  drawOpticalDecorations(canvasRenderer) {
+    if (this.showOpticalAxis) {
+      drawOpticalAxis(canvasRenderer, this.scene, geometry.segmentMidpoint(this), this.getFocalNormal());
+    }
+    if (this.showFocalPoints) {
+      this.drawFocalHandles(canvasRenderer);
     }
   }
 };

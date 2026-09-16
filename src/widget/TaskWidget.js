@@ -29,6 +29,8 @@ import Simulator from '../core/Simulator.js';
 import Editor from '../core/Editor.js';
 import TaskEvaluator from '../core/goals/TaskEvaluator.js';
 import { resolveUiOptions } from '../core/uiOptions.js';
+import { getObjectPlacement, getImagePlacement } from '../core/illustration.js';
+import churchPicture from '../img/delft_new_church.svg';
 import { sceneAllows, objAllows, objAllowsProperty } from '../core/interaction.js';
 import GoalOverlay from './overlay.js';
 import Inspector from './Inspector.js';
@@ -82,6 +84,10 @@ class TaskWidget {
     this.satisfiedGoalIds = new Set();
     /** @property {boolean} wasComplete - Whether the task was complete at the last evaluation. */
     this.wasComplete = false;
+    /** @property {Object<string, HTMLImageElement>} pictures - The loaded illustration pictures. */
+    this.pictures = {};
+    /** @property {TaskStatus|null} lastStatus - The last evaluated task status. */
+    this.lastStatus = null;
 
     this.buildDom();
     this.initEngine();
@@ -144,7 +150,10 @@ class TaskWidget {
 
     this.simulator.on('simulationComplete', () => this.evaluateTask());
     this.simulator.on('simulationStop', () => this.evaluateTask());
-    this.simulator.on('update', () => this.refreshAffordances());
+    this.simulator.on('update', () => {
+      this.refreshAffordances();
+      this.refreshPictures();
+    });
 
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(this.stage);
@@ -189,10 +198,13 @@ class TaskWidget {
 
     this.satisfiedGoalIds.clear();
     this.wasComplete = false;
+    this.lastStatus = null;
+    this.loadIllustration();
 
     this.overlay.setTargets(this.ui.showTargets ? this.taskEvaluator.getTargets() : []);
     this.overlay.setGoals([]);
     this.refreshAffordances();
+    this.refreshPictures();
     this.overlay.start();
 
     this.buildPanel();
@@ -302,6 +314,45 @@ class TaskWidget {
   }
 
   /**
+   * Load the picture the scene's `illustration` asks for, once per widget. The picture is compiled
+   * into the bundle, so nothing is fetched over the network.
+   */
+  loadIllustration() {
+    const name = this.scene.illustration?.picture;
+    if (!name || this.pictures[name]) return;
+
+    const sources = { church: churchPicture };
+    if (!sources[name]) return;
+
+    const image = new Image();
+    image.onload = () => this.refreshPictures();
+    image.src = sources[name];
+    this.pictures[name] = image;
+  }
+
+  /**
+   * Place the object and image pictures for the current state of the scene.
+   */
+  refreshPictures() {
+    if (!this.overlay) return;
+    const config = this.scene.illustration;
+    const image = config && this.pictures[config.picture];
+    if (!config || !image) {
+      this.overlay.setPictures([]);
+      return;
+    }
+
+    const pictures = [];
+    const object = getObjectPlacement(this.scene);
+    if (object) pictures.push({ image, ...object, opacity: config.opacity ?? 1 });
+
+    const formed = getImagePlacement(this.scene, this.lastStatus);
+    if (formed) pictures.push({ image, ...formed, opacity: (config.opacity ?? 1) * 0.85 });
+
+    this.overlay.setPictures(pictures);
+  }
+
+  /**
    * Work out where the scene may be grabbed and hand it to the overlay, so the student can see what
    * is interactive instead of having to hover over everything to find out.
    */
@@ -313,28 +364,27 @@ class TaskWidget {
 
     const affordances = [];
     for (const obj of this.scene.objs) {
-      let handles = [];
+      // An object in a state it cannot describe (a lens whose parameters do not build, say) must not
+      // take the rest of the scene down with it, so anything it reports is treated as best-effort.
       try {
-        handles = obj.getInteractionHandles() || [];
+        for (const handle of obj.getInteractionHandles() || []) {
+          if (objAllowsProperty(obj, 'reshape', handle.propertyKey)) {
+            affordances.push({ type: 'handle', x: handle.point.x, y: handle.point.y });
+          }
+        }
+
+        if (objAllows(obj, 'move')) {
+          // Mark where to grab the object as a whole. Objects that are a single point are already
+          // marked by their own handle, so a second marker on top of it would only add clutter.
+          const center = obj.getDefaultCenter?.();
+          const marked = center && !affordances.some(a =>
+            a.type === 'handle' && Math.hypot(a.x - center.x, a.y - center.y) < 1e-6);
+          if (marked) {
+            affordances.push({ type: 'move', x: center.x, y: center.y });
+          }
+        }
       } catch (e) {
-        handles = [];
-      }
-
-      for (const handle of handles) {
-        if (objAllowsProperty(obj, 'reshape', handle.propertyKey)) {
-          affordances.push({ type: 'handle', x: handle.point.x, y: handle.point.y });
-        }
-      }
-
-      if (objAllows(obj, 'move')) {
-        // Mark where to grab the object as a whole. Objects that are a single point are already
-        // marked by their own handle, so a second marker on top of it would only add clutter.
-        const center = obj.getDefaultCenter?.();
-        const marked = center && !affordances.some(a =>
-          a.type === 'handle' && Math.hypot(a.x - center.x, a.y - center.y) < 1e-6);
-        if (marked) {
-          affordances.push({ type: 'move', x: center.x, y: center.y });
-        }
+        continue;
       }
     }
 
@@ -366,7 +416,9 @@ class TaskWidget {
     if (!task) return;
 
     const status = this.taskEvaluator.evaluate(this.simulator.raySegments, this.countSourceRays());
+    this.lastStatus = status;
     this.overlay.setGoals(status.goals);
+    this.refreshPictures();
     this.renderStatus(status);
 
     for (const goal of status.goals) {
@@ -461,7 +513,9 @@ class TaskWidget {
     };
 
     if (moves[e.key] && obj && objAllows(obj, 'move')) {
-      obj.move(moves[e.key][0], moves[e.key][1]);
+      const [dx, dy] = moves[e.key];
+      if ((dx !== 0 && !objAllows(obj, 'moveX')) || (dy !== 0 && !objAllows(obj, 'moveY'))) return;
+      obj.move(dx, dy);
       this.simulator.updateSimulation(!obj.constructor.isOptical, true);
       this.editor.onActionComplete();
       e.preventDefault();

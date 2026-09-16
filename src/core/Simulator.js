@@ -323,6 +323,51 @@ class Simulator {
    * @param {Object|null} canvasRenderer - {@link CanvasRenderer} instance or null.
    * @returns {void}
    */
+  /**
+   * Draw the handles the application owns, such as the targets of a task's goals while the task is
+   * being designed. They are drawn above the light so that they can always be found and grabbed.
+   * @param {CanvasRenderer} canvasRenderer - The renderer for the layer above the light.
+   */
+  drawExternalHandles(canvasRenderer) {
+    if (!canvasRenderer || !canvasRenderer.ctx || !this.scene.editor) return;
+    const handles = this.scene.editor.externalHandles;
+    if (!handles || !handles.length) return;
+
+    const ctx = canvasRenderer.ctx;
+    const ls = canvasRenderer.lengthScale;
+    const scale = this.scene.scale || 1;
+
+    ctx.save();
+    ctx.globalAlpha = 1;
+    for (const handle of handles) {
+      const p = handle && handle.point;
+      if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) continue;
+
+      if (handle.radius > 0) {
+        ctx.strokeStyle = 'rgb(240,180,41)';
+        ctx.lineWidth = 1 / scale;
+        ctx.setLineDash([4 / scale, 3 / scale]);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, handle.radius, 0, Math.PI * 2, false);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      ctx.fillStyle = 'rgb(240,180,41)';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 4 / scale, 0, Math.PI * 2, false);
+      ctx.fill();
+
+      if (handle.label) {
+        ctx.fillStyle = 'rgb(240,180,41)';
+        ctx.font = `${12 / scale}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.fillText(handle.label, p.x, p.y - 9 / scale);
+      }
+    }
+    ctx.restore();
+  }
+
   drawExternalHighlightPoints(canvasRenderer) {
     if (!canvasRenderer || !canvasRenderer.ctx || !this.scene.editor) {
       return;
@@ -603,6 +648,7 @@ class Simulator {
         this.scene.objs[i].draw(aboveLightRenderer, true, isHighlighted); // Draw this.scene.objs[i]
       }
       this.drawExternalHighlightPoints(aboveLightRenderer);
+      this.drawExternalHandles(aboveLightRenderer);
       if (this.scene.mode == 'observer' && this.ctxAboveLight) {
         // Draw the observer
         this.ctxAboveLight.globalAlpha = 1;

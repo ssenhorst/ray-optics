@@ -41,6 +41,12 @@ export default () => ({
         test: /\.css$/,
         use: ['style-loader', 'css-loader'],
       },
+      {
+        // Inlined as a data URI rather than emitted as a file, so that the built page needs nothing
+        // alongside it.
+        test: /\.(svg|png|jpe?g|gif)$/i,
+        type: 'asset/inline',
+      },
     ],
   },
   resolve: {

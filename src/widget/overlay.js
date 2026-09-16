@@ -76,6 +76,11 @@ class GoalOverlay {
     this.bursts = [];
     /** @property {Array<Object>} confetti - The particles of the completion celebration. */
     this.confetti = [];
+    /**
+     * @property {Array<Object>} pictures - The object and image pictures to draw, each
+     * `{ image, top, bottom, flipped, opacity }` with the points in scene coordinates.
+     */
+    this.pictures = [];
 
     this.running = false;
     this.frameId = null;
@@ -89,6 +94,14 @@ class GoalOverlay {
    */
   setTargets(targets) {
     this.targets = targets || [];
+  }
+
+  /**
+   * Replace the pictures drawn at the object and at its image.
+   * @param {Array<Object>} pictures - The pictures to draw.
+   */
+  setPictures(pictures) {
+    this.pictures = pictures || [];
   }
 
   /**
@@ -202,6 +215,9 @@ class GoalOverlay {
       this.scene.origin.x * this.dpr, this.scene.origin.y * this.dpr
     );
 
+    for (const picture of this.pictures) {
+      this.drawPicture(ctx, picture);
+    }
     for (const affordance of this.affordances) {
       this.drawAffordance(ctx, affordance);
     }
@@ -222,6 +238,36 @@ class GoalOverlay {
     for (const p of this.confetti) {
       this.drawConfetto(ctx, p);
     }
+  }
+
+  /**
+   * Draw one picture spanning from its bottom point to its top point, upright on the page and
+   * mirrored when the image it stands for is inverted.
+   * @param {CanvasRenderingContext2D} ctx - The context, already in scene coordinates.
+   * @param {Object} picture - The picture and where it goes.
+   */
+  drawPicture(ctx, picture) {
+    const image = picture.image;
+    if (!image || !image.complete || !image.naturalWidth || !image.naturalHeight) return;
+
+    const height = Math.abs(picture.top.y - picture.bottom.y);
+    if (!(height > 0)) return;
+    const width = height * (image.naturalWidth / image.naturalHeight);
+
+    // The picture stands between the two points, centred on them horizontally.
+    const centerX = (picture.top.x + picture.bottom.x) / 2;
+    const topY = Math.min(picture.top.y, picture.bottom.y);
+
+    ctx.save();
+    ctx.globalAlpha = picture.opacity ?? 1;
+    ctx.translate(centerX, topY + height / 2);
+    if (picture.flipped) {
+      // A real image is reversed both ways, so mirror it in both directions rather than only
+      // turning it upside down.
+      ctx.scale(-1, -1);
+    }
+    ctx.drawImage(image, -width / 2, -height / 2, width, height);
+    ctx.restore();
   }
 
   /**

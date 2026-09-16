@@ -56,9 +56,23 @@ import {
   resolveSimulationEngineConfig
 } from '../../core/simulationEngines/config.js';
 
+/**
+ * Whether the app was opened as a task designer, which is asked for with `?design=1` in the URL.
+ * In this mode the scene's interaction permissions and interface options are not enforced, so that
+ * whoever is authoring the task can reach everything; they are still edited and saved as usual.
+ * @returns {boolean} Whether the task designer is on.
+ */
+function isDesignMode() {
+  if (typeof window === 'undefined') return false;
+  const design = new URLSearchParams(window.location.search).get('design');
+  return design !== null && design !== '0' && design !== 'false';
+}
+
 function initScene() {
   scene = new Scene();
+  scene.designMode = isDesignMode();
   app.scene = scene;
+  app.designMode = scene.designMode;
 }
 
 const SIMULATION_ENGINES = [
@@ -1036,6 +1050,50 @@ function initAppService() {
     updateErrorAndWarning();
   }
 
+  if (scene.designMode) {
+    // The designer is a tool for whoever is authoring the task, so its internals are reachable from
+    // the console for scripting and debugging. The app students get does not expose this.
+    window.rayOpticsApp = app;
+
+    // While designing, the target of each goal is a handle on the canvas, so that it can be placed
+    // by dragging rather than by typing coordinates into the JSON.
+    const refreshGoalHandles = () => {
+      const goals = (scene.task && scene.task.goals) || [];
+      editor.externalHandles = goals
+        .map((goal, index) => ({ goal, index }))
+        .filter(({ goal }) => goal && goal.point && typeof goal.point.x === 'number')
+        .map(({ goal, index }) => ({
+          point: goal.point,
+          radius: goal.radius,
+          label: goal.targetLabel || goal.id || `goal ${index + 1}`,
+          onDrag: (pos) => {
+            goal.point.x = Math.round(pos.x * 100) / 100;
+            goal.point.y = Math.round(pos.y * 100) / 100;
+          },
+          onDone: () => {
+            document.dispatchEvent(new Event('sceneChanged'));
+          },
+        }));
+    };
+
+    refreshGoalHandles();
+    document.addEventListener('sceneChanged', refreshGoalHandles);
+    editor.on('sceneLoaded', refreshGoalHandles);
+    editor.on('newAction', refreshGoalHandles);
+    editor.on('selectionChange', function () {
+      document.dispatchEvent(new Event('selectionChanged'));
+    });
+  }
+
+  // A scene given in the URL, which is how the task designer opens a task file to work on.
+  const requestedScene = new URLSearchParams(window.location.search).get('scene');
+  // A path relative to the app only: no scheme and no protocol-relative URL, so the parameter cannot
+  // be used to pull a scene off another site.
+  if (requestedScene && /^[\w./-]+$/.test(requestedScene)
+    && !requestedScene.includes(':') && !requestedScene.startsWith('//')) {
+    openSceneFromUrl(requestedScene);
+  }
+
   // Update the scene when the URL changes
   window.onpopstate = function (event) {
     if (!jsonEditorService.isSynced) {
@@ -1220,6 +1278,34 @@ function updateErrorAndWarning() {
       warning: obj.getWarning()
     }))
   });
+}
+
+/**
+ * Load a scene from a URL relative to the app.
+ * @param {string} url - The URL of the scene JSON.
+ */
+function openSceneFromUrl(url) {
+  const client = new XMLHttpRequest();
+  client.open('GET', url);
+  client.onload = function () {
+    if (client.status >= 300) {
+      error = "openScene: " + i18next.t('simulator:appErrors.httpStatusError', { status: client.status });
+      updateErrorAndWarning();
+      return;
+    }
+    scene.backgroundImage = null;
+    editor.loadJSON(client.responseText);
+    editor.onActionComplete();
+    hasUnsavedChange = false;
+    jsonEditorService.updateContent(editor.lastActionJson, null, true);
+    document.getElementById('welcome').style.display = 'none';
+    document.dispatchEvent(new Event('sceneChanged'));
+  };
+  client.onerror = function () {
+    error = "openScene: " + i18next.t('simulator:appErrors.httpError');
+    updateErrorAndWarning();
+  };
+  client.send();
 }
 
 function openSample(name) {
@@ -1622,6 +1708,8 @@ function importShapes(paths, options) {
 
 export const app = {
   initScene,
+  isDesignMode,
+  openSceneFromUrl,
   initAppService,
   setSimulationEngine,
   setSimulationEngineConfigs,

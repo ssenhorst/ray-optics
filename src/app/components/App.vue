@@ -57,7 +57,8 @@ import LanguageModal from './LanguageModal.vue';
 import SimulationEngineModal from './SimulationEngineModal.vue';
 import { computed, watchEffect } from 'vue';
 import { useSceneStore } from '../store/scene';
-import { UI_DEFAULTS } from '../../core/uiOptions.js';
+import { resolveUiOptions } from '../../core/uiOptions.js';
+import { app } from '../services/app';
 
 
 export default {
@@ -69,7 +70,12 @@ export default {
     //
     // The parts are hidden with a class on `body` rather than with `v-if`, because the app service
     // reaches into these elements directly by id and would fail if they were not in the document.
-    const ui = computed(() => ({ ...UI_DEFAULTS, ...(sceneStore.ui.value || {}) }));
+    // Resolved through the same function the widget uses, so the task designer (which ignores these
+    // settings while still editing them) behaves identically in both.
+    const ui = computed(() => resolveUiOptions({
+      designMode: app.scene ? app.scene.designMode : false,
+      ui: sceneStore.ui.value,
+    }));
 
     watchEffect(() => {
       const hidden = {

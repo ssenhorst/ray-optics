@@ -83,5 +83,9 @@ export function validateUiOptions(raw) {
  * @returns {Object<string, boolean>} The resolved options, with every key present.
  */
 export function resolveUiOptions(scene) {
+  // A task designer needs every part of the interface, whatever the scene will show the student.
+  if (scene?.designMode) {
+    return Object.fromEntries(UI_KEYS.map(key => [key, true]));
+  }
   return { ...UI_DEFAULTS, ...(scene?.ui || {}) };
 }

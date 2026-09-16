@@ -19,6 +19,7 @@ import { versionUpdate } from './versionUpdate.js';
 import { validateInteraction } from './interaction.js';
 import { validateUiOptions } from './uiOptions.js';
 import { validateTask } from './goals/TaskEvaluator.js';
+import { validateIllustration } from './illustration.js';
 import i18next from 'i18next';
 import seedrandom from 'seedrandom';
 
@@ -201,6 +202,7 @@ function extractNonDefaults(obj, defaults) {
  * @property {Object|null} backgroundImage - The background image of the scene, null if not set.
  * @property {Object} interaction - The scene-level interaction permissions, which decide what the user is allowed to do with the scene. See {@link module:interaction} for the available keys. Individual objects may override them with their own `interaction` property.
  * @property {Object} ui - The parts of the user interface that are shown. See {@link module:uiOptions} for the available keys. This lets a scene be presented as a minimal embeddable widget instead of the full editor.
+ * @property {Object|null} illustration - A picture drawn at the object and at the image the system forms of it, which shows the size and orientation of the image directly. See {@link module:illustration}.
  * @property {Object|null} task - The assignment posed by the scene: a title, an optional description and hint, and a list of goals evaluated against the simulation. See {@link TaskEvaluator}.
  */
 class Scene {
@@ -236,6 +238,7 @@ class Scene {
     interaction: {},
     ui: {},
     task: null,
+    illustration: null,
     theme: {
       background: {
         color: { r: 0, g: 0, b: 0 }
@@ -397,6 +400,15 @@ class Scene {
         width: 2,
         dash: [2,2],
       },
+      opticalAxis: {
+        color: { r: 0.45, g: 0.45, b: 0.5, a: 1 },
+        dash: [6,4],
+        width: 1,
+      },
+      focalPoint: {
+        color: { r: 1, g: 0, b: 1, a: 1 },
+        size: 3,
+      },
     }
   };
 
@@ -406,6 +418,13 @@ class Scene {
     this.backgroundImage = null;
     this.error = null;
     this.warning = null;
+    /**
+     * @property {boolean} designMode - Whether the scene is open in a task designer rather than being
+     * presented to a student. The interaction permissions and the interface options are still read,
+     * written and saved, but they are not enforced, so that whoever is authoring the task can reach
+     * every object and every control. Not serialized: it is a property of the session, not the scene.
+     */
+    this.designMode = false;
     this.rng = new seedrandom(new Date().getTime().toString());
     this.loadJSON(JSON.stringify({ version: DATA_VERSION }), () => { });
   }
@@ -559,6 +578,7 @@ class Scene {
         validateInteraction(jsonData.interaction, true),
         validateUiOptions(jsonData.ui),
         validateTask(jsonData.task),
+        validateIllustration(jsonData.illustration),
       ];
       for (const structuredError of structuredErrors) {
         if (structuredError) {

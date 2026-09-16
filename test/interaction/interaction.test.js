@@ -116,6 +116,36 @@ describe('objAllowsProperty', () => {
   });
 });
 
+describe('moveX and moveY', () => {
+  test('default to following move', () => {
+    const free = makeObj(null, null);
+    expect(objAllows(free, 'moveX')).toBe(true);
+    expect(objAllows(free, 'moveY')).toBe(true);
+
+    const still = makeObj(null, { move: false });
+    expect(objAllows(still, 'moveX')).toBe(false);
+    expect(objAllows(still, 'moveY')).toBe(false);
+  });
+
+  test('confine an object to one axis', () => {
+    const onAxis = makeObj({ enabled: false }, { move: true, moveY: false });
+    expect(objAllows(onAxis, 'move')).toBe(true);
+    expect(objAllows(onAxis, 'moveX')).toBe(true);
+    expect(objAllows(onAxis, 'moveY')).toBe(false);
+  });
+
+  test('an object axis beats the scene move setting', () => {
+    const obj = makeObj({ move: true, moveY: true }, { moveY: false });
+    expect(objAllows(obj, 'moveY')).toBe(false);
+  });
+
+  test('a scene axis applies to objects that do not mention it', () => {
+    const obj = makeObj({ moveY: false }, { move: true });
+    expect(objAllows(obj, 'moveY')).toBe(true);
+    expect(objAllows(makeObj({ moveY: false }, null), 'moveY')).toBe(false);
+  });
+});
+
 describe('sceneAllows', () => {
   test('defaults to allowing everything', () => {
     expect(sceneAllows({}, 'pan')).toBe(true);
@@ -125,6 +155,29 @@ describe('sceneAllows', () => {
   test('follows the enabled wildcard and explicit keys', () => {
     expect(sceneAllows({ interaction: { enabled: false } }, 'pan')).toBe(false);
     expect(sceneAllows({ interaction: { enabled: false, pan: true } }, 'pan')).toBe(true);
+  });
+});
+
+describe('design mode', () => {
+  test('lets the designer reach everything the scene forbids', () => {
+    const frozen = makeObj({ enabled: false }, { enabled: false });
+    expect(objAllows(frozen, 'move')).toBe(false);
+    expect(objAllowsProperty(frozen, 'edit', 'focalLength')).toBe(false);
+    expect(sceneAllows(frozen.scene, 'create')).toBe(false);
+
+    frozen.scene.designMode = true;
+    expect(objAllows(frozen, 'move')).toBe(true);
+    expect(objAllows(frozen, 'moveY')).toBe(true);
+    expect(objAllowsProperty(frozen, 'edit', 'focalLength')).toBe(true);
+    expect(sceneAllows(frozen.scene, 'create')).toBe(true);
+  });
+
+  test('leaves the settings themselves untouched, so they are still saved', () => {
+    const obj = makeObj({ enabled: false }, { move: false });
+    obj.scene.designMode = true;
+    expect(obj.scene.interaction).toEqual({ enabled: false });
+    expect(obj.interaction).toEqual({ move: false });
+    expect(resolveInteraction(obj.scene.interaction, obj.interaction).move).toBe(false);
   });
 });
 

@@ -49,6 +49,16 @@ import { objAllows, objAllowsProperty, sceneAllows, getDragPropertyKey } from '.
  */
 
 /**
+ * @typedef {Object} ExternalHandle
+ * @property {Point} point - Where the handle is, in scene coordinates.
+ * @property {number} [radius] - A circle to draw around the handle, for a handle that stands for a
+ * tolerance rather than only a position.
+ * @property {string} [label] - A label drawn next to the handle.
+ * @property {function(Point): void} onDrag - Called with the new position while the handle is dragged.
+ * @property {function(): void} [onDone] - Called when the drag finishes.
+ */
+
+/**
  * @typedef {Object} SnapContext
  * @property {boolean} [locked] - Whether the snapping direction is locked.
  * @property {number} [i0] - The index of the locked direction.
@@ -136,6 +146,14 @@ class Editor {
     this.externalHighlightPoints = [];
     /** @property {number[]} externalHighlightPrimitiveCurveIds - Processed primitive curve IDs highlighted by diagnostic UI. */
     this.externalHighlightPrimitiveCurveIds = [];
+
+    /**
+     * @property {Array<ExternalHandle>} externalHandles - Draggable points that belong to the
+     * application rather than to any scene object, such as the target of a task goal while the task
+     * is being designed. They take priority over the objects, are drawn above the light layer, and
+     * report their new position through their own callback.
+     */
+    this.externalHandles = [];
 
     /** @property {string} addingObjType - The type of the object that will be added when the user clicks on the canvas. Empty if 'Move view' tool is selected so that no object will be added. */
     this.addingObjType = '';
@@ -304,6 +322,35 @@ class Editor {
     }
 
     return null;
+  }
+
+  /**
+   * Hold the mouse to the axes along which the object is allowed to move.
+   *
+   * The objects move themselves by following the mouse, so confining an object to one axis is done
+   * by confining the mouse it is given: the forbidden coordinate is frozen at the value it had when
+   * the drag started. This is what `interaction.moveX` / `moveY` express, and is how an element is
+   * kept on an optical axis.
+   * @param {BaseSceneObj} obj - The object being dragged.
+   * @param {DragContext} dragContext - The drag context of the ongoing drag.
+   * @param {Point} mousePos - The unconstrained mouse position.
+   * @returns {Point} The position to hand to the object.
+   */
+  constrainDragToAllowedAxes(obj, dragContext, mousePos) {
+    if (dragContext.part !== 0) return mousePos;
+
+    const canMoveX = objAllows(obj, 'moveX');
+    const canMoveY = objAllows(obj, 'moveY');
+    if (canMoveX && canMoveY) return mousePos;
+
+    if (!dragContext.axisAnchor) {
+      // Started somewhere other than a mouse press on the object (a handle, say); anchor here.
+      dragContext.axisAnchor = geometry.point(mousePos.x, mousePos.y);
+    }
+    return geometry.point(
+      canMoveX ? mousePos.x : dragContext.axisAnchor.x,
+      canMoveY ? mousePos.y : dragContext.axisAnchor.y
+    );
   }
 
   /**
@@ -831,6 +878,14 @@ class Editor {
 
         this.dragContext = {};
 
+        const handleIndex = this.searchExternalHandles(mousePos_nogrid);
+        if (handleIndex >= 0) {
+          this.draggingObjIndex = -5;
+          this.dragContext = { handleIndex: handleIndex, part: 0 };
+          this.selectObj(-1);
+          return;
+        }
+
         if (this.scene.mode == 'observer') {
           if (geometry.distanceSquared(mousePos_nogrid, this.scene.observer.c) < this.scene.observer.r * this.scene.observer.r) {
             // The mousePos clicked the observer
@@ -871,6 +926,9 @@ class Editor {
           this.dragContext = ret.dragContext;
           this.dragContext.originalObj = this.scene.objs[ret.targetObjIndex].serialize(); // Store the obj status before dragging
           this.dragContext.hasDuplicated = false;
+          // Anchor the axis constraint at the moment the drag starts, so that an object confined to
+          // one axis does not pick up the movement of the very first step across it.
+          this.dragContext.axisAnchor = geometry.point(mousePos_nogrid.x, mousePos_nogrid.y);
           this.draggingObjIndex = ret.targetObjIndex;
           if (e.ctrlKey) {
             // If we're clicking on an entire object, prepare to bind it to a new handle
@@ -998,7 +1056,15 @@ class Editor {
 
     
 
-    if (!this.isConstructing && this.draggingObjIndex == -1 && this.canSelectAnyObject()) {
+    if (!this.isConstructing && this.draggingObjIndex == -1 && this.searchExternalHandles(mousePos_nogrid) >= 0) {
+      // An application handle takes priority over the objects underneath it.
+      this.canvas.style.cursor = 'pointer';
+      if (this.hoveredObjIndex != -1) {
+        this.hoveredObjIndex = -1;
+        this.simulator.updateSimulation(true, true);
+      }
+    }
+    else if (!this.isConstructing && this.draggingObjIndex == -1 && this.canSelectAnyObject()) {
       // highlight object under mousePos cursor
       var ret = this.selectionSearch(mousePos_nogrid)[0];
       //console.log(mousePos_nogrid);
@@ -1087,10 +1153,21 @@ class Editor {
         this.simulator.updateSimulation(false, true);
       }
 
+      if (this.draggingObjIndex == -5) {
+        // Dragging a handle that belongs to the application rather than to the scene.
+        const handle = this.externalHandles[this.dragContext.handleIndex];
+        if (handle) {
+          handle.onDrag(geometry.point(mousePos2.x, mousePos2.y));
+          this.simulator.updateSimulation(false, true);
+        }
+      }
+
       if (this.draggingObjIndex >= 0) {
         // Here the mouse is dragging an object
 
-        this.scene.objs[this.draggingObjIndex].onDrag(new Mouse(mousePos_nogrid, this.scene, this.lastDeviceIsTouch, e.altKey * 1), this.dragContext, e.ctrlKey, e.shiftKey);
+        const dragPos = this.constrainDragToAllowedAxes(
+          this.scene.objs[this.draggingObjIndex], this.dragContext, mousePos_nogrid);
+        this.scene.objs[this.draggingObjIndex].onDrag(new Mouse(dragPos, this.scene, this.lastDeviceIsTouch, e.altKey * 1), this.dragContext, e.ctrlKey, e.shiftKey);
         // If dragging an entire object, then when Ctrl is hold, clone the object
         if (this.dragContext.part == 0) {
           if (e.ctrlKey && !this.dragContext.hasDuplicated) {
@@ -1218,6 +1295,9 @@ class Editor {
         this.onCanvasDblClick(e);
         return;
       }
+      if (this.draggingObjIndex == -5) {
+        this.externalHandles[this.dragContext.handleIndex]?.onDone?.();
+      }
       this.onActionComplete();
       this.draggingObjIndex = -1;
       this.dragContext = {};
@@ -1286,6 +1366,21 @@ class Editor {
       }
     }
 
+  }
+
+  /**
+   * Find which external handle, if any, is under the mouse.
+   * @param {Point} mousePos - The mouse position in the scene.
+   * @returns {number} The index of the handle, or -1 if none is under the mouse.
+   */
+  searchExternalHandles(mousePos) {
+    if (!this.externalHandles || this.externalHandles.length === 0) return -1;
+    const mouse = new Mouse(mousePos, this.scene, this.lastDeviceIsTouch);
+    for (let i = 0; i < this.externalHandles.length; i++) {
+      const handle = this.externalHandles[i];
+      if (handle && handle.point && mouse.isOnPoint(handle.point)) return i;
+    }
+    return -1;
   }
 
   /**

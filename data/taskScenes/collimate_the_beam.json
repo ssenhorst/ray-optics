@@ -34,7 +34,9 @@
       "focalLength": 180,
       "interaction": {
         "enabled": false
-      }
+      },
+      "showOpticalAxis": true,
+      "showFocalPoints": true
     }
   ],
   "width": 1150,

@@ -50,6 +50,17 @@
           >
             {{ $t('simulator:sidebar.tabs.ai') }}
           </button>
+          <button
+            v-if="designMode"
+            type="button"
+            class="sidebar-tab"
+            :class="{ active: activeTab === 'task' }"
+            role="tab"
+            :aria-selected="activeTab === 'task'"
+            @click="setActiveTab('task')"
+          >
+            Task
+          </button>
         </div>
 
         <button
@@ -70,6 +81,7 @@
         <VisualTab v-if="showSidebar" v-show="activeTab === 'visual'" />
         <div id="jsonEditor" v-show="activeTab === 'code'"></div>
         <AITab v-show="activeTab === 'ai'" />
+        <TaskTab v-if="designMode && showSidebar" v-show="activeTab === 'task'" />
       </div>
     </div>
     <div 
@@ -106,17 +118,23 @@
  * @description The Vue component for the sidebar containing the JSON editor.
  */
 import { usePreferencesStore } from '../store/preferences'
+import { app } from '../services/app'
 import { toRef, ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { jsonEditorService } from '../services/jsonEditor'
 import VisualTab from './sidebar/VisualTab.vue'
 import AITab from './sidebar/AITab.vue'
+import TaskTab from './sidebar/TaskTab.vue'
 
 export default {
   name: 'Sidebar',
-  components: { VisualTab, AITab },
+  components: { VisualTab, AITab, TaskTab },
   setup() {
     const preferences = usePreferencesStore()
     const sidebarWidth = toRef(preferences, 'sidebarWidth')
+    // The task designer gets an extra tab for the scene-level task, interaction and interface
+    // settings. It is not shown in the ordinary app, where those are not meant to be authored.
+    const designMode = app.isDesignMode ? app.isDesignMode() : false
+
     const showSidebar = toRef(preferences, 'showSidebar')
     const activeTab = toRef(preferences, 'sidebarTab')
     
@@ -270,6 +288,14 @@ export default {
     })
     
     onMounted(() => {
+      // The designer's main control is the Task tab, so the drawer starts open rather than waiting
+      // to be discovered by hovering the edge of the window.
+      if (designMode) {
+        showSidebar.value = true
+      }
+    })
+
+    onMounted(() => {
       document.addEventListener('openVisualModuleEditor', handleOpenVisualModuleEditor)
       document.addEventListener('openVisualCreateModule', handleOpenVisualCreateModule)
       // Add keyboard event listeners to prevent propagation from JSON editor
@@ -306,6 +332,7 @@ export default {
       showSidebar,
       sidebarWidth,
       activeTab,
+      designMode,
       expandHintPeek,
       startResize,
       hideSidebar,

@@ -66,7 +66,9 @@ class IdealMirror extends FocalLengthHandleMixin(LineObjMixin(BaseFilter)) {
     filter: false,
     invert: false,
     wavelength: Simulator.GREEN_WAVELENGTH,
-    bandwidth: 10
+    bandwidth: 10,
+    showOpticalAxis: false,
+    showFocalPoints: false
   };
 
   static getDescription(objData, scene, detailed = false) {
@@ -77,6 +79,8 @@ class IdealMirror extends FocalLengthHandleMixin(LineObjMixin(BaseFilter)) {
     return [
       ...super.getPropertySchema(objData, scene),
       { key: 'focalLength', type: 'number', label: i18next.t('simulator:sceneObjs.common.focalLength') },
+      { key: 'showOpticalAxis', type: 'boolean', label: i18next.t('simulator:sceneObjs.common.showOpticalAxis') },
+      { key: 'showFocalPoints', type: 'boolean', label: i18next.t('simulator:sceneObjs.common.showFocalPoints') },
     ];
   }
 
@@ -94,6 +98,14 @@ class IdealMirror extends FocalLengthHandleMixin(LineObjMixin(BaseFilter)) {
         localStorage.rayOpticsCartesianSign = value ? "true" : "false";
       }, null, true);
     }
+
+
+    objBar.createBoolean(i18next.t('simulator:sceneObjs.common.showOpticalAxis'), this.showOpticalAxis, function (obj, value) {
+      obj.showOpticalAxis = value;
+    }, null, true);
+    objBar.createBoolean(i18next.t('simulator:sceneObjs.common.showFocalPoints'), this.showFocalPoints, function (obj, value) {
+      obj.showFocalPoints = value;
+    }, null, true);
 
     super.populateObjBar(objBar);
   }
@@ -175,7 +187,9 @@ class IdealMirror extends FocalLengthHandleMixin(LineObjMixin(BaseFilter)) {
       ctx.fill();
     }
 
-    if (isHovered) {
+    this.drawOpticalDecorations(canvasRenderer);
+
+    if (isHovered && !this.showFocalPoints) {
       // Show the focal points, which are also the handles for dragging the focal length.
       this.drawFocalHandles(canvasRenderer);
     }
