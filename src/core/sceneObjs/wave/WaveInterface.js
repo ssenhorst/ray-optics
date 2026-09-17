@@ -30,8 +30,44 @@ const SLOPE_SCAN_SAMPLES = 64;
 /** Step used for the central difference that gives the surface slope. */
 const SLOPE_EPSILON = 1e-4;
 
-/** Samples across the smallest feature of a patterned transmission. */
-const SAMPLES_PER_FEATURE = 6;
+/** Samples across the smallest feature that still has to be resolved. */
+const SAMPLES_PER_FEATURE = 2;
+
+/**
+ * The finest transmission structure worth resolving, as a fraction of the
+ * wavelength in the denser medium.
+ *
+ * A pattern of period `d` diffracts to `sin(theta) = lambda / d`, so structure
+ * finer than half a wavelength has no propagating orders at all: it couples
+ * only to evanescent waves, which this model does not carry. Sampling past that
+ * point buys nothing and costs sources in proportion, which is why a slit
+ * narrowed towards a point source used to make the scene *more* expensive the
+ * closer it got to the ideal it was approaching.
+ *
+ * With this floor the pattern term only ever binds when the density is dropped
+ * well below its default: at the default eight samples per wavelength the
+ * wavelength alone already puts four samples across the finest pattern that can
+ * radiate at all, so nothing that diffracts is ever undersampled.
+ */
+const FINEST_USEFUL_FEATURE_IN_WAVELENGTHS = 0.5;
+
+/** Sub-samples aimed for across the finest feature, when averaging is needed. */
+const SUBSAMPLES_PER_FEATURE = 8;
+
+/**
+ * The most samples one surface may contribute, whatever it asks for.
+ *
+ * The uniform density reduction in {@link resolveSourceDensity} cannot rescue a
+ * runaway here, because the feature-driven part of the step does not depend on
+ * the density: a surface asking for billions of samples would still ask for
+ * billions after the reduction, and the tab would stop responding before the
+ * first frame. This is the backstop that keeps a bad parameter a bad picture
+ * rather than a lost session.
+ */
+const MAX_SURFACE_SAMPLES = 40000;
+
+/** The most sub-samples used when averaging a transmission over one cell. */
+const MAX_SUBSAMPLES = 32;
 
 /**
  * The properties every interface has, whatever its transmission is defined by.
@@ -282,6 +318,52 @@ class WaveInterface extends LineObjMixin(BaseSceneObj) {
   }
 
   /**
+   * The complex transmission averaged over one sampling cell.
+   *
+   * Point-sampling a profile whose structure is finer than the cell makes the
+   * transmitted field depend on where the samples happen to land: a slit
+   * narrower than the step either swallows a sample or misses it, so the same
+   * slit flickers between full and no transmission as it is dragged. Averaging
+   * over the cell instead gives a slit its true fractional weight, which is what
+   * lets the sample count be capped at the wavelength without the sub-wavelength
+   * limit falling apart — a sub-wavelength opening then radiates like the point
+   * source it physically is, with an amplitude proportional to its width.
+   *
+   * The average is of the complex transmission, not of amplitude and phase
+   * separately, so a fine phase grating correctly loses contrast towards its
+   * mean rather than keeping a full-amplitude phase that is no longer there.
+   *
+   * @param {number} y - Transverse position, measured from the centre.
+   * @param {number} cellWidth - The width of the sampling cell, in scene units.
+   * @returns {{amplitude: number, phase: number}}
+   */
+  averagedTransmission(y, cellWidth) {
+    const feature = this.minimumFeatureSize();
+    if (!(feature > 0)) return this.transmissionAt(y);
+
+    // The sub-sample count falls out of how the feature compares with the cell,
+    // so a profile far coarser than the sampling asks for a single sub-sample
+    // and costs exactly what point sampling used to.
+    const count = Math.min(
+      MAX_SUBSAMPLES,
+      Math.max(1, Math.ceil(SUBSAMPLES_PER_FEATURE * cellWidth / feature))
+    );
+    if (count === 1) return this.transmissionAt(y);
+    let re = 0;
+    let im = 0;
+    for (let i = 0; i < count; i++) {
+      const offset = ((i + 0.5) / count - 0.5) * cellWidth;
+      const { amplitude, phase } = this.transmissionAt(y + offset);
+      re += amplitude * Math.cos(phase);
+      im += amplitude * Math.sin(phase);
+    }
+    return {
+      amplitude: Math.hypot(re, im) / count,
+      phase: Math.atan2(im, re),
+    };
+  }
+
+  /**
    * How many samples this surface needs.
    *
    * Sampling is uniform in `y`, which is what keeps the subspace lookup table
@@ -313,10 +395,16 @@ class WaveInterface extends LineObjMixin(BaseSceneObj) {
     );
     let step = shortest / (samplesPerWavelength * steepest);
 
+    // A patterned transmission has to be resolved as well as the wavelength,
+    // but only down to the finest structure that can radiate at all. Below that
+    // the averaging in `averagedTransmission` carries the profile instead.
     const feature = this.minimumFeatureSize();
-    if (feature > 0) step = Math.min(step, feature / SAMPLES_PER_FEATURE);
+    if (feature > 0) {
+      const resolvable = Math.max(feature, shortest * FINEST_USEFUL_FEATURE_IN_WAVELENGTHS);
+      step = Math.min(step, resolvable / SAMPLES_PER_FEATURE);
+    }
 
-    return Math.max(1, Math.ceil(span / step));
+    return Math.max(1, Math.min(MAX_SURFACE_SAMPLES, Math.ceil(span / step)));
   }
 
   /**
@@ -359,7 +447,7 @@ class WaveInterface extends LineObjMixin(BaseSceneObj) {
       try {
         z = this.zAt(y);
         slope = this.slopeAt(y);
-        ({ amplitude, phase } = this.transmissionAt(local));
+        ({ amplitude, phase } = this.averagedTransmission(local, step));
       } catch (e) {
         this.error = e.toString();
         return [];

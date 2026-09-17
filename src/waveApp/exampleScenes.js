@@ -111,8 +111,10 @@ export const EXAMPLE_SCENES = [
     description: 'A point source behind an opaque screen with one narrow opening.',
     build: (width, height) => build('Single slit', [
       pointSource(width * 0.16, height * 0.5),
+      // The spacing does nothing at one slit, but it is what raising the count
+      // will use, so it is set wide enough here to give real fringes.
       element('WaveMultiSlit', width * 0.38, height * 0.28, height * 0.72, {
-        slitCount: 1, slitWidth: 3 * WAVELENGTH,
+        slitCount: 1, slitWidth: 3 * WAVELENGTH, slitSpacing: 9 * WAVELENGTH,
       }),
     ], { upperCutoff: 0.8 }),
   },

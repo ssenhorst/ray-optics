@@ -999,6 +999,7 @@
       "slitWidth": "Slit width",
       "slitSpacing": "Slit spacing",
       "slitSpacingInfo": "Centre-to-centre spacing. The slit width sets the width of the diffraction envelope; the spacing sets how finely the fringes divide it.",
+      "slitsMergeWarning": "The spacing is no wider than the slits, so they overlap into a single opening. Increase the spacing to separate them.",
       "focalLength": "Focal length",
       "focalLengthInfo": "Where the zones bring the light to a focus, at the scene wavelength. The zone boundaries follow from it as the square root of n·λ·f.",
       "phaseReversing": "Phase-reversing",

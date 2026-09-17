@@ -148,20 +148,44 @@ describe('square grating', () => {
     expect(grating.transmissionAt(-20).amplitude).toBe(1);
   });
 
-  test('resolves its narrowest bar or gap', () => {
+  test('reports its narrowest bar or gap', () => {
     const scene = makeScene();
     const grating = addElement(scene, WaveSquareGrating, {
       x: 0, half: 200, pitch: 40, dutyCycle: 0.1,
     });
     expect(grating.minimumFeatureSize()).toBeCloseTo(4, 9);
-
-    // Sampling follows the feature, not only the wavelength.
-    const settings = resolveWaveSettings(scene);
-    const context = { settings, samplesPerWavelength: 8, refractiveIndexBefore: 1 };
-    const fine = grating.getSurfaceSampleCount(context);
-    grating.dutyCycle = 0.5;
-    expect(fine).toBeGreaterThan(grating.getSurfaceSampleCount(context));
   });
+
+  test('a bar narrower than the sampling still sets the order strengths', () => {
+    // The duty cycle is what divides light between the orders, and at a low
+    // duty the bar is a fraction of a wavelength wide — far below the sample
+    // spacing. Cell averaging is what carries it, so this is the test that the
+    // sampling rule is allowed to stop refining at the wavelength.
+    const pitch = 60;
+    const build = (dutyCycle) => {
+      const scene = makeScene();
+      addPlaneWave(scene, { x: 0, y: 0 });
+      addElement(scene, WaveSquareGrating, {
+        x: 200, half: 15 * pitch, pitch, dutyCycle,
+      });
+      return scene;
+    };
+
+    const order = WAVELENGTH / pitch;
+    // For bars of transmission zero the Fourier coefficients of the profile are
+    // c0 = 1 - d and cm = -d sinc(m d), so the first order relative to the
+    // zeroth is a pure function of the duty cycle. Taking the ratio at a fixed
+    // angle cancels the obliquity factor, which the infinite-grating result
+    // does not carry.
+    const sinc = (x) => (x === 0 ? 1 : Math.sin(Math.PI * x) / (Math.PI * x));
+
+    for (const duty of [0.1, 0.25, 0.5]) {
+      const [zeroth, first] = farFieldScan(build(duty), [0, order], 200000);
+      const predicted = duty * Math.abs(sinc(duty)) / (1 - duty);
+      expect(first / zeroth).toBeGreaterThan(0.92 * predicted);
+      expect(first / zeroth).toBeLessThan(1.08 * predicted);
+    }
+  }, 60000);
 
   test('diffracts into orders at sin(theta) = m lambda / pitch', () => {
     const pitch = 60;
@@ -258,6 +282,76 @@ describe('N slits', () => {
       x: 0, half: 300, slitCount: 3, slitWidth: 50, slitSpacing: 60,
     });
     expect(slits.minimumFeatureSize()).toBeCloseTo(10, 9);
+  });
+
+  test('slits closer together than they are wide merge into one opening', () => {
+    const scene = makeScene();
+    const slits = addElement(scene, WaveMultiSlit, {
+      x: 0, half: 300, slitCount: 2, slitWidth: 60, slitSpacing: 60,
+    });
+
+    // Raising the count on a wide slit whose spacing has never been touched
+    // used to leave a gap of zero, which asked for a step of essentially
+    // nothing and froze the tab before the first frame.
+    expect(slits.minimumFeatureSize()).toBeCloseTo(120, 9);
+    expect(slits.getWarning()).toBeTruthy();
+
+    const context = {
+      scene, settings: resolveWaveSettings(scene), samplesPerWavelength: 8,
+    };
+    expect(slits.getSurfaceSampleCount(context)).toBeLessThan(1000);
+  });
+
+  test('narrowing a slit past the wavelength does not cost more samples', () => {
+    const scene = makeScene();
+    const slit = addElement(scene, WaveMultiSlit, {
+      x: 0, half: 300, slitCount: 1, slitWidth: WAVELENGTH,
+    });
+    const context = {
+      scene, settings: resolveWaveSettings(scene), samplesPerWavelength: 8,
+    };
+    const countAt = (width) => {
+      slit.slitWidth = width;
+      return slit.getSurfaceSampleCount(context);
+    };
+
+    // An opening has no propagating structure below half a wavelength, so
+    // narrowing it must never cost sources: it is turning into a point source,
+    // which is the cheapest thing there is.
+    const coarse = countAt(2 * WAVELENGTH);
+    for (const width of [WAVELENGTH, WAVELENGTH / 2, WAVELENGTH / 8, WAVELENGTH / 100]) {
+      expect(countAt(width)).toBeLessThanOrEqual(coarse);
+    }
+  });
+
+  test('a sub-sample slit transmits in proportion to its width, wherever it sits', () => {
+    // Point sampling made this depend on whether a sample happened to fall
+    // inside the opening, so the same slit flickered between full and no
+    // transmission as it was dragged. Averaging over the cell makes the
+    // transmitted weight the slit's actual width.
+    const scene = makeScene();
+    const slit = addElement(scene, WaveMultiSlit, {
+      x: 0, half: 200, slitCount: 1, slitWidth: WAVELENGTH,
+    });
+    const context = {
+      scene, settings: resolveWaveSettings(scene), samplesPerWavelength: 8,
+    };
+    const totalWeight = () => slit.getSurfaceSamples(context)
+      .reduce((sum, s) => sum + Math.hypot(s.tRe, s.tIm) * s.ds, 0);
+
+    // Well past the point where a slit is narrower than one sample.
+    for (const width of [WAVELENGTH, WAVELENGTH / 4, WAVELENGTH / 20]) {
+      slit.slitWidth = width;
+      expect(totalWeight() / width).toBeCloseTo(1, 6);
+    }
+
+    // And it does not matter where the opening falls between two samples.
+    slit.slitWidth = WAVELENGTH / 20;
+    const aligned = totalWeight();
+    const halfCell = 400 / slit.getSurfaceSampleCount(context) / 2;
+    slit.p1 = { x: 0, y: -200 + halfCell };
+    slit.p2 = { x: 0, y: 200 + halfCell };
+    expect(totalWeight()).toBeCloseTo(aligned, 6);
   });
 });
 

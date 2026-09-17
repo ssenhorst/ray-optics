@@ -69,13 +69,14 @@ class WaveMultiSlit extends WaveInterface {
       i18next.t('simulator:waveSceneObjs.common.slitWidth'), 1, 200, 1, this.slitWidth,
       function (obj, value) { obj.slitWidth = value; }
     );
-    if (this.slitCount > 1) {
-      objBar.createNumber(
-        i18next.t('simulator:waveSceneObjs.common.slitSpacing'), 1, 400, 1, this.slitSpacing,
-        function (obj, value) { obj.slitSpacing = value; },
-        '<p>' + i18next.t('simulator:waveSceneObjs.common.slitSpacingInfo') + '</p>'
-      );
-    }
+    // Shown even at one slit, where it does nothing yet: it is the parameter
+    // that decides what raising the count will produce, and hiding it is how a
+    // spacing narrower than the slit goes unnoticed until the slits merge.
+    objBar.createNumber(
+      i18next.t('simulator:waveSceneObjs.common.slitSpacing'), 1, 400, 1, this.slitSpacing,
+      function (obj, value) { obj.slitSpacing = value; },
+      '<p>' + i18next.t('simulator:waveSceneObjs.common.slitSpacingInfo') + '</p>'
+    );
   }
 
   transmissionAt(y) {
@@ -92,11 +93,34 @@ class WaveMultiSlit extends WaveInterface {
     return { amplitude: 0, phase: 0 };
   }
 
+  /** Whether neighbouring slits touch, so the row is really one wide opening. */
+  slitsMerge() {
+    return Math.round(this.slitCount) > 1 && this.slitSpacing <= this.slitWidth;
+  }
+
   minimumFeatureSize() {
     const count = Math.max(1, Math.round(this.slitCount));
-    if (count === 1) return this.slitWidth;
-    // The opaque strip between neighbours can be finer than a slit.
-    return Math.max(1e-6, Math.min(this.slitWidth, this.slitSpacing - this.slitWidth));
+    const width = Math.max(1e-6, this.slitWidth);
+    if (count === 1) return width;
+
+    // Slits spaced no further apart than they are wide overlap into a single
+    // opening, so the finest feature is that merged opening. Subtracting the
+    // width from the spacing here instead gave a gap of zero or less, which
+    // asked for a step of essentially nothing: the sample count ran away into
+    // the billions and the tab stopped responding. It is reachable by raising
+    // the slit count on a single wide slit, where the spacing is not on screen.
+    if (this.slitsMerge()) {
+      return (count - 1) * Math.max(0, this.slitSpacing) + width;
+    }
+    // Otherwise the opaque strip between neighbours can be finer than a slit.
+    return Math.min(width, this.slitSpacing - width);
+  }
+
+  getWarning() {
+    if (this.slitsMerge()) {
+      return i18next.t('simulator:waveSceneObjs.common.slitsMergeWarning');
+    }
+    return super.getWarning();
   }
 }
 
