@@ -527,6 +527,28 @@ class WaveScreen extends LineObjMixin(BaseSceneObj) {
       ctx.stroke();
     }
     ctx.restore();
+
+    // The two ends of the axis, in whichever units the screen reports in, so
+    // the ticks are a scale rather than decoration.
+    for (const i of [0, SAMPLE_COUNT - 1]) {
+      const tip = at(i, signed ? -0.16 : -0.13);
+      drawLabel(canvasRenderer, this.axisText(layout, i), tip, {
+        color, align: 'center', baseline: 'middle', size: 10,
+      });
+    }
+  }
+
+  /**
+   * One end of the axis, labelled.
+   * @private
+   */
+  axisText(layout, index) {
+    const value = layout.axis[index];
+    if (layout.isAngular) return `${value.toFixed(1)}°`;
+    const wavelength = this.scene?.waveOptics?.wavelength || 20;
+    return this.units === 'wavelengths' && wavelength > 0
+      ? `${(value / wavelength).toFixed(1)} λ`
+      : value.toFixed(0);
   }
 
   /** @private */

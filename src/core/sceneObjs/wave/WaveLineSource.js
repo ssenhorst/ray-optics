@@ -125,6 +125,19 @@ class WaveLineSource extends LineObjMixin(BaseSceneObj) {
     ctx.lineTo(this.p2.x, this.p2.y);
     ctx.stroke();
     ctx.lineWidth = 1 * ls;
+
+    // The endpoints are drag handles, shown only when the source is selected or
+    // under the pointer so that a scene of several sources is not a scene of
+    // several sources plus a dozen dots.
+    if (isHovered || this.isSelected()) {
+      for (const end of [this.p1, this.p2]) {
+        canvasRenderer.drawPoint(
+          end,
+          isHovered ? this.scene.highlightColor : this.scene.theme.sourcePoint.color,
+          this.scene.theme.sourcePoint.size
+        );
+      }
+    }
   }
 
   onConstructMouseDown(mouse, ctrl, shift) {
