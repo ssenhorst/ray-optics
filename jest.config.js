@@ -24,6 +24,7 @@ module.exports = {
     "**/test/interaction/**/*.test.js",
     "**/test/goals/**/*.test.js",
     "**/test/sceneObjs/**/*.test.js",
-    "**/test/scenes/**/*.test.js"
+    "**/test/scenes/**/*.test.js",
+    "**/test/waveOptics/**/*.test.js"
   ]
 };

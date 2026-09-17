@@ -30,6 +30,7 @@ A web app for creating and simulating 2D geometric optical scenes, with a galler
 - Author interactive assignments: restrict what the student may change, hide parts of the interface, and set goals that are scored live against the simulation.
 - Run with high-performance ray tracing engine based on WebGPU. <sup>Beta</sup>
 - Use the simulator as a node module in your own project and integrate with other programming languages.
+- Simulate 2D scalar wave optics — diffraction, interference and refraction by summing point-source fields — in a companion app sharing the same editor. <sup>Experimental</sup>
 
 ## Task scenes
 

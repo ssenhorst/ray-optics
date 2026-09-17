@@ -51,6 +51,7 @@ export default (env, argv) => {
   return {
     entry: {
       simulator: './src/app/main.js',
+      wave: './src/waveApp/main.js',
       // The standalone task widget, exposed as a global so that a page can also create widgets
       // programmatically rather than only through the `data-ray-optics` attribute.
       widget: {
@@ -59,9 +60,11 @@ export default (env, argv) => {
       },
     },
     output: {
+      // The apps are each served from their own directory; the widget is a library file rather than
+      // an app, so it keeps a name an embedding page can refer to.
       filename: (pathData) => pathData.chunk.name === 'widget'
         ? 'widget/ray-optics-widget.js'
-        : 'simulator/main.js',
+        : '[name]/main.js',
       path: path.resolve('dist'),
       assetModuleFilename: (pathData) => {
         const filepath = path.dirname(pathData.filename).split('/').slice(1).join('/');
@@ -106,6 +109,12 @@ export default (env, argv) => {
           const localeData = buildInlineLocaleData();
           return templateContent.replace('{ /* LOCALE DATA */ }', JSON.stringify(localeData));
         },
+      }),
+      // The wave-optics app is a second entry point sharing the core library.
+      new HtmlWebpackPlugin({
+        template: './src/waveApp/index.html',
+        filename: 'wave/index.html',
+        chunks: ['wave'],
       }),
       new HtmlWebpackPlugin({
         template: './src/widget/index.html',
