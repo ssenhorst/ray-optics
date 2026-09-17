@@ -22,6 +22,7 @@ module.exports = {
     "**/test/primitive/**/*.test.js",
     "**/test/propertyUtils/**/*.test.js",
     "**/test/sceneObjs/**/*.test.js",
-    "**/test/scenes/**/*.test.js"
+    "**/test/scenes/**/*.test.js",
+    "**/test/waveOptics/**/*.test.js"
   ]
 };

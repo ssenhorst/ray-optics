@@ -193,6 +193,7 @@ function extractNonDefaults(obj, defaults) {
  * @property {number} rayPowerCutoff - Minimum ray power retained by weak-ray handling when correct brightness is enabled. Zero disables the cutoff.
  * @property {boolean} rayPowerSampling - Whether weak rays are sampled instead of deterministically truncated when correct brightness is enabled.
  * @property {number} maxRayDepth - The maximum number of ray-object interactions allowed before truncating rays (Infinity for no limit).
+ * @property {Object} waveOptics - Settings for the wave-optics simulator (`src/core/waveOptics`), which is used by the separate wave-optics app rather than by the ray simulator. Contains the vacuum wavelength and background refractive index (both in scene length units), the field grid resolution, and the display settings (view, colormaps, and colour scale cutoffs).
  * @property {string|null} randomSeed - The seed for the random number generator used in the simulation, null if using randomly generated seed. Using a seed allows the simulation to be deterministic for the same version of this app when randomness is used. However, reproducibility is only guaranteed if the scene is just loaded (that is, no other editing has been done on the scene). Also, reproducibility is not guaranteed across different versions of the app.
  * @property {function} rng - The random number generator.
  * @property {Object|null} backgroundImage - The background image of the scene, null if not set.
@@ -227,6 +228,22 @@ class Scene {
     rayPowerSampling: false,
     maxRayDepth: Infinity,
     randomSeed: null,
+    waveOptics: {
+      wavelength: 20,
+      refractiveIndex: 1,
+      gridResolution: 512,
+      autoResolution: true,
+      sourceDensity: 8,
+      view: 'intensity',
+      intensityColormap: 'magma',
+      fieldColormap: 'twilight',
+      phaseChroma: 0.18,
+      scalePercentile: 99,
+      upperCutoff: 1,
+      lowerCutoff: 0,
+      logScale: false,
+      dynamicRange: 40,
+    },
     theme: {
       background: {
         color: { r: 0, g: 0, b: 0 }

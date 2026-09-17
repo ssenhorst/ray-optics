@@ -280,5 +280,48 @@
     "parentheses": "{{main}} ({{sub}})",
     "colon": "{{name}}: {{value}}",
     "list": "{{first}}, {{others}}"
+  },
+  "waveTools": {
+    "title": "Sources",
+    "WavePointSource": {
+      "title": "Point source",
+      "description": "A time-harmonic point source: the 2D Green’s function, whose amplitude falls as 1/√r."
+    },
+    "WaveLineSource": {
+      "title": "Line source",
+      "description": "A line of time-harmonic point sources, with amplitude and phase given as functions of the position along the line."
+    },
+    "WaveInterface": {
+      "title": "Interface",
+      "description": "A surface dividing space, transmitting the field from the subspace before it into the subspace after it. Outside its transverse extent it is opaque."
+    },
+    "WavePlaneWave": {
+      "title": "Plane wave",
+      "description": "An ideal plane wave filling the subspace it sits in, evaluated in closed form rather than built from point sources."
+    },
+    "categories": {
+      "sources": "Sources",
+      "interfaces": "Interfaces"
+    },
+    "WaveSquareGrating": {
+      "title": "Square grating",
+      "description": "A grating with a square-wave transmission, set by pitch and duty cycle. Opaque bars by default; give the bars a phase shift instead for a binary phase grating."
+    },
+    "WaveSinusoidalGrating": {
+      "title": "Sinusoidal phase grating",
+      "description": "A single-spatial-frequency phase grating, set by pitch and peak-to-peak phase shift. Its orders follow the Bessel series."
+    },
+    "WaveBinaryMask": {
+      "title": "Binary mask",
+      "description": "An opaque screen open wherever a function of the transverse coordinate is non-negative."
+    },
+    "WaveMultiSlit": {
+      "title": "N slits",
+      "description": "An opaque screen with a row of identical slits, set by count, width and spacing."
+    },
+    "WaveZonePlate": {
+      "title": "Fresnel zone plate",
+      "description": "Zones alternating every half wave of extra path to the focus, either blocking or phase-reversing."
+    }
   }
 }

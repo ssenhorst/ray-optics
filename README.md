@@ -29,6 +29,7 @@ A web app for creating and simulating 2D geometric optical scenes, with a galler
 - Create modularized combinations of optical elements with custom parameters.
 - Run with high-performance ray tracing engine based on WebGPU. <sup>Beta</sup>
 - Use the simulator as a node module in your own project and integrate with other programming languages.
+- Simulate 2D scalar wave optics — diffraction, interference and refraction by summing point-source fields — in a companion app sharing the same editor. <sup>Experimental</sup>
 
 ## Links
 - [**Launch the Web App**](https://phydemo.app/ray-optics/simulator/)
