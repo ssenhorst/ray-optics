@@ -20,6 +20,10 @@ import geometry from '../../geometry.js';
 import i18next from 'i18next';
 import { evaluateLatex } from '../../equation.js';
 import { wavelengthInMedium } from '../../waveOptics/conventions.js';
+import { amplitudePhaseColor } from '../../waveOptics/oklch.js';
+import {
+  sampleColormap, hasColormap, listColormaps, listColormapsForView, colormapDisplayName
+} from '../../waveOptics/colormaps.js';
 import {
   equationInfo, amplitudeExamples, phaseExamples, sagExamples
 } from './waveEquationInfo.js';
@@ -79,7 +83,43 @@ export const SHARED_INTERFACE_DEFAULTS = Object.freeze({
   p2: null,
   refractiveIndexAfter: 1.5,
   eqnSag: '0',
+  profileDisplay: 'off',
+  profileColormap: 'viridis',
 });
+
+/**
+ * The ways an interface can show its own transmission along its drawn profile.
+ *
+ * An interface drawn as a plain line says nothing about what it does: a grating,
+ * a zone plate and a clear window are the same stroke. Colouring the line by the
+ * transmission at each point makes the element legible on the canvas, which
+ * matters most for exactly the elements whose parameters are hardest to picture.
+ *
+ * @readonly
+ * @enum {string}
+ */
+export const PROFILE_DISPLAYS = ['off', 'amplitudePhase', 'amplitude', 'phase'];
+
+/** Segments used when drawing the transmission along the profile. */
+const PROFILE_DRAW_SAMPLES = 256;
+
+/** How wide the coloured profile is drawn, in screen pixels. */
+const PROFILE_LINE_WIDTH = 7;
+
+/**
+ * The lightness a transmission of one is drawn at.
+ *
+ * Not one. The bivariate mapping puts chroma on an envelope that vanishes at
+ * both ends of the lightness axis, because sRGB has no room for colour at black
+ * or white — so a transmission of exactly one would come out white, and a pure
+ * phase element, whose amplitude is one everywhere, would show no phase at all.
+ * Stopping short of white leaves the hue visible while a transmission of zero is
+ * still black.
+ */
+const PROFILE_MAX_LIGHTNESS = 0.82;
+
+/** Peak chroma for the profile, higher than the field's to read at line width. */
+const PROFILE_CHROMA = 0.3;
 
 /**
  * A surface that divides space, transmitting the field from the subspace before
@@ -153,6 +193,32 @@ class WaveInterface extends LineObjMixin(BaseSceneObj) {
       { key: 'eqnSag', type: 'equation', label: 'z(y)', variables: ['y'], info: help.sag },
       { key: 'eqnAmplitude', type: 'equation', label: '|t|(y)', variables: ['y'], info: help.amplitude },
       { key: 'eqnPhase', type: 'equation', label: 'arg t(y)', variables: ['y'], info: help.phase },
+      ...WaveInterface.profilePropertySchema(),
+    ];
+  }
+
+  /**
+   * The display-only properties every interface shares. Kept separate so the
+   * patterned subclasses, which filter the transmission equations out of the
+   * inherited schema, can keep these.
+   * @returns {Array<Object>}
+   */
+  static profilePropertySchema() {
+    return [
+      {
+        key: 'profileDisplay', type: 'dropdown',
+        label: i18next.t('simulator:waveSceneObjs.common.profileDisplay'),
+        options: Object.fromEntries(PROFILE_DISPLAYS.map((value) => [
+          value, i18next.t(`simulator:waveSceneObjs.common.profileDisplays.${value}`),
+        ])),
+      },
+      {
+        key: 'profileColormap', type: 'dropdown',
+        label: i18next.t('simulator:waveSceneObjs.common.profileColormap'),
+        options: Object.fromEntries(
+          listColormaps().map((name) => [name, colormapDisplayName(name)])
+        ),
+      },
     ];
   }
 
@@ -175,6 +241,44 @@ class WaveInterface extends LineObjMixin(BaseSceneObj) {
     }, WaveInterface.equationHelp(this.scene).sag);
   }
 
+  /**
+   * The control that turns the transmission display on, shared by every
+   * interface type. Called last by each subclass's `populateObjBar`, so it sits
+   * after the parameters it visualises.
+   * @param {ObjBar} objBar
+   */
+  populateProfileObjBar(objBar) {
+    const displays = {
+      off: i18next.t('simulator:waveSceneObjs.common.profileDisplays.off'),
+      amplitudePhase: i18next.t('simulator:waveSceneObjs.common.profileDisplays.amplitudePhase'),
+      amplitude: i18next.t('simulator:waveSceneObjs.common.profileDisplays.amplitude'),
+      phase: i18next.t('simulator:waveSceneObjs.common.profileDisplays.phase'),
+    };
+    objBar.createDropdown(
+      i18next.t('simulator:waveSceneObjs.common.profileDisplay'),
+      this.profileDisplay, displays,
+      function (obj, value) { obj.profileDisplay = value; },
+      '<p>' + i18next.t('simulator:waveSceneObjs.common.profileDisplayInfo') + '</p>',
+      true
+    );
+
+    // The colormap only means anything for the two single-valued displays; the
+    // bivariate one has its own fixed mapping.
+    if (this.profileDisplay === 'amplitude' || this.profileDisplay === 'phase') {
+      const options = Object.fromEntries(
+        listColormapsForView(this.profileDisplay === 'phase' ? 'field' : 'intensity')
+          .map((name) => [name, colormapDisplayName(name)])
+      );
+      objBar.createDropdown(
+        i18next.t('simulator:waveSceneObjs.common.profileColormap'),
+        hasColormap(this.profileColormap) ? this.profileColormap : 'viridis',
+        options,
+        function (obj, value) { obj.profileColormap = value; },
+        null, true
+      );
+    }
+  }
+
   populateObjBar(objBar) {
     const help = WaveInterface.equationHelp(this.scene);
     objBar.setTitle(i18next.t('main:waveTools.WaveInterface.title'));
@@ -185,6 +289,7 @@ class WaveInterface extends LineObjMixin(BaseSceneObj) {
     objBar.createEquation('arg t(y)', this.eqnPhase, function (obj, value) {
       obj.eqnPhase = value;
     }, help.phase);
+    this.populateProfileObjBar(objBar);
   }
 
   /**
@@ -537,15 +642,32 @@ class WaveInterface extends LineObjMixin(BaseSceneObj) {
       ? this.scene.highlightColorCss
       : canvasRenderer.rgbaToCssColor(this.scene.theme.mirror.color);
 
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1.5 * ls;
-    ctx.setLineDash([]);
-    ctx.beginPath();
-    const points = this.curvePoints();
-    points.forEach((point, i) => {
-      if (i === 0) ctx.moveTo(point.x, point.y); else ctx.lineTo(point.x, point.y);
-    });
-    ctx.stroke();
+    // With the transmission on show, the coloured band *is* the profile: a
+    // plain stroke over it would only hide the middle of what it is showing.
+    if (this.profileDisplay !== 'off') {
+      this.drawProfile(canvasRenderer);
+      if (isHovered) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1 * ls;
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 0.6;
+        ctx.beginPath();
+        this.curvePoints().forEach((point, i) => {
+          if (i === 0) ctx.moveTo(point.x, point.y); else ctx.lineTo(point.x, point.y);
+        });
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+    } else {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.5 * ls;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      this.curvePoints().forEach((point, i) => {
+        if (i === 0) ctx.moveTo(point.x, point.y); else ctx.lineTo(point.x, point.y);
+      });
+      ctx.stroke();
+    }
 
     // Short dashed stubs past each end, marking that the surface goes on as an
     // opaque screen rather than simply stopping.
@@ -568,6 +690,87 @@ class WaveInterface extends LineObjMixin(BaseSceneObj) {
     if (isHovered || this.isSelected()) {
       this.drawControls(canvasRenderer, isHovered);
     }
+  }
+
+  /**
+   * The colour standing for the transmission at one point of the profile.
+   *
+   * The amplitude is not normalised against anything: an interface's amplitude
+   * transmission is already a number between zero and one in the ordinary case,
+   * and a user who writes a gain above one should see it saturate rather than
+   * have the whole profile silently rescaled around it.
+   *
+   * @param {{amplitude: number, phase: number}} transmission
+   * @returns {string} A CSS colour.
+   * @private
+   */
+  profileColorFor({ amplitude, phase }) {
+    const clamped = Math.min(1, Math.max(0, amplitude));
+    if (this.profileDisplay === 'amplitudePhase') {
+      const rgb = amplitudePhaseColor(
+        PROFILE_MAX_LIGHTNESS * clamped, phase, PROFILE_CHROMA
+      );
+      return `rgb(${rgb.map((v) => Math.round(v * 255)).join(',')})`;
+    }
+
+    const name = hasColormap(this.profileColormap) ? this.profileColormap : 'viridis';
+    // Phase is cyclic, so it is mapped over a full turn from -pi; amplitude is
+    // a magnitude and maps straight onto the colormap.
+    const t = this.profileDisplay === 'phase'
+      ? ((phase / (2 * Math.PI)) % 1 + 1.5) % 1
+      : clamped;
+    return `rgb(${sampleColormap(name, t).join(',')})`;
+  }
+
+  /**
+   * Draw the transmission along the profile as a band of colour.
+   *
+   * Each sample is drawn as its own short segment rather than as a gradient,
+   * because the transmissions worth showing this way are mostly hard-edged: a
+   * grating's bars and a zone plate's rings have to look like bars and rings,
+   * not like a smooth wash.
+   *
+   * @param {CanvasRenderer} canvasRenderer
+   * @private
+   */
+  drawProfile(canvasRenderer) {
+    const ctx = canvasRenderer.ctx;
+    const extent = this.getExtent();
+    const span = extent.yMax - extent.yMin;
+    if (!(span > 0)) return;
+
+    // Enough segments to resolve what is on screen, but no more: a pattern
+    // finer than the pixels cannot be shown and would only cost time.
+    const onScreen = Math.abs(span * (this.scene?.scale || 1));
+    const count = Math.max(8, Math.min(PROFILE_DRAW_SAMPLES, Math.round(onScreen)));
+    const step = span / count;
+    const centerY = this.centerY();
+    const width = PROFILE_LINE_WIDTH * canvasRenderer.lengthScale;
+
+    ctx.save();
+    ctx.setLineDash([]);
+    ctx.lineWidth = width;
+    ctx.lineCap = 'butt';
+    for (let i = 0; i < count; i++) {
+      const yStart = extent.yMin + i * step;
+      const yEnd = yStart + step;
+      let color;
+      try {
+        // Averaged over the segment, so what is drawn is what a sample of this
+        // size would actually radiate, rather than whatever the midpoint says.
+        color = this.profileColorFor(
+          this.averagedTransmission(yStart + step / 2 - centerY, step)
+        );
+      } catch (e) {
+        break;
+      }
+      ctx.strokeStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(this.zAt(yStart), yStart);
+      ctx.lineTo(this.zAt(yEnd), yEnd);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   /**

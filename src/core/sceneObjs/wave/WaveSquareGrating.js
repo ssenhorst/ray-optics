@@ -90,6 +90,7 @@ class WaveSquareGrating extends WaveInterface {
         function (obj, value) { obj.barPhase = value; }
       );
     }
+    this.populateProfileObjBar(objBar);
   }
 
   /**

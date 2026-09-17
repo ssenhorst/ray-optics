@@ -82,6 +82,7 @@ class WaveMultiSlit extends WaveInterface {
       function (obj, value) { obj.slitSpacing = value; },
       '<p>' + i18next.t('simulator:waveSceneObjs.common.slitSpacingInfo') + '</p>'
     );
+    this.populateProfileObjBar(objBar);
   }
 
   /** The transverse offset of the centre of slit `index`, from the aperture centre. */

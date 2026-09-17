@@ -73,6 +73,7 @@ class WaveSinusoidalGrating extends WaveInterface {
       function (obj, value) { obj.maxPhaseShift = value; },
       '<p>' + i18next.t('simulator:waveSceneObjs.common.maxPhaseShiftInfo') + '</p>'
     );
+    this.populateProfileObjBar(objBar);
   }
 
   /** The control marking one period from the centre of the aperture. */

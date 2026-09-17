@@ -115,6 +115,7 @@ export const EXAMPLE_SCENES = [
       // will use, so it is set wide enough here to give real fringes.
       element('WaveMultiSlit', width * 0.38, height * 0.28, height * 0.72, {
         slitCount: 1, slitWidth: 3 * WAVELENGTH, slitSpacing: 9 * WAVELENGTH,
+        profileDisplay: 'amplitudePhase',
       }),
     ], { upperCutoff: 0.8 }),
   },
@@ -126,6 +127,7 @@ export const EXAMPLE_SCENES = [
       pointSource(width * 0.12, height * 0.5),
       element('WaveMultiSlit', width * 0.34, height * 0.22, height * 0.78, {
         slitCount: 2, slitWidth: 1.5 * WAVELENGTH, slitSpacing: 6 * WAVELENGTH,
+        profileDisplay: 'amplitudePhase',
       }),
     ], { upperCutoff: 0.7 }),
   },
@@ -137,6 +139,7 @@ export const EXAMPLE_SCENES = [
       planeWave(width * 0.1, height * 0.5),
       element('WaveMultiSlit', width * 0.3, height * 0.28, height * 0.72, {
         slitCount: 5, slitWidth: 0.7 * WAVELENGTH, slitSpacing: 3.5 * WAVELENGTH,
+        profileDisplay: 'amplitudePhase',
       }),
     ], { upperCutoff: 0.7 }),
   },
@@ -147,7 +150,7 @@ export const EXAMPLE_SCENES = [
     build: (width, height) => build('Diffraction grating', [
       planeWave(width * 0.1, height * 0.5),
       element('WaveSquareGrating', width * 0.3, height * 0.15, height * 0.85, {
-        pitch: 3 * WAVELENGTH, dutyCycle: 0.5,
+        pitch: 3 * WAVELENGTH, dutyCycle: 0.5, profileDisplay: 'amplitudePhase',
       }),
     ], { upperCutoff: 2.2 }),
   },
@@ -159,6 +162,7 @@ export const EXAMPLE_SCENES = [
       planeWave(width * 0.08, height * 0.5),
       element('WaveZonePlate', width * 0.22, height * 0.22, height * 0.78, {
         focalLength: width * 0.42, phaseReversing: true,
+        profileDisplay: 'amplitudePhase',
       }),
     ], { upperCutoff: 1.1 }),
   },

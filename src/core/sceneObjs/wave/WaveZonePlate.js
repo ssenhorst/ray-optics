@@ -80,6 +80,7 @@ class WaveZonePlate extends WaveInterface {
       function (obj, value) { obj.phaseReversing = value; },
       '<p>' + i18next.t('simulator:waveSceneObjs.common.phaseReversingInfo') + '</p>'
     );
+    this.populateProfileObjBar(objBar);
   }
 
   /** The point the zones are constructed around: the centre of the aperture. */

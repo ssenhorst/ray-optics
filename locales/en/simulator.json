@@ -1010,7 +1010,16 @@
       "lensThickness": "Thickness",
       "lensThicknessInfo": "The thickness of the glass at its thinnest: the rim of a converging lens, the centre of a diverging one. A thicker lens focuses closer than the thin-lens focal length says.",
       "lensFocalLengthInfo": "The thin-lens focal length the curvature is derived from, positive for converging. The focus is drawn at plus and minus this distance and can be dragged; dragging one mark through the centre turns the lens over.",
-      "lensApertureWarning": "The aperture is wider than the radius of curvature, so the surfaces are cut off at their widest point. Shorten the aperture or lengthen the focal length."
+      "lensApertureWarning": "The aperture is wider than the radius of curvature, so the surfaces are cut off at their widest point. Shorten the aperture or lengthen the focal length.",
+      "profileDisplay": "Show transmission",
+      "profileDisplayInfo": "Colour the drawn surface by the transmission at each point, so a grating looks like a grating and a zone plate like rings. Amplitude and phase together uses the same bivariate mapping as the field view: lightness is the amplitude and hue is the phase.",
+      "profileColormap": "Profile colormap",
+      "profileDisplays": {
+        "off": "Off",
+        "amplitudePhase": "Amplitude and phase",
+        "amplitude": "Amplitude only",
+        "phase": "Phase only"
+      }
     },
     "eqnInfo": {
       "examples": "For example:",
