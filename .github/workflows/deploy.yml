@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - claude/wave-optics-raytracer
 
 jobs:
   test:
