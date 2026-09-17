@@ -17,6 +17,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { EXAMPLE_SCENES } from '../src/waveApp/exampleScenes.js';
 import Handlebars from 'handlebars';
 import { marked } from 'marked';
 import i18next from 'i18next';
@@ -267,6 +268,9 @@ for (const lang of langs) {
 
   urlMaps[lang] = {
     "/simulator": "/simulator/" + (lang === 'en' ? '' : '?' + lang),
+    // The wave-optics app has no translations of its own yet, so there is only
+    // one of it; the link is the same from every language's pages.
+    "/wave": "/wave/",
     "/phydemo": "https://phydemo.app/",
     "/email": "mailto:ray-optics@phydemo.app",
     "/github": "https://github.com/ricktu288/ray-optics",
@@ -446,6 +450,7 @@ for (const lang of homeLangs) {
     aboutUrl: rootUrl + urlMaps[lang]['/about'],
     galleryUrl: rootUrl + urlMaps[lang]['/gallery'],
     simulatorUrl: rootUrl + urlMaps[lang]['/simulator'],
+    waveUrl: rootUrl + urlMaps[lang]['/wave'],
     isHome: true,
     isGallery: false,
     isAbout: false,
@@ -499,6 +504,7 @@ for (const lang of homeLangs) {
       aboutUrl: rootUrl + urlMaps[lang]['/about'],
       galleryUrl: rootUrl + urlMaps[lang]['/gallery'],
       simulatorUrl: rootUrl + urlMaps[lang]['/simulator'],
+      waveUrl: rootUrl + urlMaps[lang]['/wave'],
       isHome: false,
       isGallery: false,
       isAbout: true,
@@ -568,6 +574,15 @@ for (const lang of homeLangs) {
       aboutUrl: rootUrl + urlMaps[lang]['/about'],
       galleryUrl: rootUrl + urlMaps[lang]['/gallery'],
       simulatorUrl: rootUrl + urlMaps[lang]['/simulator'],
+      waveUrl: rootUrl + urlMaps[lang]['/wave'],
+      // The wave-optics examples are built in the app from the viewport they
+      // are loaded into, so there is no scene file and no rendered thumbnail
+      // for them; they are listed as links that open the app on each one.
+      waveExamples: EXAMPLE_SCENES.map((example) => ({
+        name: example.name,
+        description: example.description,
+        url: rootUrl + urlMaps[lang]['/wave'] + '#' + example.id,
+      })),
       isHome: false,
       isGallery: true,
       isAbout: false,
@@ -623,6 +638,7 @@ for (const lang of homeLangs) {
       aboutUrl: rootUrl + urlMaps[lang]['/about'],
       galleryUrl: rootUrl + urlMaps[lang]['/gallery'],
       simulatorUrl: rootUrl + urlMaps[lang]['/simulator'],
+      waveUrl: rootUrl + urlMaps[lang]['/wave'],
       isHome: false,
       isGallery: true,
       isAbout: false,

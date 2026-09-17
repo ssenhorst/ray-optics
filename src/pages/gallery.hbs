@@ -80,6 +80,11 @@
       border-radius: 0.6em;
     }
 
+    .wave-example-list {
+      max-width: 780px;
+      line-height: 1.6;
+    }
+
     .example-contributor {
       font-size: 8pt;
       color: #888;
@@ -106,6 +111,7 @@
     {{#each categories}}
       <a href="#{{id}}">{{title}}</a><br>
     {{/each}}
+    <a href="#wave-optics">{{t "gallery:galleryPage.waveOptics.title"}}</a><br>
 
     {{#each categories}}
 
@@ -125,6 +131,16 @@
       {{/each}}
       <br>
     {{/each}}
+
+    <a name="wave-optics" class="anchor">&nbsp;</a>
+    <h2>{{t "gallery:galleryPage.waveOptics.title"}}</h2>
+    <p>{{t "gallery:galleryPage.waveOptics.description"}}</p>
+    <ul class="wave-example-list">
+      {{#each waveExamples}}
+        <li><a href="{{url}}">{{name}}</a> &mdash; {{description}}</li>
+      {{/each}}
+    </ul>
+    <br>
 
     {{> footer}}
   </div>

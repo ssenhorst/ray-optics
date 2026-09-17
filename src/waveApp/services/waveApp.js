@@ -33,7 +33,7 @@ import WaveSimulator from '../../core/waveOptics/WaveSimulator.js';
 import { createWaveRenderingContext } from '../../core/waveOptics/WaveFieldEngineWebGL2.js';
 import { objBar } from '../../app/services/objBar.js';
 import { saveAs } from 'file-saver';
-import { buildExampleScene } from '../exampleScenes.js';
+import { buildExampleScene, EXAMPLE_SCENES } from '../exampleScenes.js';
 
 /** Scene object types the wave app offers as tools. */
 export const WAVE_TOOL_TYPES = ['WavePointSource'];
@@ -122,6 +122,12 @@ function initAppService() {
 
   window.addEventListener('resize', onResize);
   onResize();
+
+  // A link to a scene is the whole scene, so the address bar is checked before
+  // anything else has a chance to overwrite it. The back button goes through
+  // the same path, which is what makes an undo of a shared link work.
+  window.addEventListener('popstate', loadFromUrl);
+  loadFromUrl();
 }
 
 /**
@@ -185,6 +191,7 @@ function bindEditorEvents() {
   });
 
   editor.on('newAction', () => {
+    syncUrl();
     emit('sceneChange', null);
   });
 
@@ -307,6 +314,98 @@ function saveScene() {
 }
 
 /**
+ * How long after the last edit the URL is rewritten. Long enough that typing in
+ * a number field does not compress the scene on every keystroke.
+ */
+const URL_SYNC_DELAY_MS = 800;
+
+/**
+ * The longest URL worth producing. Past roughly two kilobytes a link stops
+ * surviving being pasted into things, so a scene that will not fit is reported
+ * rather than silently truncated to something that will not load.
+ */
+const MAX_URL_LENGTH = 2041;
+
+let syncUrlTimerId = -1;
+let lastSyncedHash = '';
+
+/** Compress the current scene into the address bar. */
+function syncUrl() {
+  if (!app.autoSyncUrl || !scene) return;
+  if (syncUrlTimerId !== -1) clearTimeout(syncUrlTimerId);
+
+  syncUrlTimerId = setTimeout(() => {
+    syncUrlTimerId = -1;
+    encodeScene().then((encoded) => {
+      if (!encoded) return;
+      const full = window.location.href.split('#')[0] + '#' + encoded;
+      if (full.length > MAX_URL_LENGTH) {
+        emit('statusChange', { urlWarning: 'tooLarge' });
+        return;
+      }
+      emit('statusChange', { urlWarning: null });
+      // A large change gets its own history entry, so the back button can
+      // recover a scene that was replaced by accident; small ones do not, or
+      // every slider drag would fill the history.
+      const method = Math.abs(full.length - lastSyncedHash.length) > 200
+        ? 'pushState' : 'replaceState';
+      lastSyncedHash = full;
+      window.history[method](undefined, undefined, '#' + encoded);
+    }).catch(() => {
+      emit('statusChange', { urlWarning: 'failed' });
+    });
+  }, URL_SYNC_DELAY_MS);
+}
+
+/** @returns {Promise<string>} The current scene, compressed for a URL hash. */
+function encodeScene() {
+  return require('json-url')('lzma').compress(JSON.parse(scene.toJSON()));
+}
+
+/** Put a shareable link to the current scene on the clipboard. */
+function copyLink() {
+  return encodeScene().then((encoded) => {
+    const url = window.location.href.split('#')[0] + '#' + encoded;
+    if (url.length > MAX_URL_LENGTH) {
+      emit('statusChange', { urlWarning: 'tooLarge' });
+    }
+    // Written to the address bar as well as the clipboard, so the link is
+    // recoverable even where the clipboard API is refused.
+    window.history.replaceState(undefined, undefined, '#' + encoded);
+    return navigator.clipboard?.writeText(url).then(() => url).catch(() => url) ?? url;
+  });
+}
+
+/**
+ * Load the scene the address bar names, if it names one.
+ *
+ * @returns {boolean} Whether a scene was found and loading was started.
+ */
+function loadFromUrl() {
+  const hash = decodeURIComponent(window.location.hash.slice(1));
+  if (!hash) return false;
+
+  // A bare example name rather than a compressed scene: this is what the
+  // gallery links to, since an example is built from the window it is loaded
+  // into and so has no fixed scene to encode.
+  if (EXAMPLE_SCENES.some((example) => example.id === hash)) {
+    loadExample(hash);
+    return true;
+  }
+  if (hash.length < 8) return false;
+
+  require('json-url')('lzma').decompress(hash).then((json) => {
+    scene.backgroundImage = null;
+    editor.loadJSON(JSON.stringify(json));
+    editor.onActionComplete();
+    emit('sceneChange', null);
+  }).catch((e) => {
+    emit('statusChange', { error: 'Could not read the scene from the URL: ' + e });
+  });
+  return true;
+}
+
+/**
  * Load a scene from a JSON file.
  * @param {File} file
  */
@@ -332,6 +431,11 @@ export const app = {
   objBar: null,
   tool: '',
   fatalError: null,
+  /**
+   * Whether every edit is written back into the address bar, so the URL is
+   * always a link to what is on screen.
+   */
+  autoSyncUrl: false,
   initScene,
   initAppService,
   setTool,
@@ -340,6 +444,8 @@ export const app = {
   loadExample,
   saveScene,
   openScene,
+  syncUrl,
+  copyLink,
   sceneObjs,
   on,
 };

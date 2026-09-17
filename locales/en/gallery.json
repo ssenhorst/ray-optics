@@ -13,7 +13,11 @@
     },
     "contributors_one": "Contributor: {{contributors}}",
     "contributors_other": "Contributors: {{contributors}}",
-    "openInSimulator": "Open in Simulator"
+    "openInSimulator": "Open in Simulator",
+    "waveOptics": {
+      "title": "Wave optics",
+      "description": "These open in the companion wave-optics simulator, where the light is a complex scalar field summed from point sources rather than a set of rays. Each is built to fit the window it is loaded into, so there is no fixed scene file and no thumbnail to show."
+    }
   },
   "galleryData": {
     "common": {

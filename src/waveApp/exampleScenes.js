@@ -66,8 +66,17 @@ const element = (type, x, y0, y1, extra = {}) => ({
 
 const interface_ = (x, y0, y1, extra = {}) => element('WaveInterface', x, y0, y1, extra);
 
+/** The viewport the scene being built is laid out for, in scene length units. */
+let viewport = { width: 1500, height: 900 };
+
 /**
  * Wrap objects into a loadable scene.
+ *
+ * The viewport is stored with the scene because loading rescales to fit: a
+ * scene that does not say what it was laid out for is assumed to be the default
+ * 1500 by 900 and is then shrunk to fit the real window, which is how an example
+ * built to fill the screen ends up with a margin round it.
+ *
  * @param {string} name
  * @param {Array<Object>} objs
  * @param {Object} waveOptics
@@ -79,6 +88,8 @@ const build = (name, objs, waveOptics) => ({
   objs,
   origin: { x: 0, y: 0 },
   scale: 1,
+  width: round(viewport.width),
+  height: round(viewport.height),
   waveOptics: {
     wavelength: WAVELENGTH,
     refractiveIndex: 1,
@@ -333,5 +344,6 @@ export const EXAMPLE_SCENES = [
 export function buildExampleScene(id, width, height) {
   const example = EXAMPLE_SCENES.find((entry) => entry.id === id);
   if (!example) return null;
+  viewport = { width, height };
   return JSON.stringify(example.build(width, height));
 }

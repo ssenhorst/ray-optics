@@ -114,6 +114,16 @@ describe('reversed optical axis', () => {
     }
   }, 30000);
 
+  test('does not report well-separated surfaces as overlapping', () => {
+    // The check is "does the next surface start before the previous one ends",
+    // and which end is which swaps when the axis does. Compared as raw x it
+    // reported every reversed scene with two surfaces as ambiguous.
+    for (const reversed of [false, true]) {
+      const model = buildWaveModel(buildScene(reversed), { resolution: 32 });
+      expect(model.warnings).not.toContain('interfacesOverlap');
+    }
+  });
+
   test('lambda in an equation tracks the scene wavelength', () => {
     const scene = new Scene();
     scene.setViewportSize(1600, 800);

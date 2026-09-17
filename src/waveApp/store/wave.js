@@ -51,8 +51,12 @@ export const useWaveStore = () => {
     animationSpeed: 0.5,
     showGrid: false,
     snapToGrid: false,
+    // Deliberately not part of the saved scene: whether the address bar tracks
+    // the scene is a preference of the person editing, not of the scene.
+    autoSyncUrl: false,
     status: {
       error: null,
+      urlWarning: null,
       sourceCount: 0,
       pixelsPerWavelength: 0,
       samplesPerWavelength: 0,
@@ -165,6 +169,7 @@ export const useWaveStore = () => {
       state.status.computeMs = detail.computeMs;
     }
     if (detail.warnings !== undefined) state.status.warnings = detail.warnings;
+    if (detail.urlWarning !== undefined) state.status.urlWarning = detail.urlWarning;
     if (detail.mousePos !== undefined) state.status.mousePos = detail.mousePos;
     if (detail.error !== undefined) state.status.error = detail.error;
   });

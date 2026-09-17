@@ -239,12 +239,19 @@ export function buildSubspaceStack(scene, settings, samplesPerWavelength) {
     });
 
     // Overlapping interfaces have no well-defined order, so the subspace a
-    // point belongs to becomes ambiguous.
+    // point belongs to becomes ambiguous. The comparison is in the direction of
+    // travel: where one surface ends and the next begins swap over when the
+    // axis is reversed, and comparing raw x would then report every scene with
+    // two surfaces in it as overlapping.
     if (i > 0) {
       const previous = interfaces[i - 1].getAxialRange();
       const current = surface.getAxialRange();
-      if (previous && current && current.min < previous.max) {
-        warnings.push('interfacesOverlap');
+      if (previous && current) {
+        const previousEnd = axisSign > 0 ? previous.max : previous.min;
+        const currentStart = axisSign > 0 ? current.min : current.max;
+        if (axisSign * currentStart < axisSign * previousEnd) {
+          warnings.push('interfacesOverlap');
+        }
       }
     }
   }

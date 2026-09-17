@@ -10,11 +10,14 @@
     "gallery": "Gallery",
     "modules": "Modules",
     "about": "About",
-    "github": "GitHub"
+    "github": "GitHub",
+    "waveOptics": "Wave Optics"
   },
   "homePage": {
     "description": "Create & simulate 2D geometric optical scenes interactively.\nTotally free and web-based. Source code is [available on GitHub](/github).",
-    "launchSimulator": "Launch Simulator"
+    "launchSimulator": "Launch Simulator",
+    "waveOpticsDescription": "There is also a companion wave-optics simulator, where the light is a complex scalar field summed from point sources rather than a set of rays: diffraction, interference and focusing all come out of the same sum.",
+    "launchWaveOptics": "Launch Wave Optics"
   },
   "tools": {
     "title": "Tools",
