@@ -89,6 +89,7 @@ export function fieldGrid(scene) {
     data: simulator.fieldReadback,
     grid: model.grid,
     interfaces: model.interfaces,
+    axisSign: model.settings?.axisSign ?? 1,
   };
 }
 
@@ -130,6 +131,7 @@ export function boundaryRows(grid, interfaces) {
  */
 export function peakInSubspace(field, subspaceIndex) {
   const { data, grid, interfaces } = field;
+  const axisSign = field.axisSign ?? 1;
   const rows = boundaryRows(grid, interfaces);
 
   let bestIndex = -1;
@@ -142,7 +144,7 @@ export function peakInSubspace(field, subspaceIndex) {
       const x = grid.originX + grid.stepX * i;
       let index = 0;
       for (let s = 0; s < rows.length; s++) {
-        if (x >= rows[s][j]) index++; else break;
+        if (axisSign * x >= axisSign * rows[s][j]) index++; else break;
       }
       if (index !== subspaceIndex) continue;
 
@@ -199,7 +201,7 @@ export function peakInSubspace(field, subspaceIndex) {
 export function subspaceAt(scene, x, y) {
   const model = currentModel(scene);
   if (!model) return 0;
-  return subspaceIndexAt(model.interfaces, x, y);
+  return subspaceIndexAt(model.interfaces, x, y, model.settings?.axisSign ?? 1);
 }
 
 /**

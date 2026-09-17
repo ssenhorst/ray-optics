@@ -25,7 +25,7 @@ import { app } from '../services/waveApp.js';
  */
 const RECOMPUTE_KEYS = new Set([
   'wavelength', 'refractiveIndex', 'gridResolution', 'autoResolution',
-  'scalePercentile', 'sourceDensity',
+  'scalePercentile', 'sourceDensity', 'reversed',
 ]);
 
 let storeInstance = null;

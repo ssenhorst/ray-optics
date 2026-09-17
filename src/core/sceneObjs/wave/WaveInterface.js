@@ -177,7 +177,7 @@ class WaveInterface extends LineObjMixin(BaseSceneObj) {
       phase: equationInfo({
         role: i18next.t('simulator:waveSceneObjs.common.phaseRadiansInfo'),
         variable,
-        examples: phaseExamples('y', scene),
+        examples: phaseExamples('y'),
       }),
     };
   }
@@ -304,9 +304,23 @@ class WaveInterface extends LineObjMixin(BaseSceneObj) {
     this._compiledCache ??= {};
     const cache = this._compiledCache;
     if (cache[key]?.source !== this[key]) {
-      cache[key] = { source: this[key], fn: evaluateLatex(this[key]) };
+      const fn = evaluateLatex(this[key]);
+      // Every equation on a wave object can use the scene's wavelength, bound
+      // here rather than passed by each caller. It is read on each evaluation,
+      // not captured, so changing the wavelength changes what the equations
+      // mean without anything needing to be recompiled.
+      cache[key] = {
+        source: this[key],
+        fn: (variables) => fn({ lambda: this.wavelength(), ...variables }),
+      };
     }
     return cache[key].fn;
+  }
+
+  /** The scene's vacuum wavelength, as the equations see it. */
+  wavelength() {
+    const value = this.scene?.waveOptics?.wavelength;
+    return value > 0 ? value : 20;
   }
 
   /** @returns {boolean} Whether the chord spans a usable transverse range. */
@@ -539,6 +553,7 @@ class WaveInterface extends LineObjMixin(BaseSceneObj) {
     const count = this.getSurfaceSampleCount(context);
     const step = span / count;
     const centerY = this.centerY();
+    const axisSign = context.axisSign ?? 1;
 
     const samples = [];
     for (let i = 0; i < count; i++) {
@@ -560,13 +575,16 @@ class WaveInterface extends LineObjMixin(BaseSceneObj) {
       if (![z, slope, amplitude, phase].every(Number.isFinite)) continue;
 
       // The surface is z = f(y), so its tangent is (f', 1) and the forward
-      // normal is (1, -f') normalised.
+      // normal is (1, -f') normalised. "Forward" is the direction the light is
+      // travelling, so reversing the axis reverses the whole normal — which is
+      // the only thing the Rayleigh-Sommerfeld kernel needs to know about it,
+      // since it radiates into the half space the normal points into.
       const norm = Math.hypot(1, slope);
       samples.push({
         x: z,
         y,
-        nx: 1 / norm,
-        ny: -slope / norm,
+        nx: axisSign / norm,
+        ny: -axisSign * slope / norm,
         ds: step * norm,
         tRe: amplitude * Math.cos(phase),
         tIm: amplitude * Math.sin(phase),

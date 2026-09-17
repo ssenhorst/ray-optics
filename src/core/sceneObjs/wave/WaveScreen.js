@@ -185,11 +185,12 @@ class WaveScreen extends LineObjMixin(BaseSceneObj) {
    * @returns {Object|null}
    */
   lastSurface() {
-    const surfaces = collectInterfaces(this.scene);
-    const here = this.center().x;
+    const axisSign = this.scene?.waveOptics?.reversed ? -1 : 1;
+    const surfaces = collectInterfaces(this.scene, axisSign);
+    const here = axisSign * this.center().x;
     let found = null;
     for (const surface of surfaces) {
-      if (surface.meanZ() <= here) found = surface; else break;
+      if (axisSign * surface.meanZ() <= here) found = surface; else break;
     }
     return found;
   }

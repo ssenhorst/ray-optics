@@ -160,6 +160,9 @@ uniform vec4 uLowerRange;   // (yMin, yMax, z below yMin, z above yMax)
 uniform vec4 uUpperRange;
 uniform int uHasLower;
 uniform int uHasUpper;
+// +1 when light travels towards +x, -1 when it travels the other way. Every
+// subspace test is the same comparison with this factor on both sides.
+uniform float uAxisSign;
 
 out vec4 fragColor;
 
@@ -179,8 +182,9 @@ void main() {
   // which is the largest scene y.
   vec2 p = uGridOrigin + uGridStep * (gl_FragCoord.xy - 0.5);
 
-  if (uHasLower == 1 && p.x < boundaryZ(uLowerLut, uLowerRange, p.y)) discard;
-  if (uHasUpper == 1 && p.x >= boundaryZ(uUpperLut, uUpperRange, p.y)) discard;
+  float axial = uAxisSign * p.x;
+  if (uHasLower == 1 && axial < uAxisSign * boundaryZ(uLowerLut, uLowerRange, p.y)) discard;
+  if (uHasUpper == 1 && axial >= uAxisSign * boundaryZ(uUpperLut, uUpperRange, p.y)) discard;
 
   vec2 total = sumField(p);
   // The amplitude is stored alongside the complex field. The display pass
@@ -371,7 +375,7 @@ class WaveFieldEngineWebGL2 {
     this.fieldUniforms = collectUniforms(gl, this.fieldProgram, [
       ...SUMMATION_UNIFORMS, 'uGridOrigin', 'uGridStep',
       'uLowerLut', 'uUpperLut', 'uLowerRange', 'uUpperRange',
-      'uHasLower', 'uHasUpper',
+      'uHasLower', 'uHasUpper', 'uAxisSign',
     ]);
     this.displayUniforms = collectUniforms(gl, this.displayProgram, [
       'uField', 'uColormap', 'uResolution', 'uView', 'uScale',
@@ -630,6 +634,7 @@ class WaveFieldEngineWebGL2 {
     gl.useProgram(this.fieldProgram);
     gl.uniform2f(this.fieldUniforms.uGridOrigin, grid.originX, grid.originY);
     gl.uniform2f(this.fieldUniforms.uGridStep, grid.stepX, grid.stepY);
+    gl.uniform1f(this.fieldUniforms.uAxisSign, settings.axisSign ?? 1);
 
     for (let j = 0; j < subspaces.length; j++) {
       this.bindSources(

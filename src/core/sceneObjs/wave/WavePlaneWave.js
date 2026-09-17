@@ -95,10 +95,17 @@ class WavePlaneWave extends BaseSceneObj {
     );
   }
 
-  /** The unit propagation direction. */
+  /**
+   * The unit propagation direction.
+   *
+   * The angle is measured from the optical axis, not from the canvas, so a
+   * scene running right to left aims its plane waves that way without every
+   * angle in it needing to be rewritten.
+   */
   direction() {
     const radians = this.angle * Math.PI / 180;
-    return { x: Math.cos(radians), y: Math.sin(radians) };
+    const axisSign = this.scene?.waveOptics?.reversed ? -1 : 1;
+    return { x: axisSign * Math.cos(radians), y: Math.sin(radians) };
   }
 
   /**
@@ -125,7 +132,10 @@ class WavePlaneWave extends BaseSceneObj {
    * @returns {number} Degrees.
    */
   angleTowards(point) {
-    const degrees = Math.atan2(point.y - this.y, point.x - this.x) * 180 / Math.PI;
+    const axisSign = this.scene?.waveOptics?.reversed ? -1 : 1;
+    const degrees = Math.atan2(
+      point.y - this.y, axisSign * (point.x - this.x)
+    ) * 180 / Math.PI;
     return Math.min(MAX_ANGLE, Math.max(-MAX_ANGLE, degrees));
   }
 

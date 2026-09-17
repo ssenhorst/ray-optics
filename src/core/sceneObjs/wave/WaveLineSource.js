@@ -71,7 +71,7 @@ class WaveLineSource extends LineObjMixin(BaseSceneObj) {
       phase: equationInfo({
         role: i18next.t('simulator:waveSceneObjs.common.phaseRadiansInfo'),
         variable,
-        examples: phaseExamples('u', scene),
+        examples: phaseExamples('u'),
       }),
     };
   }
@@ -157,6 +157,7 @@ class WaveLineSource extends LineObjMixin(BaseSceneObj) {
       return [];
     }
 
+    const lambda = settings?.wavelength > 0 ? settings.wavelength : 20;
     const count = this.sampleCount(settings, samplesPerWavelength, length);
     const step = length / count;
     const dirX = (this.p2.x - this.p1.x) / length;
@@ -172,8 +173,11 @@ class WaveLineSource extends LineObjMixin(BaseSceneObj) {
       let localAmplitude;
       let localPhase;
       try {
-        localAmplitude = amplitudeOf({ u });
-        localPhase = phaseOf({ u });
+        // `lambda` is bound to the scene's wavelength, so a phase ramp can be
+        // written in terms of it and keep meaning the same angle when the
+        // wavelength changes.
+        localAmplitude = amplitudeOf({ u, lambda });
+        localPhase = phaseOf({ u, lambda });
       } catch (e) {
         this.error = e.toString();
         return [];

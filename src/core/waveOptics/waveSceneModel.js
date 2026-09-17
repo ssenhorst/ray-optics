@@ -83,7 +83,21 @@ export function resolveWaveSettings(scene) {
     lowerCutoff: clamp(stored.lowerCutoff ?? 0, 0, 0.999),
     logScale: Boolean(stored.logScale),
     dynamicRange: positiveOr(stored.dynamicRange, 40),
+    reversed: Boolean(stored.reversed),
   };
+
+  /**
+   * Which way along the canvas `x` axis light travels: `+1` for left to right,
+   * `-1` for right to left.
+   *
+   * Everything in this directory is written for light travelling towards `+x`,
+   * and reversing it is a single sign rather than a second set of formulas:
+   * surfaces order the other way, a surface's forward normal points the other
+   * way, and the subspace a point belongs to is decided by the reversed
+   * comparison. The Green's function is isotropic and so is a line source, so
+   * neither notices.
+   */
+  resolved.axisSign = resolved.reversed ? -1 : 1;
 
   // In automatic mode the ladder is free to climb to the top; otherwise the
   // chosen resolution is both the target and the cap.
@@ -142,7 +156,7 @@ export function countWaveSources(scene, context = {}) {
   // which the ordered stack knows; approximating with the background index
   // here is enough for a budget estimate and avoids building the stack twice.
   let previousIndex = context.settings?.refractiveIndex ?? 1;
-  for (const surface of collectInterfaces(scene)) {
+  for (const surface of collectInterfaces(scene, context.settings?.axisSign ?? 1)) {
     total += surface.getSurfaceSampleCount({
       ...context, refractiveIndexBefore: previousIndex
     });
@@ -160,9 +174,10 @@ export function countWaveSources(scene, context = {}) {
  * surface are their own surface, which is the common case.
  *
  * @param {Scene} scene
+ * @param {number} [axisSign=1] - Which way light travels along `x`.
  * @returns {Array<Object>}
  */
-export function collectInterfaces(scene) {
+export function collectInterfaces(scene, axisSign = 1) {
   const surfaces = [];
   for (const obj of scene.objs ?? []) {
     if (typeof obj?.getSurfaces === 'function') {
@@ -175,7 +190,9 @@ export function collectInterfaces(scene) {
       surfaces.push(obj);
     }
   }
-  return surfaces.sort((a, b) => a.meanZ() - b.meanZ());
+  // Ordered along the direction of travel, so "the interface before this one"
+  // means the same thing whichever way the light is going.
+  return surfaces.sort((a, b) => axisSign * (a.meanZ() - b.meanZ()));
 }
 
 /**
@@ -194,7 +211,8 @@ export function collectInterfaces(scene) {
  * @returns {{subspaces: Subspace[], interfaces: Array<Object>, warnings: string[]}}
  */
 export function buildSubspaceStack(scene, settings, samplesPerWavelength) {
-  const interfaces = collectInterfaces(scene);
+  const axisSign = settings.axisSign ?? 1;
+  const interfaces = collectInterfaces(scene, axisSign);
   const warnings = [];
 
   const subspaces = [{
@@ -212,7 +230,7 @@ export function buildSubspaceStack(scene, settings, samplesPerWavelength) {
     subspaces.push({
       refractiveIndex: positiveOr(surface.refractiveIndexAfter, 1),
       surfaceSamples: surface.getSurfaceSamples({
-        scene, settings, samplesPerWavelength, refractiveIndexBefore: before
+        scene, settings, samplesPerWavelength, refractiveIndexBefore: before, axisSign
       }),
       primaries: [],
       planeWaves: [],
@@ -238,7 +256,7 @@ export function buildSubspaceStack(scene, settings, samplesPerWavelength) {
       for (const source of contributed ?? []) {
         if (!Number.isFinite(source.x) || !Number.isFinite(source.y) ||
           !Number.isFinite(source.re) || !Number.isFinite(source.im)) continue;
-        subspaces[subspaceIndexAt(interfaces, source.x, source.y)].primaries.push(source);
+        subspaces[subspaceIndexAt(interfaces, source.x, source.y, axisSign)].primaries.push(source);
       }
     }
 
@@ -249,7 +267,7 @@ export function buildSubspaceStack(scene, settings, samplesPerWavelength) {
       for (const wave of waves ?? []) {
         if (!Number.isFinite(wave.x) || !Number.isFinite(wave.y) ||
           !Number.isFinite(wave.re) || !Number.isFinite(wave.im)) continue;
-        subspaces[subspaceIndexAt(interfaces, wave.x, wave.y)].planeWaves.push(wave);
+        subspaces[subspaceIndexAt(interfaces, wave.x, wave.y, axisSign)].planeWaves.push(wave);
       }
     }
   }
@@ -263,12 +281,13 @@ export function buildSubspaceStack(scene, settings, samplesPerWavelength) {
  * @param {Array<Object>} interfaces - Ordered interfaces.
  * @param {number} z - Position along the optical axis.
  * @param {number} y - Transverse position.
+ * @param {number} [axisSign=1] - Which way light travels along `x`.
  * @returns {number}
  */
-export function subspaceIndexAt(interfaces, z, y) {
+export function subspaceIndexAt(interfaces, z, y, axisSign = 1) {
   let index = 0;
   for (const surface of interfaces) {
-    if (z >= surface.zAt(y)) index++; else break;
+    if (axisSign * z >= axisSign * surface.zAt(y)) index++; else break;
   }
   return index;
 }
@@ -398,6 +417,7 @@ export function buildWaveModel(scene, { resolution, resolveResolution } = {}) {
 
   return {
     settings,
+    axisSign: settings.axisSign,
     subspaces,
     interfaces,
     grid,

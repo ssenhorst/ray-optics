@@ -193,7 +193,9 @@ export function computeModelFieldAt(model, points) {
   // Group the points by subspace so each subspace is summed over once.
   const bySubspace = new Map();
   points.forEach((point, index) => {
-    const j = subspaceIndexAt(model.interfaces, point.x, point.y);
+    const j = subspaceIndexAt(
+      model.interfaces, point.x, point.y, model.settings?.axisSign ?? 1
+    );
     if (!bySubspace.has(j)) bySubspace.set(j, []);
     bySubspace.get(j).push(index);
   });
