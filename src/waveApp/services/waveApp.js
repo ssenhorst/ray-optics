@@ -172,6 +172,15 @@ function bindEditorEvents() {
       bar.style.display = 'none';
       objBar.shouldShowAdvanced = false;
     }
+
+    // Wave objects show their drag handles only while selected, so a selection
+    // change has to redraw them. The field itself is unaffected, so only the
+    // object layer is redrawn, which is free next to recomputing it.
+    //
+    // Deferred by a microtask because the editor emits this event before it
+    // stores the new index: drawing now would ask every object whether it is
+    // selected and get the previous answer.
+    queueMicrotask(() => simulator.updateSimulation(true, true));
     emit('selectionChange', { index: e.newIndex });
   });
 

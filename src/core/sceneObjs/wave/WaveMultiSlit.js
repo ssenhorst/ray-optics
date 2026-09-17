@@ -15,7 +15,12 @@
  */
 
 import WaveInterface, { SHARED_INTERFACE_DEFAULTS } from './WaveInterface.js';
+import geometry from '../../geometry.js';
 import i18next from 'i18next';
+import { drawHandle, drawGuide, drawHandleLabel, isOnHandle } from './waveHandles.js';
+
+/** The narrowest slit or closest spacing a drag may set, in scene length units. */
+const MIN_SLIT_DIMENSION = 0.5;
 
 /**
  * An opaque screen with a row of identical slits, centred on the interface.
@@ -77,6 +82,86 @@ class WaveMultiSlit extends WaveInterface {
       function (obj, value) { obj.slitSpacing = value; },
       '<p>' + i18next.t('simulator:waveSceneObjs.common.slitSpacingInfo') + '</p>'
     );
+  }
+
+  /** The transverse offset of the centre of slit `index`, from the aperture centre. */
+  slitCentreOffset(index) {
+    const count = Math.max(1, Math.round(this.slitCount));
+    return -(count - 1) * this.slitSpacing / 2 + index * this.slitSpacing;
+  }
+
+  /**
+   * The two on-canvas controls: the edge of the first slit sets its width, and
+   * the centre of the next slit sets the spacing.
+   * @returns {{width: Point, spacing: Point|null}|null}
+   */
+  controlPoints() {
+    if (!this.isValid()) return null;
+    const extent = this.getExtent();
+    const centerY = this.centerY();
+    const at = (offset) => {
+      const y = Math.min(extent.yMax, Math.max(extent.yMin, centerY + offset));
+      return { x: this.zAt(y), y };
+    };
+    const count = Math.max(1, Math.round(this.slitCount));
+    const first = this.slitCentreOffset(0);
+    return {
+      first: at(first),
+      width: at(first + this.slitWidth / 2),
+      // The spacing control is the centre of the *last* slit, which is the one
+      // that always moves when the spacing changes. With an odd count the
+      // second slit sits on the axis and would not move at all.
+      spacing: count > 1 ? at(this.slitCentreOffset(count - 1)) : null,
+      previous: count > 1 ? at(this.slitCentreOffset(count - 2)) : null,
+    };
+  }
+
+  checkMouseOver(mouse) {
+    const controls = this.isSelected() ? this.controlPoints() : null;
+    if (controls) {
+      if (isOnHandle(mouse, controls.width)) {
+        return { part: 3, targetPoint: geometry.point(controls.width.x, controls.width.y) };
+      }
+      if (controls.spacing && isOnHandle(mouse, controls.spacing)) {
+        return { part: 4, targetPoint: geometry.point(controls.spacing.x, controls.spacing.y) };
+      }
+    }
+    return super.checkMouseOver(mouse);
+  }
+
+  onDrag(mouse, dragContext, ctrl, shift) {
+    const offset = mouse.pos.y - this.centerY();
+    if (dragContext.part === 3) {
+      // The handle is the edge of the first slit, so its distance from that
+      // slit's centre is half the width.
+      this.slitWidth = Math.max(
+        MIN_SLIT_DIMENSION, 2 * Math.abs(offset - this.slitCentreOffset(0))
+      );
+      return;
+    }
+    if (dragContext.part === 4) {
+      // The row stays centred on the aperture, so the last slit sits half the
+      // row width out and the spacing follows from where it is dragged to.
+      const count = Math.max(2, Math.round(this.slitCount));
+      this.slitSpacing = Math.max(MIN_SLIT_DIMENSION, 2 * Math.abs(offset) / (count - 1));
+      return;
+    }
+    super.onDrag(mouse, dragContext, ctrl, shift);
+  }
+
+  drawControls(canvasRenderer, isHovered) {
+    super.drawControls(canvasRenderer, isHovered);
+    const controls = this.isSelected() ? this.controlPoints() : null;
+    if (!controls) return;
+
+    drawGuide(canvasRenderer, controls.first, controls.width);
+    drawHandle(canvasRenderer, controls.width);
+    drawHandleLabel(canvasRenderer, 'w', controls.width);
+    if (controls.spacing) {
+      drawGuide(canvasRenderer, controls.previous, controls.spacing);
+      drawHandle(canvasRenderer, controls.spacing);
+      drawHandleLabel(canvasRenderer, 's', controls.spacing);
+    }
   }
 
   transmissionAt(y) {

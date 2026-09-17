@@ -322,6 +322,10 @@
     "WaveZonePlate": {
       "title": "Fresnel zone plate",
       "description": "Zones alternating every half wave of extra path to the focus, either blocking or phase-reversing."
+    },
+    "WaveLens": {
+      "title": "Lens",
+      "description": "Two spherical surfaces with glass between them, shaped from a focal length. Unlike a quadratic phase plate it refracts by curvature alone, so it carries the aberration of its own geometry."
     }
   }
 }

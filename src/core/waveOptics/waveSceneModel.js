@@ -154,13 +154,28 @@ export function countWaveSources(scene, context = {}) {
 /**
  * The valid interfaces in a scene, ordered along the optical axis.
  *
+ * An object may present more than one surface: a lens is two refracting
+ * surfaces with glass between them, and the subspace stack has to see both, in
+ * order, with the glass as the medium between. Objects that are a single
+ * surface are their own surface, which is the common case.
+ *
  * @param {Scene} scene
  * @returns {Array<Object>}
  */
 export function collectInterfaces(scene) {
-  return (scene.objs ?? [])
-    .filter((obj) => typeof obj?.getSurfaceSamples === 'function' && obj.isValid?.())
-    .sort((a, b) => a.meanZ() - b.meanZ());
+  const surfaces = [];
+  for (const obj of scene.objs ?? []) {
+    if (typeof obj?.getSurfaces === 'function') {
+      for (const surface of obj.getSurfaces() ?? []) {
+        if (typeof surface?.getSurfaceSamples === 'function' && surface.isValid?.()) {
+          surfaces.push(surface);
+        }
+      }
+    } else if (typeof obj?.getSurfaceSamples === 'function' && obj.isValid?.()) {
+      surfaces.push(obj);
+    }
+  }
+  return surfaces.sort((a, b) => a.meanZ() - b.meanZ());
 }
 
 /**

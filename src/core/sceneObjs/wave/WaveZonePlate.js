@@ -15,7 +15,12 @@
  */
 
 import WaveInterface, { SHARED_INTERFACE_DEFAULTS } from './WaveInterface.js';
+import geometry from '../../geometry.js';
 import i18next from 'i18next';
+import { drawFocalMarks, focalHandleAt } from './waveHandles.js';
+
+/** The shortest focal length a drag may set, in scene length units. */
+const MIN_FOCAL_LENGTH = 20;
 
 /**
  * A Fresnel zone plate: zones that alternate every half wave of extra path to
@@ -75,6 +80,44 @@ class WaveZonePlate extends WaveInterface {
       function (obj, value) { obj.phaseReversing = value; },
       '<p>' + i18next.t('simulator:waveSceneObjs.common.phaseReversingInfo') + '</p>'
     );
+  }
+
+  /** The point the zones are constructed around: the centre of the aperture. */
+  focalCenter() {
+    const y = this.centerY();
+    return { x: this.zAt(y), y };
+  }
+
+  checkMouseOver(mouse) {
+    if (this.isValid() && this.isSelected()) {
+      const focal = focalHandleAt(mouse, this.focalCenter(), this.focalLength);
+      if (focal) {
+        return {
+          part: 3,
+          targetPoint: geometry.point(focal.point.x, focal.point.y),
+          focalSign: focal.sign,
+        };
+      }
+    }
+    return super.checkMouseOver(mouse);
+  }
+
+  onDrag(mouse, dragContext, ctrl, shift) {
+    if (dragContext.part === 3) {
+      // The zones are laid out for whatever focal length the mark is dragged
+      // to, so the pattern visibly coarsens as the focus is pushed away.
+      const signed = (mouse.pos.x - this.focalCenter().x) * dragContext.focalSign;
+      this.focalLength = Math.max(MIN_FOCAL_LENGTH, signed);
+      return;
+    }
+    super.onDrag(mouse, dragContext, ctrl, shift);
+  }
+
+  drawControls(canvasRenderer, isHovered) {
+    super.drawControls(canvasRenderer, isHovered);
+    if (this.isSelected()) {
+      drawFocalMarks(canvasRenderer, this.focalCenter(), this.focalLength);
+    }
   }
 
   /** The wavelength the zone spacing is derived from. */

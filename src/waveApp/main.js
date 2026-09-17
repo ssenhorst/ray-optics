@@ -65,6 +65,11 @@ async function initApp() {
 
   // Needs the mounted DOM, so it runs after mount.
   app.initAppService();
+
+  // A handle on the running app from the console: the scene, the editor and the
+  // simulator are all reachable through it, which is how a scene is inspected
+  // or driven from an automated browser check.
+  window.waveApp = app;
 }
 
 initApp();

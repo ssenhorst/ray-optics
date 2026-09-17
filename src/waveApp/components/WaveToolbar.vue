@@ -262,6 +262,7 @@ const TOOL_GROUPS = [
     label: 'Interfaces',
     items: [
       { type: 'WaveInterface', label: 'Interface', hint: 'A surface with transmission given by equations' },
+      { type: 'WaveLens', label: 'Lens', hint: 'Two spherical surfaces with glass between, shaped from a focal length' },
       { type: 'WaveMultiSlit', label: 'N slits', hint: 'An opaque screen with a row of identical slits' },
       { type: 'WaveSquareGrating', label: 'Square grating', hint: 'Square-wave transmission, by pitch and duty cycle' },
       { type: 'WaveSinusoidalGrating', label: 'Sinusoidal phase grating', hint: 'A single-frequency phase grating' },

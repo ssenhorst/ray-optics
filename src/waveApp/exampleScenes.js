@@ -165,17 +165,40 @@ export const EXAMPLE_SCENES = [
   {
     id: 'lens',
     name: 'Lens',
-    description: 'A collimated beam brought to a focus by a quadratic phase profile.',
+    description: 'A collimated beam brought to a focus by two spherical glass surfaces.',
     build: (width, height) => {
-      const halfHeight = height * 0.22;
-      const lensX = width * 0.35;
+      // A moderate aperture at f/2.4. Opening it further makes the spherical
+      // aberration of a single glass singlet unmistakable, which is worth
+      // seeing, but it is not what the example should open on.
+      const halfHeight = height * 0.13;
+      const lensX = width * 0.28;
       return build('Lens', [
         planeWave(width * 0.1, height * 0.5),
+        element('WaveLens', lensX, height * 0.5 - halfHeight, height * 0.5 + halfHeight, {
+          focalLength: round(width * 0.4),
+          refractiveIndex: 1.5,
+          thickness: 8,
+        }),
+      ], { upperCutoff: 1.5 });
+    },
+  },
+  {
+    id: 'thinLens',
+    name: 'Thin lens (phase plate)',
+    description: 'The same focus from an ideal quadratic phase, with no aberration.',
+    build: (width, height) => {
+      const halfHeight = height * 0.13;
+      const lensX = width * 0.28;
+      return build('Thin lens', [
+        planeWave(width * 0.1, height * 0.5),
+        // The same focal length as the glass lens above, so the two can be
+        // compared directly: this one has no thickness and no aberration, so
+        // its focus lands exactly where the phase says it should.
         interface_(
           lensX, height * 0.5 - halfHeight, height * 0.5 + halfHeight,
-          { eqnPhase: focusPhase('y', width * 0.32) }
+          { eqnPhase: focusPhase('y', width * 0.4) }
         ),
-      ], { upperCutoff: 3 });
+      ], { upperCutoff: 1.5 });
     },
   },
   {

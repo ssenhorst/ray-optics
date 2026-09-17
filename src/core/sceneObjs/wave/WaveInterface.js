@@ -562,8 +562,24 @@ class WaveInterface extends LineObjMixin(BaseSceneObj) {
     ctx.globalAlpha = 1;
     ctx.setLineDash([]);
 
-    // The endpoints are the drag handles for the transverse extent, so they are
-    // drawn as grabbable vertices rather than left invisible.
+    // The controls appear once the surface is selected, or under the pointer,
+    // rather than on every interface at once: with several controls per object
+    // a busy scene otherwise disappears under its own handles.
+    if (isHovered || this.isSelected()) {
+      this.drawControls(canvasRenderer, isHovered);
+    }
+  }
+
+  /**
+   * The on-canvas controls, drawn only while the surface is selected or hovered.
+   *
+   * Subclasses extend this with the controls for their own parameters; the
+   * endpoints of the chord belong to every interface.
+   *
+   * @param {CanvasRenderer} canvasRenderer
+   * @param {boolean} isHovered
+   */
+  drawControls(canvasRenderer, isHovered) {
     for (const end of [this.p1, this.p2]) {
       canvasRenderer.drawPoint(
         end,

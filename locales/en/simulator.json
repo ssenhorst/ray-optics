@@ -1004,7 +1004,13 @@
       "focalLengthInfo": "Where the zones bring the light to a focus, at the scene wavelength. The zone boundaries follow from it as the square root of n·λ·f.",
       "phaseReversing": "Phase-reversing",
       "phaseReversingInfo": "Invert the cancelling zones rather than blocking them. This wastes none of the light and is about four times as efficient.",
-      "maskInfo": "The screen is open wherever this function is non-negative, and opaque wherever it is negative."
+      "maskInfo": "The screen is open wherever this function is non-negative, and opaque wherever it is negative.",
+      "glassIndex": "Glass index",
+      "glassIndexInfo": "The refractive index of the glass between the two surfaces. The curvature needed for the stated focal length follows from it, so a higher index gives a flatter lens.",
+      "lensThickness": "Thickness",
+      "lensThicknessInfo": "The thickness of the glass at its thinnest: the rim of a converging lens, the centre of a diverging one. A thicker lens focuses closer than the thin-lens focal length says.",
+      "lensFocalLengthInfo": "The thin-lens focal length the curvature is derived from, positive for converging. The focus is drawn at plus and minus this distance and can be dragged; dragging one mark through the centre turns the lens over.",
+      "lensApertureWarning": "The aperture is wider than the radius of curvature, so the surfaces are cut off at their widest point. Shorten the aperture or lengthen the focal length."
     },
     "eqnInfo": {
       "examples": "For example:",
