@@ -206,6 +206,54 @@ export const EXAMPLE_SCENES = [
     },
   },
   {
+    id: 'focusMeasurement',
+    name: 'Measuring a focus',
+    description: 'A lens with a probe on its focus and a screen across it. Select either to read it.',
+    build: (width, height) => {
+      const halfHeight = height * 0.13;
+      const lensX = width * 0.28;
+      const focal = round(width * 0.4);
+      return build('Measuring a focus', [
+        planeWave(width * 0.1, height * 0.5),
+        element('WaveLens', lensX, height * 0.5 - halfHeight, height * 0.5 + halfHeight, {
+          focalLength: focal, refractiveIndex: 1.5, thickness: 8,
+        }),
+        // Dropped past the lens, so it reports the image rather than the beam
+        // arriving at the glass.
+        {
+          type: 'WaveFocusProbe',
+          x: round(lensX + focal * 0.6), y: round(height * 0.5 - halfHeight * 0.7),
+        },
+        // Across the focus, to see the spot the probe puts a number on.
+        {
+          type: 'WaveScreen',
+          p1: { x: round(lensX + focal * 0.95), y: round(height * 0.5 - halfHeight) },
+          p2: { x: round(lensX + focal * 0.95), y: round(height * 0.5 + halfHeight) },
+          plotMode: 'intensity',
+        },
+      ], { upperCutoff: 1.5 });
+    },
+  },
+  {
+    id: 'farField',
+    name: 'Far field of a double slit',
+    description: 'The pattern at infinity, over the angles the screen subtends at the slits.',
+    build: (width, height) => build('Far field of a double slit', [
+      planeWave(width * 0.08, height * 0.5),
+      element('WaveMultiSlit', width * 0.25, height * 0.25, height * 0.75, {
+        slitCount: 2, slitWidth: WAVELENGTH, slitSpacing: 6 * WAVELENGTH,
+        profileDisplay: 'amplitudePhase',
+      }),
+      {
+        type: 'WaveScreen',
+        p1: { x: round(width * 0.8), y: round(height * 0.1) },
+        p2: { x: round(width * 0.8), y: round(height * 0.9) },
+        plotMode: 'intensity',
+        farField: true,
+      },
+    ], { upperCutoff: 0.7 }),
+  },
+  {
     id: 'refraction',
     name: 'Refraction',
     description: 'A tilted beam crossing into a denser medium, bending towards the normal.',

@@ -673,19 +673,43 @@ class WaveFieldEngineWebGL2 {
    * @param {number} percentile - Between 0 and 100.
    * @returns {{referenceAmplitude: number, maxAmplitude: number, sampleCount: number}}
    */
-  readFieldStats(percentile = 99) {
+  /**
+   * Bring the computed field back from the GPU.
+   *
+   * Four floats per sample, in the field pass's layout: real part, imaginary
+   * part, `|U|`, and a one. Rows run bottom to top, matching the grid built by
+   * {@link computeFieldGrid}.
+   *
+   * This is the only way anything outside the shaders can look at the field, so
+   * it is what the colour-scale statistics and the measurement objects both go
+   * through. It is also not cheap — a full framebuffer transfer that stalls the
+   * pipeline — so it is done once per change rather than per frame.
+   *
+   * @returns {Float32Array|null}
+   */
+  readField() {
     const gl = this.gl;
     const count = this.fieldWidth * this.fieldHeight;
-    if (count === 0) {
-      return { referenceAmplitude: 0, maxAmplitude: 0, sampleCount: 0 };
-    }
+    if (count === 0) return null;
 
-    if (!this.readbackBuffer) this.readbackBuffer = new Float32Array(count * 4);
+    if (!this.readbackBuffer || this.readbackBuffer.length < count * 4) {
+      this.readbackBuffer = new Float32Array(count * 4);
+    }
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
     gl.readPixels(
       0, 0, this.fieldWidth, this.fieldHeight, gl.RGBA, gl.FLOAT, this.readbackBuffer
     );
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    return this.readbackBuffer;
+  }
+
+  readFieldStats(percentile = 99) {
+    const count = this.fieldWidth * this.fieldHeight;
+    if (count === 0) {
+      return { referenceAmplitude: 0, maxAmplitude: 0, sampleCount: 0 };
+    }
+
+    this.readField();
 
     const amplitudes = new Float32Array(count);
     let maxAmplitude = 0;

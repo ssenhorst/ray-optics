@@ -301,7 +301,8 @@
     },
     "categories": {
       "sources": "Sources",
-      "interfaces": "Interfaces"
+      "interfaces": "Interfaces",
+      "measure": "Measure"
     },
     "WaveSquareGrating": {
       "title": "Square grating",
@@ -326,6 +327,14 @@
     "WaveLens": {
       "title": "Lens",
       "description": "Two spherical surfaces with glass between them, shaped from a focal length. Unlike a quadratic phase plate it refracts by curvature alone, so it carries the aberration of its own geometry."
+    },
+    "WaveScreen": {
+      "title": "Screen",
+      "description": "A line the field is read out along, plotted as a curve. Takes no part in the optics. Can instead show the pattern at infinity over the angles its endpoints subtend at the last surface."
+    },
+    "WaveFocusProbe": {
+      "title": "Focus probe",
+      "description": "Finds the brightest point of the subspace it is dropped into, and the full width at half maximum of the intensity across it."
     }
   }
 }

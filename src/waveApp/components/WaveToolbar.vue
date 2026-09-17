@@ -270,6 +270,14 @@ const TOOL_GROUPS = [
       { type: 'WaveBinaryMask', label: 'Binary mask', hint: 'Open wherever a function of y is non-negative' },
     ],
   },
+  {
+    id: 'measure',
+    label: 'Measure',
+    items: [
+      { type: 'WaveScreen', label: 'Screen', hint: 'Drag a line; select it to plot the field along it' },
+      { type: 'WaveFocusProbe', label: 'Focus probe', hint: 'Click to find the brightest point of that subspace' },
+    ],
+  },
 ];
 
 export default {

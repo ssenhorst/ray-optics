@@ -1,0 +1,257 @@
+/*
+ * Copyright 2026 The Ray Optics Simulation authors and contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import Scene from '../../src/core/Scene.js';
+import WaveScreen from '../../src/core/sceneObjs/wave/WaveScreen.js';
+import WaveFocusProbe from '../../src/core/sceneObjs/wave/WaveFocusProbe.js';
+import WavePlaneWave from '../../src/core/sceneObjs/wave/WavePlaneWave.js';
+import WaveMultiSlit from '../../src/core/sceneObjs/wave/WaveMultiSlit.js';
+import WaveInterface from '../../src/core/sceneObjs/wave/WaveInterface.js';
+import { buildWaveModel } from '../../src/core/waveOptics/waveSceneModel.js';
+import { computeFieldGrid } from '../../src/core/waveOptics/waveSceneModel.js';
+import { computeModelFieldAt } from '../../src/core/waveOptics/WaveFieldEngineCpu.js';
+import { peakInSubspace } from '../../src/core/sceneObjs/wave/waveMeasurement.js';
+
+const WAVELENGTH = 20;
+
+function makeScene() {
+  const scene = new Scene();
+  scene.setViewportSize(1200, 800);
+  scene.waveOptics.wavelength = WAVELENGTH;
+  scene.waveOptics.sourceDensity = 8;
+  return scene;
+}
+
+/**
+ * Stand in for the simulator, which is what a measurement asks for the model
+ * and for the samples. In the app those come from the GPU; here the same model
+ * is built directly and the grid is filled on the CPU.
+ */
+function attachSimulator(scene, { withGrid = false, resolution = 128 } = {}) {
+  const model = buildWaveModel(scene, { resolution });
+  const simulator = { lastModel: model, fieldSerial: 1, fieldReadback: null };
+
+  if (withGrid) {
+    const { grid } = model;
+    const points = [];
+    for (let j = 0; j < grid.height; j++) {
+      for (let i = 0; i < grid.width; i++) {
+        points.push({
+          x: grid.originX + grid.stepX * i,
+          y: grid.originY + grid.stepY * j,
+        });
+      }
+    }
+    const field = computeModelFieldAt(model, points);
+    const data = new Float32Array(points.length * 4);
+    for (let i = 0; i < points.length; i++) {
+      data[i * 4] = field[i * 2];
+      data[i * 4 + 1] = field[i * 2 + 1];
+      data[i * 4 + 2] = Math.hypot(field[i * 2], field[i * 2 + 1]);
+      data[i * 4 + 3] = 1;
+    }
+    simulator.fieldReadback = data;
+  }
+
+  scene.simulator = simulator;
+  return model;
+}
+
+function addPlaneWave(scene, x, y) {
+  const wave = new WavePlaneWave(scene);
+  Object.assign(wave, { x, y, angle: 0, amplitude: 1, phase: 0 });
+  scene.objs.push(wave);
+  return wave;
+}
+
+describe('screen', () => {
+  test('takes no part in the optics', () => {
+    const scene = makeScene();
+    addPlaneWave(scene, 100, 400);
+    const before = buildWaveModel(scene, { resolution: 64 });
+
+    const screen = new WaveScreen(scene, {
+      p1: { x: 600, y: 200 }, p2: { x: 600, y: 600 },
+    });
+    scene.objs.push(screen);
+    const after = buildWaveModel(scene, { resolution: 64 });
+
+    // Putting a detector into a scene must not change the scene.
+    expect(after.interfaces).toHaveLength(before.interfaces.length);
+    expect(after.diagnostics.sourceCount).toBe(before.diagnostics.sourceCount);
+  });
+
+  test('plots the intensity across a double slit as fringes', () => {
+    const scene = makeScene();
+    addPlaneWave(scene, 100, 400);
+    const slits = new WaveMultiSlit(scene);
+    slits.p1 = { x: 300, y: 100 };
+    slits.p2 = { x: 300, y: 700 };
+    Object.assign(slits, { slitCount: 2, slitWidth: 20, slitSpacing: 120 });
+    scene.objs.push(slits);
+
+    const screen = new WaveScreen(scene, {
+      p1: { x: 1100, y: 100 }, p2: { x: 1100, y: 700 },
+    });
+    scene.objs.push(screen);
+    attachSimulator(scene);
+
+    const measurement = screen.measure();
+    expect(measurement).not.toBeNull();
+    expect(measurement.maxAmplitude).toBeGreaterThan(0);
+
+    // Young's fringes: several maxima across the screen, not one lobe.
+    const { amplitudes } = measurement;
+    let maxima = 0;
+    for (let i = 1; i < amplitudes.length - 1; i++) {
+      if (amplitudes[i] > amplitudes[i - 1] && amplitudes[i] > amplitudes[i + 1] &&
+        amplitudes[i] > 0.15 * measurement.maxAmplitude) maxima++;
+    }
+    expect(maxima).toBeGreaterThan(2);
+  }, 30000);
+
+  test('the far field puts double-slit orders at sin(theta) = m lambda / d', () => {
+    const spacing = 120;
+    const scene = makeScene();
+    addPlaneWave(scene, 100, 400);
+    const slits = new WaveMultiSlit(scene);
+    slits.p1 = { x: 300, y: 100 };
+    slits.p2 = { x: 300, y: 700 };
+    Object.assign(slits, { slitCount: 2, slitWidth: 20, slitSpacing: spacing });
+    scene.objs.push(slits);
+
+    const screen = new WaveScreen(scene, {
+      p1: { x: 1100, y: 100 }, p2: { x: 1100, y: 700 }, farField: true,
+    });
+    scene.objs.push(screen);
+    attachSimulator(scene);
+
+    const measurement = screen.measure();
+    expect(measurement).not.toBeNull();
+    const { layout, amplitudes } = measurement;
+
+    // The angles the endpoints subtend at the centre of the last surface.
+    expect(layout.isAngular).toBe(true);
+    expect(layout.axis[0]).toBeCloseTo(
+      Math.atan2(100 - 400, 1100 - 300) * 180 / Math.PI, 6
+    );
+
+    const peakAngles = [];
+    for (let i = 1; i < amplitudes.length - 1; i++) {
+      if (amplitudes[i] > amplitudes[i - 1] && amplitudes[i] > amplitudes[i + 1] &&
+        amplitudes[i] > 0.2 * measurement.maxAmplitude) {
+        peakAngles.push(layout.axis[i]);
+      }
+    }
+    expect(peakAngles.length).toBeGreaterThan(2);
+
+    // Every peak found must sit on an order of the grating, to within the
+    // angular step the screen samples at.
+    const step = Math.abs(layout.axis[1] - layout.axis[0]);
+    for (const degrees of peakAngles) {
+      const order = Math.sin(degrees * Math.PI / 180) * spacing / WAVELENGTH;
+      expect(Math.abs(order - Math.round(order))).toBeLessThan(0.2);
+    }
+    // And the orders that fall inside the range must all be there.
+    expect(peakAngles.length).toBeGreaterThanOrEqual(3);
+    expect(step).toBeGreaterThan(0);
+  }, 30000);
+
+  test('the far field is the same shape wherever the screen is put', () => {
+    const build = (x) => {
+      const scene = makeScene();
+      addPlaneWave(scene, 100, 400);
+      const slits = new WaveMultiSlit(scene);
+      slits.p1 = { x: 300, y: 100 };
+      slits.p2 = { x: 300, y: 700 };
+      Object.assign(slits, { slitCount: 2, slitWidth: 20, slitSpacing: 120 });
+      scene.objs.push(slits);
+      // Same angular span, different distance: the pattern at infinity cannot
+      // depend on where the screen showing it happens to sit.
+      const half = (x - 300) * Math.tan(20 * Math.PI / 180);
+      const screen = new WaveScreen(scene, {
+        p1: { x, y: 400 - half }, p2: { x, y: 400 + half }, farField: true,
+      });
+      scene.objs.push(screen);
+      attachSimulator(scene);
+      return screen.measure();
+    };
+
+    const near = build(800);
+    const far = build(2000);
+    for (let i = 0; i < near.amplitudes.length; i += 16) {
+      expect(near.amplitudes[i] / near.maxAmplitude)
+        .toBeCloseTo(far.amplitudes[i] / far.maxAmplitude, 3);
+    }
+  }, 30000);
+});
+
+describe('focus probe', () => {
+  test('searches only the subspace it was dropped into', () => {
+    const scene = makeScene();
+    addPlaneWave(scene, 100, 400);
+    const surface = new WaveInterface(scene, {
+      p1: { x: 600, y: -400 }, p2: { x: 600, y: 1200 }, refractiveIndexAfter: 1,
+      eqnAmplitude: '0.2',
+    });
+    scene.objs.push(surface);
+
+    const before = new WaveFocusProbe(scene, { x: 300, y: 400 });
+    const after = new WaveFocusProbe(scene, { x: 900, y: 400 });
+    scene.objs.push(before, after);
+    attachSimulator(scene, { withGrid: true, resolution: 96 });
+
+    const first = before.measure();
+    const second = after.measure();
+    expect(first).not.toBeNull();
+    expect(second).not.toBeNull();
+
+    // Each probe's maximum lies on its own side of the surface...
+    expect(first.x).toBeLessThan(600);
+    expect(second.x).toBeGreaterThan(600);
+    // ...and the attenuating surface makes the second one dimmer, which is the
+    // point of confining the search: the global maximum is on the near side.
+    expect(second.amplitude).toBeLessThan(first.amplitude);
+  }, 30000);
+
+  test('measures the width of a peak at half its intensity', () => {
+    // A synthetic field, so the answer is known exactly rather than argued
+    // from optics: a Gaussian of known width has FWHM = 2 sqrt(2 ln 2) sigma.
+    const scene = makeScene();
+    const grid = computeFieldGrid(scene, 256);
+    const sigma = 40;
+    const data = new Float32Array(grid.width * grid.height * 4);
+    for (let j = 0; j < grid.height; j++) {
+      const y = grid.originY + grid.stepY * j;
+      for (let i = 0; i < grid.width; i++) {
+        const x = grid.originX + grid.stepX * i;
+        const amplitude = Math.exp(
+          -((x - 600) ** 2 + (y - 400) ** 2) / (2 * sigma * sigma)
+        );
+        data[(j * grid.width + i) * 4 + 2] = amplitude;
+      }
+    }
+
+    const peak = peakInSubspace({ data, grid, interfaces: [] }, 0);
+    expect(peak.x).toBeCloseTo(600, -1);
+    expect(peak.y).toBeCloseTo(400, -1);
+
+    // The amplitude is the Gaussian, so the intensity has sigma/sqrt(2).
+    const expected = 2 * Math.sqrt(2 * Math.log(2)) * sigma / Math.sqrt(2);
+    expect(peak.width / expected).toBeGreaterThan(0.95);
+    expect(peak.width / expected).toBeLessThan(1.05);
+  });
+});
