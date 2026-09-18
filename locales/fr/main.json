@@ -78,6 +78,15 @@
       "title": "Equation personnalisée",
       "description": "Un miroir dont la forme est définie par l'équation personnalisée y = f(x), où (x,y) est contenu dans les coordonnées transformées dont les points de contrôles sont (-1,0) et (1,0)."
     },
+    "ParamMirror": {
+      "title": "Courbe Paramétrique",
+      "description": "Un miroir dont la forme est définie par des équations paramétriques personnalisées."
+    },
+    "CurveMirror": {
+      "title": "Courbes de Bézier",
+      "description": "Un miroir dont la forme est définie par des courbes de Bézier cubiques.",
+      "instruction": "Cliquer pour créer un élément. Cliquer sur le point de départ pour terminer et fermer la forme, or cliquer deux fois sur le dernier point d'ancrage pour terminer en forme ouverte. Après cela, déplacer les boîtes pour manipuler les points de contrôle, et changer la forme de la courbe."
+    },
     "ConcaveDiffractionGrating": {
       "title": "Réseau de diffraction concave",
       "description": "Un réseau de diffraction concave dont la forme est une partie de cercle."
@@ -111,6 +120,13 @@
     "CustomGlass": {
       "title": "Equation personnalisée",
       "description": "Verre dont la forme est définie par une inégalité personnalisée du type: f(x) < y < g(x), où (x,y) est inclus dans les coordonnés transformés où les deux points de contrôles sont (-1,0) et (1,0)."
+    },
+    "ParamGlass": {
+      "title": "Courbe Paramétrique",
+      "description": "Verre dont la forme est définie par des équations paramétriques personnalisées."
+    },
+    "CurveGlass": {
+      "title": "Courbes de Bézier"
     },
     "GrinGlass": {
       "instruction": "Cliquez pour créer un segment, cliquez sur le point de départ quand vous avez fini de dessiner.",
@@ -160,22 +176,6 @@
     "moveView": {
       "title": "Bouger la vue",
       "description": "Glisser pour bouger la vue. (Le clic droit à la même fonction.)"
-    },
-    "ParamMirror": {
-      "title": "Courbe Paramétrique",
-      "description": "Un miroir dont la forme est définie par des équations paramétriques personnalisées."
-    },
-    "CurveMirror": {
-      "title": "Courbes de Bézier",
-      "description": "Un miroir dont la forme est définie par des courbes de Bézier cubiques.",
-      "instruction": "Cliquer pour créer un élément. Cliquer sur le point de départ pour terminer et fermer la forme, or cliquer deux fois sur le dernier point d'ancrage pour terminer en forme ouverte. Après cela, déplacer les boîtes pour manipuler les points de contrôle, et changer la forme de la courbe."
-    },
-    "ParamGlass": {
-      "title": "Courbe Paramétrique",
-      "description": "Verre dont la forme est définie par des équations paramétriques personnalisées."
-    },
-    "CurveGlass": {
-      "title": "Courbes de Bézier"
     }
   },
   "view": {

@@ -406,7 +406,7 @@ function initAppService() {
   editor = new Editor(scene, canvas, simulator);
   app.editor = editor;
 
-  document.title = i18next.t('main:pages.simulator') + ' - ' + i18next.t('main:project.name');
+  document.title = i18next.t('main:pages.simulator') + ' - ' + i18next.t('main:rayProject.name');
   document.getElementById('home').href = mapURL('/home');
   document.getElementById('about').href = mapURL('/about');
 
@@ -648,10 +648,10 @@ function initAppService() {
       // Update the UI for the loaded scene.
 
       if (scene.name) {
-        document.title = scene.name + " - " + i18next.t('main:pages.simulator') + ' - ' + i18next.t('main:project.name');
+        document.title = scene.name + " - " + i18next.t('main:pages.simulator') + ' - ' + i18next.t('main:rayProject.name');
         //document.getElementById('save_name').value = scene.name;
       } else {
-        document.title = i18next.t('main:pages.simulator') + ' - ' + i18next.t('main:project.name');
+        document.title = i18next.t('main:pages.simulator') + ' - ' + i18next.t('main:rayProject.name');
       }
 
       editor.selectObj(editor.selectedObjIndex);
@@ -1327,7 +1327,7 @@ function importModule(name) {
 }
 
 function reset() {
-  document.title = i18next.t('main:pages.simulator') + ' - ' + i18next.t('main:project.name');
+  document.title = i18next.t('main:pages.simulator') + ' - ' + i18next.t('main:rayProject.name');
   //document.getElementById('save_name').value = "";
 
   editor.isConstructing = false;
@@ -1401,9 +1401,9 @@ function hideWelcome() {
 function rename() {
   //scene.name = document.getElementById('save_name').value;
   if (scene.name) {
-    document.title = scene.name + " - " + i18next.t('main:pages.simulator') + ' - ' + i18next.t('main:project.name');
+    document.title = scene.name + " - " + i18next.t('main:pages.simulator') + ' - ' + i18next.t('main:rayProject.name');
   } else {
-    document.title = i18next.t('main:pages.simulator') + ' - ' + i18next.t('main:project.name');
+    document.title = i18next.t('main:pages.simulator') + ' - ' + i18next.t('main:rayProject.name');
   }
   document.dispatchEvent(new Event('sceneChanged'));
   editor.onActionComplete();

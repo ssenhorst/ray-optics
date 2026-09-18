@@ -62,7 +62,13 @@
               :class="{ 'wave-menu-active': tool === item.type }"
               :title="item.hint"
               @click="chooseTool(item.type)"
-            >{{ item.label }}</button>
+            >
+              <img class="wave-menu-icon" :src="toolIcon(item.type)" alt="" loading="lazy">
+              <span class="wave-menu-text">
+                <span class="wave-menu-label">{{ item.label }}</span>
+                <span class="wave-menu-hint">{{ item.hint }}</span>
+              </span>
+            </button>
           </li>
         </ul>
       </div>
@@ -200,6 +206,15 @@ export default {
     activeItem(group) {
       return group.items.find((item) => item.type === this.tool) ?? null;
     },
+    /**
+     * The picture of what a tool does, shown beside its name in the menu.
+     *
+     * These are renders of the tool itself, made by `scripts/buildWaveImages.mjs`
+     * and served from the shared image directory a level up from this app.
+     */
+    toolIcon(type) {
+      return `../img/wave/tool-${type}.jpg`;
+    },
     toggleMenu(id) {
       this.openMenu = this.openMenu === id ? null : id;
     },
@@ -301,16 +316,48 @@ export default {
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
 }
 
+.wave-menu-list {
+  min-width: 320px;
+}
+
 .wave-menu-list button {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 9px;
   width: 100%;
   text-align: left;
-  padding: 4px 12px;
+  padding: 5px 12px;
   background: none;
   border: none;
   color: rgba(255, 255, 255, 0.85);
   font-size: 12px;
+}
+
+/* A render of the tool doing its one job, which says what it is faster than
+   its name does — the same pictures the home page lists it with. */
+.wave-menu-icon {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.wave-menu-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.wave-menu-label {
   white-space: nowrap;
+}
+
+.wave-menu-hint {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.45);
+  white-space: normal;
+  line-height: 1.25;
 }
 
 .wave-menu-list button:hover {

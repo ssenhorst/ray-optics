@@ -159,6 +159,20 @@ Both of these produce warnings rather than silent failure. The scene extent is
 also checked: past about 10⁴ wavelengths across, float32 can no longer carry the
 phase.
 
+## Pictures
+
+The previews on the site and the icons in the editor's tool menus are renders
+of this app rather than drawings, made by `scripts/buildWaveImages.mjs`: it
+drives the built app in a headless browser, pins the grid resolution so a
+preview does not depend on the machine that made it, and writes the results to
+`src/img/wave`. Reproducing the field and display shaders in node would have
+meant a second implementation of the display mapping that could drift from the
+one people see.
+
+That needs a browser, so it is not part of `npm run build` — the output is
+committed and the script is re-run by hand when the examples or the rendering
+change. `--only=tools` re-renders one section.
+
 ## Testing
 
 `npm run test:waveOptics` runs the suite in `test/waveOptics`. The physics is

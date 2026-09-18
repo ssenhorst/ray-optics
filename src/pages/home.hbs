@@ -45,11 +45,15 @@
       margin-bottom: 0px;
     }
 
-    .wave-tool-list {
-      margin: 4px 0 0;
-      padding-left: 18px;
+    .wave-category-title {
+      font-size: 13pt;
+      margin: 18px 0 2px;
+    }
+
+    .wave-category-description {
       font-size: 9pt;
-      color: #555;
+      color: #777;
+      margin-bottom: 8px;
     }
 
     .fork-note {
@@ -134,18 +138,17 @@
         <div class="col-sm-12">
           <h2>{{t "main:waveHomePage.componentsTitle"}}</h2>
           {{#each categories}}
-            <div class="row thumbnail right-caption">
-              <img src="{{image}}" alt="{{title}}" class="img-rounded" style="width:100px;height:100px;">
-              <div class="caption">
-                <p class="tool-title">{{title}}</p>
-                <span>{{description}}</span>
-                <ul class="wave-tool-list">
-                  {{#each tools}}
-                    <li>{{this}}</li>
-                  {{/each}}
-                </ul>
+            <h3 class="wave-category-title">{{title}}</h3>
+            <p class="wave-category-description">{{description}}</p>
+            {{#each tools}}
+              <div class="row thumbnail right-caption">
+                <img src="{{image}}" alt="{{title}}" class="img-rounded" style="width:100px;height:100px;">
+                <div class="caption">
+                  <p class="tool-title">{{title}}</p>
+                  <span>{{description}}</span>
+                </div>
               </div>
-            </div>
+            {{/each}}
           {{/each}}
         </div>
       </div>

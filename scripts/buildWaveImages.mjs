@@ -15,7 +15,9 @@
  */
 
 /**
- * @file Renders the wave-optics previews used by the home and gallery pages.
+ * @file Renders every wave-optics picture the site and the editor use: the home
+ * page carousel and field views, the tool icons that appear both on the home
+ * page and in the editor's tool menus, the gallery thumbnails, and the favicon.
  *
  * Unlike the ray-optics gallery images, which are drawn by the node build of
  * the core library, these are screenshots of the real app driven in a headless
@@ -84,6 +86,165 @@ const CATEGORY_TILES = {
   measure: 'focusMeasurement',
 };
 
+/** The viewport the per-tool scenes below are composed for. */
+const TOOL_VIEWPORT = { width: 640, height: 640 };
+
+/** Wavelength the tool scenes use, chosen so a few fringes fit in the tile. */
+const TOOL_WAVELENGTH = 22;
+
+const planeWave = (x, y, angle = 0) =>
+  ({ type: 'WavePlaneWave', x, y, angle, amplitude: 1 });
+
+const element = (type, x, halfHeight, extra = {}) => ({
+  type,
+  p1: { x, y: 320 - halfHeight },
+  p2: { x, y: 320 + halfHeight },
+  refractiveIndexAfter: 1,
+  ...extra,
+});
+
+/**
+ * One scene per tool, each composed to say what that tool is at the size of an
+ * icon: what it does has to be legible at forty pixels in a dropdown as well as
+ * at two hundred on the home page, so each is a single element doing the one
+ * thing it is for, with nothing else in the frame.
+ *
+ * The view is chosen per tool rather than fixed. A source reads best as
+ * wavefronts, which is the instantaneous field; what an interface does to a
+ * beam reads best as where the light ends up, which is the intensity.
+ */
+const TOOL_SCENES = {
+  WavePointSource: {
+    view: 'field',
+    objs: [{ type: 'WavePointSource', x: 320, y: 320, amplitude: 1, phase: 0 }],
+  },
+  WaveLineSource: {
+    view: 'field',
+    upperCutoff: 1.6,
+    objs: [{
+      type: 'WaveLineSource',
+      p1: { x: 150, y: 200 }, p2: { x: 150, y: 440 }, amplitude: 1,
+    }],
+  },
+  WavePlaneWave: {
+    view: 'field',
+    objs: [planeWave(120, 320, 20)],
+  },
+  WaveInterface: {
+    view: 'intensity',
+    upperCutoff: 1.4,
+    objs: [
+      { type: 'WaveLineSource', p1: { x: 60, y: 210 }, p2: { x: 60, y: 430 }, amplitude: 1 },
+      // Tilted and dense, so the beam visibly bends towards the normal.
+      element('WaveInterface', 300, 400, { refractiveIndexAfter: 1.8, eqnSag: '0.6\\cdot y' }),
+    ],
+  },
+  WaveLens: {
+    view: 'intensity',
+    upperCutoff: 1.6,
+    objs: [
+      planeWave(60, 320),
+      element('WaveLens', 220, 150, { focalLength: 300, refractiveIndex: 1.5, thickness: 8 }),
+    ],
+  },
+  WaveMultiSlit: {
+    view: 'intensity',
+    upperCutoff: 0.6,
+    objs: [
+      planeWave(60, 320),
+      element('WaveMultiSlit', 200, 300, {
+        slitCount: 2, slitWidth: TOOL_WAVELENGTH, slitSpacing: 6 * TOOL_WAVELENGTH,
+        profileDisplay: 'amplitudePhase',
+      }),
+    ],
+  },
+  WaveSquareGrating: {
+    view: 'intensity',
+    upperCutoff: 1.8,
+    objs: [
+      planeWave(60, 320),
+      element('WaveSquareGrating', 200, 300, {
+        pitch: 3 * TOOL_WAVELENGTH, dutyCycle: 0.5, profileDisplay: 'amplitudePhase',
+      }),
+    ],
+  },
+  WaveSinusoidalGrating: {
+    view: 'intensity',
+    upperCutoff: 1.8,
+    objs: [
+      planeWave(60, 320),
+      element('WaveSinusoidalGrating', 200, 300, {
+        pitch: 3 * TOOL_WAVELENGTH, maxPhaseShift: 2.4,
+        profileDisplay: 'amplitudePhase',
+      }),
+    ],
+  },
+  WaveZonePlate: {
+    view: 'intensity',
+    upperCutoff: 1.1,
+    objs: [
+      planeWave(60, 320),
+      element('WaveZonePlate', 180, 260, { focalLength: 320, phaseReversing: true,
+        profileDisplay: 'amplitudePhase' }),
+    ],
+  },
+  WaveBinaryMask: {
+    view: 'intensity',
+    upperCutoff: 0.8,
+    objs: [
+      planeWave(60, 320),
+      element('WaveBinaryMask', 200, 300, {
+        eqnMask: '\\cos\\left(0.06\\cdot y\\right)', profileDisplay: 'amplitudePhase',
+      }),
+    ],
+  },
+  WaveScreen: {
+    view: 'intensity',
+    upperCutoff: 0.6,
+    objs: [
+      planeWave(40, 320),
+      element('WaveMultiSlit', 150, 260, {
+        slitCount: 2, slitWidth: TOOL_WAVELENGTH, slitSpacing: 5 * TOOL_WAVELENGTH,
+      }),
+      {
+        type: 'WaveScreen',
+        p1: { x: 400, y: 80 }, p2: { x: 400, y: 560 },
+        plotMode: 'intensity', alwaysShowPlot: true, plotHeight: 150,
+      },
+    ],
+  },
+  WaveFocusProbe: {
+    view: 'intensity',
+    upperCutoff: 1.6,
+    objs: [
+      planeWave(40, 320),
+      element('WaveLens', 170, 140, { focalLength: 280, refractiveIndex: 1.5, thickness: 8 }),
+      { type: 'WaveFocusProbe', x: 330, y: 190, units: 'wavelengths' },
+    ],
+  },
+};
+
+/**
+ * The scene the favicon is made from: the fan a double slit throws, with the
+ * scene markers hidden and the slits just off the left edge, so the icon is
+ * the pattern rather than a picture of an experiment.
+ */
+const FAVICON = {
+  view: 'intensity',
+  upperCutoff: 0.55,
+  hideObjects: true,
+  objs: [
+    planeWave(40, 320),
+    element('WaveMultiSlit', 130, 320, {
+      slitCount: 2, slitWidth: TOOL_WAVELENGTH, slitSpacing: 5 * TOOL_WAVELENGTH,
+    }),
+  ],
+  crop: { left: 150, top: 75, width: 490, height: 490 },
+};
+
+/** Sizes the favicon is written at, largest first. */
+const FAVICON_SIZES = [256, 180, 32];
+
 const MIME = {
   '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
   '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png',
@@ -134,6 +295,53 @@ async function loadExample(page, base, exampleId) {
     app.editor.selectObj(-1);
     app.simulator.updateSimulation(false, true);
   }, PREVIEW_RESOLUTION);
+
+  await new Promise((r) => setTimeout(r, SETTLE_MS));
+}
+
+/**
+ * Load one of the hand-composed scenes above, rather than a built-in example.
+ *
+ * The scene is given in the coordinates of {@link TOOL_VIEWPORT} and the page
+ * is sized to match, so the composition lands where it was written to.
+ *
+ * @param {Object} page
+ * @param {string} base
+ * @param {Object} scene - `{ view, upperCutoff, objs }`.
+ */
+async function loadScene(page, base, scene) {
+  await page.goto(`${base}/wave/`, { waitUntil: 'networkidle0' });
+  await page.waitForFunction(() => Boolean(window.waveApp?.simulator), { timeout: 30000 });
+  await page.addStyleTag({
+    content: '.wave-chrome, .wave-status, #wave_obj_bar { display: none !important; }'
+      // The objects draw themselves on their own canvas layer, so dropping it
+      // leaves the field alone. A tool icon wants its element drawn; a favicon
+      // is a pattern rather than a scene, and a source marker in it is litter.
+      + (scene.hideObjects ? ' #waveCanvasAbove { display: none !important; }' : ''),
+  });
+
+  await page.evaluate((spec, resolution, wavelength) => {
+    const app = window.waveApp;
+    app.editor.loadJSON(JSON.stringify({
+      version: 5,
+      objs: spec.objs,
+      origin: { x: 0, y: 0 },
+      scale: 1,
+      width: spec.width,
+      height: spec.height,
+      waveOptics: {
+        wavelength,
+        refractiveIndex: 1,
+        sourceDensity: 8,
+        gridResolution: resolution,
+        autoResolution: false,
+        view: spec.view ?? 'intensity',
+        upperCutoff: spec.upperCutoff ?? 1,
+      },
+    }));
+    app.editor.selectObj(-1);
+    app.simulator.updateSimulation(false, true);
+  }, scene, PREVIEW_RESOLUTION, TOOL_WAVELENGTH);
 
   await new Promise((r) => setTimeout(r, SETTLE_MS));
 }
@@ -278,6 +486,41 @@ async function main() {
         width: 500, height: 500, crop: centredCrop(viewport, 1, 0.6),
       });
     }
+    }
+
+    if (wanted('tools') || wanted('favicon')) {
+      // The hand-composed scenes are written in square coordinates, so the
+      // page is square for them.
+      await page.setViewport(TOOL_VIEWPORT);
+    }
+
+    if (wanted('tools')) {
+      console.log('tool icons');
+      for (const [type, scene] of Object.entries(TOOL_SCENES)) {
+        await loadScene(page, base, {
+          ...scene, width: TOOL_VIEWPORT.width, height: TOOL_VIEWPORT.height,
+        });
+        await shoot(page, sharp, path.join(OUT_DIR, `tool-${type}.jpg`), {
+          width: 240, height: 240,
+        });
+      }
+    }
+
+    if (wanted('favicon')) {
+      console.log('favicon');
+      await loadScene(page, base, {
+        ...FAVICON, width: TOOL_VIEWPORT.width, height: TOOL_VIEWPORT.height,
+      });
+      const shot = await page.screenshot({ type: 'png' });
+      for (const size of FAVICON_SIZES) {
+        const out = path.join(OUT_DIR, `favicon-${size}.png`);
+        await sharp(shot)
+          .extract(FAVICON.crop)
+          .resize(size, size, { fit: 'cover' })
+          .png()
+          .toFile(out);
+        console.log('  wrote', path.relative(ROOT, out));
+      }
     }
   } finally {
     await browser.close();

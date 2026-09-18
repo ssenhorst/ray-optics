@@ -82,6 +82,11 @@
       "title": "Krzywa parametryczna",
       "description": "Zwierciadło, którego kształt jest definiowany przez niestandardowe równania parametryczne."
     },
+    "CurveMirror": {
+      "title": "Krzywe Béziera",
+      "description": "Zwierciadło o kształcie wyznaczonym przez sześcienne krzywe Béziera.",
+      "instruction": "Kliknij, aby utworzyć element. Kliknij punkt początkowy, aby utworzyć zamkniętą figurę, lub kliknij dwukrotnie ostatni punkt kontrolny, aby utworzyć otwartą krzywą. Następnie przeciągnij ramki, aby przesuwać punkty kontrolne i zmieniać kształt krzywej."
+    },
     "ConcaveDiffractionGrating": {
       "title": "Wklęsła siatka dyfrakcyjna odbiciowa",
       "description": "Wklęsła siatka dyfrakcyjna, której kształt jest częścią koła."
@@ -202,11 +207,15 @@
       "title": "Niestandardowa krzywa parametryczna",
       "description": "Niestandardowa powierzchnia, której kształt jest definiowany za pomocą równań parametrycznych."
     },
+    "CustomCurveSurface": {
+      "title": "Niestandardowe krzywe Béziera",
+      "description": "Niestandardowa powierzchnia o kształcie zdefiniowanym przez sześcienne krzywe Béziera."
+    },
     "modules": {
       "import": "Importuj moduły…",
-      "remove": "Usuń moduł",
       "createModule": "Utwórz moduł…",
-      "description": "Twórz nowe elementy, łącząc istniejące. Przykłady znajdziesz w sekcji „Importowanie modułów”."
+      "description": "Twórz nowe elementy, łącząc istniejące. Przykłady znajdziesz w sekcji „Importowanie modułów”.",
+      "remove": "Usuń moduł"
     },
     "moveView": {
       "title": "Przesuń widok",
@@ -214,15 +223,6 @@
     },
     "moreTools": {
       "title": "Więcej narzędzi"
-    },
-    "CurveMirror": {
-      "title": "Krzywe Béziera",
-      "description": "Zwierciadło o kształcie wyznaczonym przez sześcienne krzywe Béziera.",
-      "instruction": "Kliknij, aby utworzyć element. Kliknij punkt początkowy, aby utworzyć zamkniętą figurę, lub kliknij dwukrotnie ostatni punkt kontrolny, aby utworzyć otwartą krzywą. Następnie przeciągnij ramki, aby przesuwać punkty kontrolne i zmieniać kształt krzywej."
-    },
-    "CustomCurveSurface": {
-      "title": "Niestandardowe krzywe Béziera",
-      "description": "Niestandardowa powierzchnia o kształcie zdefiniowanym przez sześcienne krzywe Béziera."
     }
   },
   "view": {

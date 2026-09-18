@@ -72,7 +72,6 @@
     "start": "webpack serve --open simulator/ --mode=development",
     "build": "npm run build-pages && npm run build-scenes && npm run build-node && npm run build-images && npm run build-app && npm run build-docs",
     "build:release": "npm run build-pages:release && npm run build-scenes && npm run build-node && npm run build-images && npm run build-app && npm run build-docs",
-    "add-to-gallery": "node ./scripts/addToGallery.mjs",
     "add-to-modules": "node ./scripts/addToModules.mjs",
     "sort-translations": "node ./scripts/sortTranslations.mjs"
   },

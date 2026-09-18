@@ -110,15 +110,6 @@
     <h1>{{t "gallery:galleryPage.title"}}</h1>
     {{t "gallery:galleryPage.description"}}
     
-    <h3>{{t "gallery:galleryPage.categories.title"}}</h3>
-    <a href="#wave-optics">{{t "gallery:galleryPage.waveOptics.title"}}</a><br>
-    {{#each categories}}
-      <a href="#{{id}}">{{title}}</a><br>
-    {{/each}}
-
-    <a name="wave-optics" class="anchor">&nbsp;</a>
-    <h2>{{t "gallery:galleryPage.waveOptics.title"}}</h2>
-    <p>{{t "gallery:galleryPage.waveOptics.description"}}</p>
     {{#each waveExamples}}
       <a href="{{url}}" class="thumbnail example-container">
         <img src="{{image}}" alt="{{name}}" class="img-rounded example-image" loading="lazy">
@@ -129,28 +120,6 @@
       </a>
     {{/each}}
     <br>
-
-    <h2>{{t "gallery:galleryPage.rayOptics.title"}}</h2>
-    <p>{{t "gallery:galleryPage.rayOptics.description"}}</p>
-
-    {{#each categories}}
-
-      <a name="{{id}}" class="anchor">&nbsp;</a>
-      <h2>{{title}}</h2>
-      {{#each items}}
-        <a href="{{url}}" class="thumbnail example-container">
-          <picture>
-            <source srcset="{{url}}-thumbnail.avif" type="image/avif">
-            <img src="{{url}}-thumbnail.jpg" alt="{{title}}" class="img-rounded example-image" loading="lazy">
-          </picture>
-          <div class="caption">
-            <p class="example-title"><span class="example-title-text">{{title}}</span>{{#if beta}}<span class="beta-badge">Beta</span>{{/if}}</p>
-            <p class="example-contributor">{{contributors}}</p>
-          </div>
-        </a>
-      {{/each}}
-      <br>
-    {{/each}}
 
     {{> footer}}
   </div>

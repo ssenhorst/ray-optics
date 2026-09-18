@@ -1,8 +1,8 @@
 {
   "project": {
-    "name": "Ray Optics Simulation",
-    "shortName": "Ray Optics",
-    "description": "A free, open-source web app for creating and simulating 2D geometric optical scenes."
+    "name": "Wave Optics Simulation",
+    "shortName": "Wave Optics",
+    "description": "A free, open-source web app for creating and simulating 2D wave-optical scenes."
   },
   "pages": {
     "simulator": "Simulator",
@@ -379,5 +379,9 @@
         "description": "Instruments that read the field without taking any part in it: a probe that finds the brightest point of a subspace and the width of it, and a screen that plots a slice — including the pattern at infinity."
       }
     }
+  },
+  "rayProject": {
+    "name": "Ray Optics Simulation",
+    "shortName": "Ray Optics"
   }
 }

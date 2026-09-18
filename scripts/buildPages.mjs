@@ -114,49 +114,7 @@ const sortedMainAuthors = contributors
   .sort((a, b) => b.commits - a.commits);
 
 
-// Load the gallery list
-const galleryList = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/galleryList.json'), 'utf8'));
 
-// List all existing galleryscenes IDs, which are the file name of the json files in the /data/galleryScenes directory.
-const galleryFiles = fs.readdirSync(path.join(__dirname, '../data/galleryScenes'));
-const galleryIDs = galleryFiles.filter((file) => file.endsWith('.json')).map((file) => file.replace('.json', ''));
-
-// List all IDs which are in the galleryList
-const galleryIDInList = {};
-for (const category of galleryList) {
-  for (const item of category.content) {
-    galleryIDInList[item.id] = true;
-  }
-}
-
-// Create a dictionary converting the scene IDs to the contributors.
-const galleryIDContributors = {};
-for (const category of galleryList) {
-  for (const item of category.content) {
-    galleryIDContributors[item.id] = item.contributors;
-  }
-}
-
-// Create a dictionary converting the scene IDs to the beta flag.
-const galleryIDBeta = {};
-for (const category of galleryList) {
-  for (const item of category.content) {
-    galleryIDBeta[item.id] = !!item.beta;
-  }
-}
-
-// Create a dictionary converting the scene IDs to the camelCase format.
-const galleryIDToCamelCase = {};
-galleryIDs.forEach((id) => {
-  galleryIDToCamelCase[id] = id.toLowerCase().replace(/-([a-z])/g, (g) => g[1].toUpperCase());
-});
-
-const galleryCategories = galleryList.map(item => item.id);
-
-const galleryCategoryToCamelCase = {};
-galleryCategories.forEach((category) => {
-  galleryCategoryToCamelCase[category] = category.toLowerCase().replace(/-([a-z])/g, (g) => g[1].toUpperCase());
-});
 
 // Load the module list
 const moduleList = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/moduleList.json'), 'utf8'));
@@ -244,7 +202,11 @@ function waveCategories(rootUrl) {
     title: i18next.t(`main:waveHomePage.categories.${category}.title`),
     description: i18next.t(`main:waveHomePage.categories.${category}.description`),
     image: `${rootUrl}/img/wave/category-${category}.jpg`,
-    tools: tools.map((type) => i18next.t(`main:waveTools.${type}.title`)),
+    tools: tools.map((type) => ({
+      title: i18next.t(`main:waveTools.${type}.title`),
+      description: i18next.t(`main:waveTools.${type}.description`),
+      image: `${rootUrl}/img/wave/tool-${type}.jpg`,
+    })),
   }));
 }
 
@@ -276,16 +238,7 @@ function countStrings(json) {
 const homeLangs = [];
 const aboutLangs = [];
 const galleryLangs = [];
-const galleryItemsLangs = {};
 const modulesLangs = [];
-const moduleItemsLangs = {};
-for (const id of galleryIDs) {
-  galleryItemsLangs[id] = [];
-}
-
-for (const id of moduleIDs) {
-  moduleItemsLangs[id] = [];
-}
 
 const rootAbsUrl = "https://phydemo.app/ray-optics";
 const urlMaps = {};
@@ -366,15 +319,6 @@ for (const lang of langs) {
     urlMaps[lang]['/gallery'] = '/gallery/';
   }
 
-  for (const id of galleryIDs) {
-    if (galleryData.galleryData && galleryData.galleryData[galleryIDToCamelCase[id]] && galleryData.galleryData[galleryIDToCamelCase[id]].title) {
-      galleryItemsLangs[id].push(lang);
-      urlMaps[lang][`/gallery/${id}`] = routesData[lang] + '/gallery/' + id;
-    } else {
-      urlMaps[lang][`/gallery/${id}`] = '/gallery/' + id;
-    }
-  }
-
   if (modulesData.modulesPage) {
     modulesLangs.push(lang);
     urlMaps[lang]['/modules/modules'] = routesData[lang] + '/modules/modules.html';
@@ -382,18 +326,6 @@ for (const lang of langs) {
     urlMaps[lang]['/modules/modules'] = '/modules/modules.html';
   }
 
-  for (const id of moduleIDs) {
-    if (modulesData.moduleData && modulesData.moduleData[galleryIDToCamelCase[id]]) {
-      moduleItemsLangs[id].push(lang);
-    }
-  }
-
-}
-
-// Calculate the fraction of the gallery items that are translated for each language
-const galleryItemsTranslated = {};
-for (const lang of galleryLangs) {
-  galleryItemsTranslated[lang] = galleryIDs.filter(id => galleryItemsLangs[id].includes(lang)).length / galleryIDs.length;
 }
 
 // Initialize the i18next resources
@@ -487,8 +419,6 @@ for (const lang of homeLangs) {
   Handlebars.registerPartial('head', fs.readFileSync(path.join(__dirname, '../src/pages/partials/head.hbs'), 'utf8'));
   Handlebars.registerPartial('navbar', fs.readFileSync(path.join(__dirname, '../src/pages/partials/navbar.hbs'), 'utf8'));
   Handlebars.registerPartial('footer', fs.readFileSync(path.join(__dirname, '../src/pages/partials/footer.hbs'), 'utf8'));
-
-  const galleryHashUrl = lang == 'en' ? '' : '..' + routesData[lang] + '/gallery/';
 
   // Load the home template
   const homeTemplate = Handlebars.compile(fs.readFileSync(path.join(__dirname, '../src/pages/home.hbs'), 'utf8'));
@@ -621,12 +551,6 @@ for (const lang of homeLangs) {
           name: langNames[lang],
           url: rootUrl + urlMaps[lang]['/gallery'],
           absUrl: rootAbsUrl + urlMaps[lang]['/gallery'],
-          translatedFraction: i18next.t('main:meta.parentheses', {
-            main: '',
-            sub: i18next.t('main:languageDropdown.translatedFraction', {
-              fraction: Math.round(galleryItemsTranslated[lang] * 100) + '%'
-            })
-          }),
         };
       }),
       imgUrl: rootUrl + '/img',
@@ -648,72 +572,10 @@ for (const lang of homeLangs) {
       isHome: false,
       isGallery: true,
       isAbout: false,
-      categories: galleryList.map(item => {
-        return {
-          id: item.id,
-          title: i18next.t('gallery:galleryPage.categories.' + galleryCategoryToCamelCase[item.id]),
-          items: item.content.map(contentItem => {
-            return {
-              id: contentItem.id,
-              title: i18next.t('gallery:galleryData.' + galleryIDToCamelCase[contentItem.id] + '.title'),
-              url: rootUrl + urlMaps[lang]['/gallery/' + contentItem.id],
-              contributors: contentItem.contributors.join(', '),
-              beta: !!contentItem.beta,
-            };
-          }),
-        };
-      }),
     }
     fs.writeFileSync(path.join(galleryDir, 'index.html'), galleryTemplate(galleryData));
   }
 
-  // Load the gallery item template
-  const galleryItemTemplate = Handlebars.compile(fs.readFileSync(path.join(__dirname, '../src/pages/galleryItem.hbs'), 'utf8'));
-
-  // Create the gallery item webpages
-  for (const id of galleryIDs) {
-    if (!galleryItemsLangs[id].includes(lang)) continue;
-    if (!galleryIDInList[id]) continue;
-
-    // Create the gallery/ directory
-    const galleryDir = path.join(langDir, 'gallery');
-    fs.mkdirSync(galleryDir, { recursive: true });
-    rootUrl = lang == 'en' ? '..' : '../..';
-
-    const galleryItemData = {
-      title: i18next.t('gallery:galleryData.' + galleryIDToCamelCase[id] + '.title') + ' - ' + i18next.t('main:project.name'),
-      ogImage: rootAbsUrl + urlMaps[lang]['/gallery/' + id] + '.jpg',
-      absUrl: rootAbsUrl + urlMaps[lang]['/gallery/' + id],
-      lang: lang,
-      langName: langNames[lang],
-      supportedLangs: galleryItemsLangs[id].map((lang) => {
-        return {
-          lang: lang,
-          name: langNames[lang],
-          url: rootUrl + urlMaps[lang]['/gallery/' + id],
-          absUrl: rootAbsUrl + urlMaps[lang]['/gallery/' + id],
-        };
-      }),
-      imgUrl: rootUrl + '/img',
-      thirdpartyUrl: rootUrl + '/thirdparty',
-      homeUrl: rootUrl + urlMaps[lang]['/home'],
-      aboutUrl: rootUrl + urlMaps[lang]['/about'],
-      galleryUrl: rootUrl + urlMaps[lang]['/gallery'],
-      simulatorUrl: rootUrl + urlMaps[lang]['/simulator'],
-      waveUrl: rootUrl + urlMaps[lang]['/wave'],
-      isHome: false,
-      isGallery: true,
-      isAbout: false,
-      id: id,
-      titleKey: 'gallery:galleryData.' + galleryIDToCamelCase[id] + '.title',
-      descriptionKey: 'gallery:galleryData.' + galleryIDToCamelCase[id] + '.description',
-      idHashUrl: (lang == 'en' ? '' : '..' + routesData[lang] + '/gallery/') + id,
-      contributors: galleryIDContributors[id].join(', '),
-      contributorCount: galleryIDContributors[id].length,
-      beta: galleryIDBeta[id],
-    }
-    fs.writeFileSync(path.join(galleryDir, id + '.html'), galleryItemTemplate(galleryItemData));
-  }
 
   // Create the modules webpage
   if (modulesLangs.includes(lang)) {
