@@ -301,21 +301,24 @@ export default {
 }
 
 .wave-sidebar-tab {
+  /* Twice the size of the original: this is the only way in to every scene
+     setting, and on a large screen it read as an easy-to-miss sliver. */
   pointer-events: auto;
   align-self: flex-start;
-  margin-top: 8px;
-  padding: 10px 3px;
+  margin-top: 16px;
+  padding: 20px 6px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
   background-color: rgba(20, 22, 26, 0.88);
   backdrop-filter: blur(4px);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-right: none;
-  border-radius: 4px 0 0 4px;
+  border-radius: 8px 0 0 8px;
   color: rgba(255, 255, 255, 0.75);
-  font-size: 13px;
+  font-size: 26px;
+  line-height: 1;
 }
 
 .wave-sidebar-tab:hover {
@@ -324,7 +327,7 @@ export default {
 
 .wave-sidebar-tab-label {
   writing-mode: vertical-rl;
-  font-size: 10px;
+  font-size: 20px;
   letter-spacing: 0.05em;
 }
 

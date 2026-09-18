@@ -239,6 +239,13 @@ export default {
 
 <style scoped>
 .wave-toolbar {
+  /* `backdrop-filter` creates its own stacking context, which traps the tool
+     menu's z-index inside this element — without a z-index here the menu could
+     never rise above the object bar, a later flex sibling in `.wave-chrome`
+     that otherwise wins painting order by DOM position alone. Flex items take
+     z-index without needing `position` set. */
+  position: relative;
+  z-index: 1;
   flex: 0 0 auto;
   width: 100%;
   background-color: rgba(20, 22, 26, 0.88);
