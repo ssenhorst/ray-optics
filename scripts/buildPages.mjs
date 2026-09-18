@@ -193,6 +193,69 @@ for (const category of moduleList) {
 
 
 // Given a json object, calculate the total number of strings in the object, but string keys of the form key_suffix are treated as the same string as key.
+/**
+ * The home page's wave-optics sections. Each reads its text from the locale
+ * data and its pictures from `src/img/wave`, which are renders of the real app
+ * produced by `scripts/buildWaveImages.mjs`.
+ */
+
+/** Which examples head the carousel, in order. */
+const WAVE_CAROUSEL = ['twoPointSources', 'zonePlate', 'lens', 'grating', 'fiveSlits'];
+
+/** The examples shown as a strip at the foot of the home page. */
+const WAVE_EXAMPLE_STRIP = [
+  'twoPointSources', 'doubleSlit', 'grating', 'zonePlate', 'lens', 'farField',
+];
+
+/** The tool types listed under each component category. */
+const WAVE_CATEGORY_TOOLS = {
+  sources: ['WavePointSource', 'WaveLineSource', 'WavePlaneWave'],
+  interfaces: [
+    'WaveInterface', 'WaveLens', 'WaveMultiSlit', 'WaveSquareGrating',
+    'WaveSinusoidalGrating', 'WaveZonePlate', 'WaveBinaryMask',
+  ],
+  measure: ['WaveScreen', 'WaveFocusProbe'],
+};
+
+/** The three ways the field can be shown, matching the app's view buttons. */
+const WAVE_VIEWS = ['intensity', 'field', 'amplitudePhase'];
+
+const waveExampleName = (id) =>
+  EXAMPLE_SCENES.find((example) => example.id === id)?.name ?? id;
+
+function waveCarousel(rootUrl, waveUrl) {
+  return WAVE_CAROUSEL.map((id) => ({
+    name: waveExampleName(id),
+    image: `${rootUrl}/img/wave/carousel-${id}.jpg`,
+    url: `${waveUrl}#${id}`,
+  }));
+}
+
+function waveExampleStrip(rootUrl, waveUrl) {
+  return WAVE_EXAMPLE_STRIP.map((id) => ({
+    name: waveExampleName(id),
+    image: `${rootUrl}/img/wave/thumbnail-${id}.jpg`,
+    url: `${waveUrl}#${id}`,
+  }));
+}
+
+function waveCategories(rootUrl) {
+  return Object.entries(WAVE_CATEGORY_TOOLS).map(([category, tools]) => ({
+    title: i18next.t(`main:waveHomePage.categories.${category}.title`),
+    description: i18next.t(`main:waveHomePage.categories.${category}.description`),
+    image: `${rootUrl}/img/wave/category-${category}.jpg`,
+    tools: tools.map((type) => i18next.t(`main:waveTools.${type}.title`)),
+  }));
+}
+
+function waveViews(rootUrl) {
+  return WAVE_VIEWS.map((view) => ({
+    title: i18next.t(`main:waveHomePage.views.${view}.title`),
+    description: i18next.t(`main:waveHomePage.views.${view}.description`),
+    image: `${rootUrl}/img/wave/view-${view}.jpg`,
+  }));
+}
+
 function countStrings(json) {
   const stringKeys = new Set();
   let count = 0;
@@ -454,12 +517,10 @@ for (const lang of homeLangs) {
     isHome: true,
     isGallery: false,
     isAbout: false,
-    compoundMicroscopeHashUrl: (galleryItemsLangs['compound-microscope'].includes(lang) ? galleryHashUrl : '') + 'compound-microscope',
-    compoundMicroscopeUrl: rootUrl + urlMaps[lang]['/gallery/compound-microscope'],
-    apparentDepthHashUrl: (galleryItemsLangs['apparent-depth'].includes(lang) ? galleryHashUrl : '') + 'apparent-depth',
-    apparentDepthUrl: rootUrl + urlMaps[lang]['/gallery/apparent-depth'],
-    chromaticDispersionHashUrl: (galleryItemsLangs['chromatic-dispersion'].includes(lang) ? galleryHashUrl : '') + 'chromatic-dispersion',
-    chromaticDispersionUrl: rootUrl + urlMaps[lang]['/gallery/chromatic-dispersion'],
+    carousel: waveCarousel(rootUrl, rootUrl + urlMaps[lang]['/wave']),
+    categories: waveCategories(rootUrl),
+    views: waveViews(rootUrl),
+    exampleStrip: waveExampleStrip(rootUrl, rootUrl + urlMaps[lang]['/wave']),
   }
 
   // Create the webpage
@@ -581,6 +642,7 @@ for (const lang of homeLangs) {
       waveExamples: EXAMPLE_SCENES.map((example) => ({
         name: example.name,
         description: example.description,
+        image: `${rootUrl}/img/wave/thumbnail-${example.id}.jpg`,
         url: rootUrl + urlMaps[lang]['/wave'] + '#' + example.id,
       })),
       isHome: false,

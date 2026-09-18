@@ -1,7 +1,7 @@
 {
   "galleryPage": {
-    "title": "The Ray Optics Gallery",
-    "description": "This is a collection of simulations made using [the web app](/simulator), which can be used as interactive demos of optics. You are welcome to contribute new items. See [the contribution guide](/contributing/gallery) for more information. To report a mistake, please [open an issue on GitHub](/github/issues) or email [ray-optics@phydemo.app](/email).",
+    "title": "Gallery",
+    "description": "Simulations that can be used as interactive demos of optics, for [the wave-optics simulator](/wave) and for [the ray simulator](/simulator) it was forked from. You are welcome to contribute new items. See [the contribution guide](/contributing/gallery) for more information. To report a mistake, please [open an issue on GitHub](/github/issues) or email [ray-optics@phydemo.app](/email).",
     "categories": {
       "title": "Categories",
       "reflection": "Reflection",
@@ -16,7 +16,11 @@
     "openInSimulator": "Open in Simulator",
     "waveOptics": {
       "title": "Wave optics",
-      "description": "These open in the companion wave-optics simulator, where the light is a complex scalar field summed from point sources rather than a set of rays. Each is built to fit the window it is loaded into, so there is no fixed scene file and no thumbnail to show."
+      "description": "Worked examples for the wave-optics simulator, where the light is a complex scalar field summed from point sources. Each is built to fit the window it is loaded into, so it fills whatever screen it opens on."
+    },
+    "rayOptics": {
+      "title": "Ray optics",
+      "description": "Scenes for the ray simulator this project was forked from, which traces rays rather than summing fields."
     }
   },
   "galleryData": {

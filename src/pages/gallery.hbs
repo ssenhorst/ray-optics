@@ -80,9 +80,12 @@
       border-radius: 0.6em;
     }
 
-    .wave-example-list {
-      max-width: 780px;
-      line-height: 1.6;
+    /* The wave examples carry a sentence of description under the title
+       rather than a contributor line, so it wraps instead of being clipped. */
+    .example-container .example-contributor.example-description {
+      white-space: normal;
+      line-height: 1.35;
+      height: 3.2em;
     }
 
     .example-contributor {
@@ -108,10 +111,27 @@
     {{t "gallery:galleryPage.description"}}
     
     <h3>{{t "gallery:galleryPage.categories.title"}}</h3>
+    <a href="#wave-optics">{{t "gallery:galleryPage.waveOptics.title"}}</a><br>
     {{#each categories}}
       <a href="#{{id}}">{{title}}</a><br>
     {{/each}}
-    <a href="#wave-optics">{{t "gallery:galleryPage.waveOptics.title"}}</a><br>
+
+    <a name="wave-optics" class="anchor">&nbsp;</a>
+    <h2>{{t "gallery:galleryPage.waveOptics.title"}}</h2>
+    <p>{{t "gallery:galleryPage.waveOptics.description"}}</p>
+    {{#each waveExamples}}
+      <a href="{{url}}" class="thumbnail example-container">
+        <img src="{{image}}" alt="{{name}}" class="img-rounded example-image" loading="lazy">
+        <div class="caption">
+          <p class="example-title"><span class="example-title-text">{{name}}</span></p>
+          <p class="example-contributor example-description">{{description}}</p>
+        </div>
+      </a>
+    {{/each}}
+    <br>
+
+    <h2>{{t "gallery:galleryPage.rayOptics.title"}}</h2>
+    <p>{{t "gallery:galleryPage.rayOptics.description"}}</p>
 
     {{#each categories}}
 
@@ -131,16 +151,6 @@
       {{/each}}
       <br>
     {{/each}}
-
-    <a name="wave-optics" class="anchor">&nbsp;</a>
-    <h2>{{t "gallery:galleryPage.waveOptics.title"}}</h2>
-    <p>{{t "gallery:galleryPage.waveOptics.description"}}</p>
-    <ul class="wave-example-list">
-      {{#each waveExamples}}
-        <li><a href="{{url}}">{{name}}</a> &mdash; {{description}}</li>
-      {{/each}}
-    </ul>
-    <br>
 
     {{> footer}}
   </div>
