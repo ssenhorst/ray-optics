@@ -18,12 +18,13 @@ import Scene from '../../src/core/Scene.js';
 import WaveScreen from '../../src/core/sceneObjs/wave/WaveScreen.js';
 import WaveFocusProbe from '../../src/core/sceneObjs/wave/WaveFocusProbe.js';
 import WavePlaneWave from '../../src/core/sceneObjs/wave/WavePlaneWave.js';
+import WavePointSource from '../../src/core/sceneObjs/wave/WavePointSource.js';
 import WaveMultiSlit from '../../src/core/sceneObjs/wave/WaveMultiSlit.js';
 import WaveInterface from '../../src/core/sceneObjs/wave/WaveInterface.js';
 import { buildWaveModel } from '../../src/core/waveOptics/waveSceneModel.js';
 import { computeFieldGrid } from '../../src/core/waveOptics/waveSceneModel.js';
 import { computeModelFieldAt } from '../../src/core/waveOptics/WaveFieldEngineCpu.js';
-import { peakInSubspace } from '../../src/core/sceneObjs/wave/waveMeasurement.js';
+import { peakInSubspace, fieldGrid } from '../../src/core/sceneObjs/wave/waveMeasurement.js';
 
 const WAVELENGTH = 20;
 
@@ -170,6 +171,44 @@ describe('screen', () => {
     expect(step).toBeGreaterThan(0);
   }, 30000);
 
+  test('sampleCount sets how many points the plot has, clamped to a sane range', () => {
+    const scene = makeScene();
+    addPlaneWave(scene, 100, 400);
+    const screen = new WaveScreen(scene, {
+      p1: { x: 900, y: 100 }, p2: { x: 900, y: 700 }, sampleCount: 33,
+    });
+    scene.objs.push(screen);
+    attachSimulator(scene);
+
+    expect(screen.measure().amplitudes.length).toBe(33);
+
+    // Out-of-range values degrade to the clamp rather than to garbage.
+    screen.sampleCount = 3;
+    expect(screen.samples()).toBeGreaterThanOrEqual(17);
+    screen.sampleCount = 1e9;
+    expect(screen.samples()).toBeLessThanOrEqual(2049);
+  }, 15000);
+
+  test('always shows the plot when alwaysShowPlot is set, without being selected', () => {
+    const scene = makeScene();
+    addPlaneWave(scene, 100, 400);
+    const screen = new WaveScreen(scene, {
+      p1: { x: 900, y: 100 }, p2: { x: 900, y: 700 }, alwaysShowPlot: true,
+    });
+    scene.objs.push(screen);
+    attachSimulator(scene);
+
+    let plotDrawn = false;
+    const originalDrawPlot = screen.drawPlot.bind(screen);
+    screen.drawPlot = (...args) => { plotDrawn = true; return originalDrawPlot(...args); };
+
+    // isSelected() reads scene.editor, which is absent in this headless setup,
+    // so this exercises exactly the "not selected" path.
+    expect(screen.isSelected()).toBe(false);
+    screen.draw({ ctx: { save() {}, restore() {}, beginPath() {}, moveTo() {}, lineTo() {}, stroke() {}, fillRect() {}, arc() {}, setLineDash() {}, fillText() {}, strokeText() {} }, lengthScale: 1 }, true, false);
+    expect(plotDrawn).toBe(true);
+  }, 15000);
+
   test('the far field is the same shape wherever the screen is put', () => {
     const build = (x) => {
       const scene = makeScene();
@@ -254,4 +293,78 @@ describe('focus probe', () => {
     expect(peak.width / expected).toBeGreaterThan(0.95);
     expect(peak.width / expected).toBeLessThan(1.05);
   });
+
+  test('ignores a source it sits on top of, in favour of a real maximum nearby', () => {
+    // A synthetic field standing in for the physical situation: an enormous
+    // spike at a source's own location (the near-source clamp still leaves it
+    // far brighter than anything a real focus produces) and a much smaller,
+    // broad maximum representing genuine interference structure elsewhere.
+    // Without exclusion the search finds the spike; the point of it is to find
+    // the other one instead.
+    const scene = makeScene();
+    const grid = computeFieldGrid(scene, 128);
+    const source = { x: 600, y: 400 };
+    const realFocus = { x: 850, y: 500 };
+    const data = new Float32Array(grid.width * grid.height * 4);
+
+    let sourceCell = -1;
+    let bestSourceDist = Infinity;
+    for (let j = 0; j < grid.height; j++) {
+      const y = grid.originY + grid.stepY * j;
+      for (let i = 0; i < grid.width; i++) {
+        const x = grid.originX + grid.stepX * i;
+        const cell = j * grid.width + i;
+        const distToSource = Math.hypot(x - source.x, y - source.y);
+        if (distToSource < bestSourceDist) { bestSourceDist = distToSource; sourceCell = cell; }
+        data[cell * 4 + 2] = Math.exp(
+          -((x - realFocus.x) ** 2 + (y - realFocus.y) ** 2) / (2 * 30 * 30)
+        );
+      }
+    }
+    data[sourceCell * 4 + 2] = 1e6;
+
+    const field = { data, grid, interfaces: [] };
+
+    // Sanity check: unexcluded, the search really does find the spike.
+    const unexcluded = peakInSubspace(field, 0);
+    expect(unexcluded.amplitude).toBeCloseTo(1e6, 0);
+
+    field.excludePointsBySubspace = [[source]];
+    field.excludeRadiusBySubspace = [3 * WAVELENGTH];
+    const excluded = peakInSubspace(field, 0);
+
+    expect(excluded.amplitude).toBeLessThan(2);
+    expect(Math.hypot(excluded.x - realFocus.x, excluded.y - realFocus.y))
+      .toBeLessThan(grid.spacing * 3);
+    expect(Math.hypot(excluded.x - source.x, excluded.y - source.y))
+      .toBeGreaterThanOrEqual(3 * WAVELENGTH);
+  });
+
+  test('excludes the field engine\'s own point sources from fieldGrid', () => {
+    // End-to-end version of the same thing: two point sources close enough
+    // together that a probe between them shares their subspace, the case the
+    // per-subspace confinement alone does not protect against.
+    const scene = makeScene();
+    const a = new WavePointSource(scene, { x: 550, y: 380, amplitude: 1, phase: 0 });
+    const b = new WavePointSource(scene, { x: 650, y: 420, amplitude: 1, phase: 0 });
+    scene.objs.push(a, b);
+    const probe = new WaveFocusProbe(scene, { x: 600, y: 400 });
+    scene.objs.push(probe);
+    const model = attachSimulator(scene, { withGrid: true, resolution: 256 });
+
+    const field = fieldGrid(scene);
+    expect(field.excludePointsBySubspace[0]).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ x: 550, y: 380 }),
+        expect.objectContaining({ x: 650, y: 420 }),
+      ])
+    );
+
+    const result = probe.measure();
+    expect(result).not.toBeNull();
+    for (const source of [a, b]) {
+      expect(Math.hypot(result.x - source.x, result.y - source.y))
+        .toBeGreaterThanOrEqual(model.settings.wavelength - 1e-6);
+    }
+  }, 30000);
 });

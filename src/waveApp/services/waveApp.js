@@ -123,11 +123,64 @@ function initAppService() {
   window.addEventListener('resize', onResize);
   onResize();
 
+  window.addEventListener('keydown', onKeyDown);
+
   // A link to a scene is the whole scene, so the address bar is checked before
   // anything else has a chance to overwrite it. The back button goes through
   // the same path, which is what makes an undo of a shared link work.
   window.addEventListener('popstate', loadFromUrl);
   loadFromUrl();
+}
+
+/**
+ * The handful of keyboard shortcuts worth having: undo, redo, delete, and
+ * escaping out of placing an object. Skipped entirely while an editable
+ * element has focus, so typing "z" into an equation field does not undo the
+ * scene out from under it.
+ *
+ * @param {KeyboardEvent} e
+ */
+function onKeyDown(e) {
+  if (!editor || !scene) return;
+
+  const target = e.target;
+  const isEditable = target?.isContentEditable ||
+    ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName);
+  if (isEditable) return;
+
+  const ctrlOrCmd = e.ctrlKey || e.metaKey;
+
+  if (ctrlOrCmd && !e.shiftKey && e.key.toLowerCase() === 'z') {
+    editor.undo();
+    e.preventDefault();
+    return;
+  }
+  if ((ctrlOrCmd && e.shiftKey && e.key.toLowerCase() === 'z') ||
+    (ctrlOrCmd && e.key.toLowerCase() === 'y')) {
+    editor.redo();
+    e.preventDefault();
+    return;
+  }
+
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (editor.selectedObjIndex !== -1 && scene.objs[editor.selectedObjIndex]) {
+      const type = scene.objs[editor.selectedObjIndex].constructor.type;
+      editor.removeObj(editor.selectedObjIndex);
+      editor.hoveredObjIndex = -1;
+      simulator.updateSimulation(!sceneObjs[type]?.isOptical, true);
+      editor.onActionComplete();
+    }
+    e.preventDefault();
+    return;
+  }
+
+  // Escape backs out of placing an object rather than completing it, the same
+  // as the ray simulator: onConstructUndo lets the object itself decide
+  // whether that means stepping back one vertex or cancelling outright.
+  if (e.key === 'Escape' && editor.isConstructing) {
+    editor.undo();
+    e.preventDefault();
+  }
 }
 
 /**
@@ -194,6 +247,12 @@ function bindEditorEvents() {
     syncUrl();
     emit('sceneChange', null);
   });
+
+  // Switch back to the move-view tool the instant an object is placed, so a
+  // second, unintended click on the canvas cannot start placing a duplicate.
+  // Continuous same-type placement (the ray simulator's convention) is a
+  // different default that would fight this, so it is not reused here.
+  editor.on('objectConstructed', () => setTool(''));
 
   editor.on('mouseCoordinateChange', (e) => {
     emit('statusChange', { mousePos: e.mousePos });

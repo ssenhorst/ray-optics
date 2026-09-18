@@ -29,6 +29,23 @@ import {
   computeModelFieldAt, fieldAmplitudes
 } from '../../waveOptics/WaveFieldEngineCpu.js';
 import { subspaceIndexAt } from '../../waveOptics/waveSceneModel.js';
+import { wavelengthInMedium } from '../../waveOptics/conventions.js';
+
+/**
+ * How close a grid sample may sit to a primary source before it is excluded
+ * from a peak search, in wavelengths in the local medium.
+ *
+ * A point or line source radiates the 2D Green's function, which diverges
+ * logarithmically at its own location; the near-source clamp elsewhere keeps
+ * that finite, but the clamped value can still be far brighter than any real
+ * focus nearby. Without this, "the brightest point" is trivially the source
+ * itself whenever a probe shares a subspace with one — which is exactly the
+ * subspace a probe is usually dropped into, since a lens's focus and its own
+ * illumination are typically on the same side of it. One wavelength is enough
+ * to clear the near-field falloff around a source without eating into a focus
+ * a few wavelengths further out.
+ */
+const SOURCE_EXCLUSION_WAVELENGTHS = 1;
 
 /** Colour the measurement objects are drawn in. */
 export const MEASURE_COLOR = 'rgb(130, 255, 170)';
@@ -85,11 +102,21 @@ export function fieldGrid(scene) {
   if (!simulator?.fieldReadback || !model) return null;
   const { width, height } = model.grid;
   if (simulator.fieldReadback.length < width * height * 4) return null;
+
+  // Per subspace, because the exclusion radius depends on the local
+  // wavelength, and a primary source only needs excluding from a search of
+  // the subspace it actually radiates into.
+  const excludePointsBySubspace = model.subspaces.map((s) => s.primaries);
+  const excludeRadiusBySubspace = model.subspaces.map((s) => SOURCE_EXCLUSION_WAVELENGTHS *
+    wavelengthInMedium(model.settings.wavelength, s.refractiveIndex));
+
   return {
     data: simulator.fieldReadback,
     grid: model.grid,
     interfaces: model.interfaces,
     axisSign: model.settings?.axisSign ?? 1,
+    excludePointsBySubspace,
+    excludeRadiusBySubspace,
   };
 }
 
@@ -125,6 +152,11 @@ export function boundaryRows(grid, interfaces) {
  * spot narrower than a few samples is still a measurement of the grid rather
  * than of the optics — which the caller can tell from the sample spacing.
  *
+ * A grid sample within one exclusion radius of a primary source in this
+ * subspace is skipped: without that, the maximum found is trivially the
+ * source itself, since the near-source clamp still leaves it far brighter
+ * than any real focus nearby. See {@link fieldGrid}.
+ *
  * @param {Object} field - From {@link fieldGrid}.
  * @param {number} subspaceIndex - Which subspace to search.
  * @returns {{x: number, y: number, amplitude: number, width: number, samplesAcross: number}|null}
@@ -133,6 +165,8 @@ export function peakInSubspace(field, subspaceIndex) {
   const { data, grid, interfaces } = field;
   const axisSign = field.axisSign ?? 1;
   const rows = boundaryRows(grid, interfaces);
+  const excludePoints = field.excludePointsBySubspace?.[subspaceIndex] ?? [];
+  const excludeRadiusSq = (field.excludeRadiusBySubspace?.[subspaceIndex] ?? 0) ** 2;
 
   let bestIndex = -1;
   let bestAmplitude = -1;
@@ -140,6 +174,7 @@ export function peakInSubspace(field, subspaceIndex) {
   let bestJ = 0;
 
   for (let j = 0; j < grid.height; j++) {
+    const y = grid.originY + grid.stepY * j;
     for (let i = 0; i < grid.width; i++) {
       const x = grid.originX + grid.stepX * i;
       let index = 0;
@@ -147,6 +182,16 @@ export function peakInSubspace(field, subspaceIndex) {
         if (axisSign * x >= axisSign * rows[s][j]) index++; else break;
       }
       if (index !== subspaceIndex) continue;
+
+      if (excludeRadiusSq > 0) {
+        let tooClose = false;
+        for (const source of excludePoints) {
+          const dx = x - source.x;
+          const dy = y - source.y;
+          if (dx * dx + dy * dy < excludeRadiusSq) { tooClose = true; break; }
+        }
+        if (tooClose) continue;
+      }
 
       const amplitude = data[(j * grid.width + i) * 4 + 2];
       if (amplitude > bestAmplitude) {

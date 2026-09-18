@@ -24,8 +24,12 @@ import {
   fieldAt, fieldSerial, currentModel, drawLabel, MEASURE_COLOR, VIRTUAL_COLOR
 } from './waveMeasurement.js';
 
-/** Points taken across the screen. */
-const SAMPLE_COUNT = 257;
+/** Points taken across the screen, when not overridden by `sampleCount`. */
+const DEFAULT_SAMPLE_COUNT = 257;
+
+/** The fewest and most samples the control allows. */
+const MIN_SAMPLE_COUNT = 17;
+const MAX_SAMPLE_COUNT = 2049;
 
 /** Height of the plotted curve at full scale, in screen pixels. */
 const DEFAULT_PLOT_HEIGHT = 110;
@@ -71,6 +75,8 @@ const TICK_COUNT = 8;
  * @property {string} units - 'wavelengths' or 'scene', for the axis.
  * @property {boolean} farField - Show the pattern at infinity instead of here.
  * @property {number} plotHeight - Height of the curve at full scale, in pixels.
+ * @property {number} sampleCount - Points taken across the screen.
+ * @property {boolean} alwaysShowPlot - Draw the plot even when not selected.
  */
 class WaveScreen extends LineObjMixin(BaseSceneObj) {
   static type = 'WaveScreen';
@@ -81,7 +87,9 @@ class WaveScreen extends LineObjMixin(BaseSceneObj) {
     plotMode: 'intensity',
     units: 'wavelengths',
     farField: false,
-    plotHeight: DEFAULT_PLOT_HEIGHT
+    plotHeight: DEFAULT_PLOT_HEIGHT,
+    sampleCount: DEFAULT_SAMPLE_COUNT,
+    alwaysShowPlot: false
   };
 
   static getDescription(objData, scene, detailed = false) {
@@ -120,7 +128,23 @@ class WaveScreen extends LineObjMixin(BaseSceneObj) {
       },
       { key: 'farField', type: 'boolean', label: i18next.t('simulator:waveSceneObjs.common.farField') },
       { key: 'plotHeight', type: 'number', label: i18next.t('simulator:waveSceneObjs.common.plotHeight') },
+      { key: 'sampleCount', type: 'number', label: i18next.t('simulator:waveSceneObjs.common.screenSamples') },
+      { key: 'alwaysShowPlot', type: 'boolean', label: i18next.t('simulator:waveSceneObjs.common.alwaysShowPlot') },
     ];
+  }
+
+  /**
+   * The number of points taken across the screen, clamped to a sane range.
+   *
+   * Read through this rather than the raw property everywhere a loop bound is
+   * needed, so a scene file with a corrupted or missing value degrades to the
+   * default instead of producing a zero- or negative-length array.
+   * @returns {number}
+   */
+  samples() {
+    const value = Math.round(this.sampleCount);
+    if (!Number.isFinite(value)) return DEFAULT_SAMPLE_COUNT;
+    return Math.min(MAX_SAMPLE_COUNT, Math.max(MIN_SAMPLE_COUNT, value));
   }
 
   populateObjBar(objBar) {
@@ -145,6 +169,19 @@ class WaveScreen extends LineObjMixin(BaseSceneObj) {
     objBar.createNumber(
       i18next.t('simulator:waveSceneObjs.common.plotHeight'), 30, 400, 5, this.plotHeight,
       function (obj, value) { obj.plotHeight = value; }
+    );
+    if (objBar.showAdvanced(!this.arePropertiesDefault(['sampleCount']))) {
+      objBar.createNumber(
+        i18next.t('simulator:waveSceneObjs.common.screenSamples'),
+        MIN_SAMPLE_COUNT, MAX_SAMPLE_COUNT, 2, this.sampleCount,
+        function (obj, value) { obj.sampleCount = value; },
+        '<p>' + i18next.t('simulator:waveSceneObjs.common.screenSamplesInfo') + '</p>'
+      );
+    }
+    objBar.createBoolean(
+      i18next.t('simulator:waveSceneObjs.common.alwaysShowPlot'), this.alwaysShowPlot,
+      function (obj, value) { obj.alwaysShowPlot = value; },
+      '<p>' + i18next.t('simulator:waveSceneObjs.common.alwaysShowPlotInfo') + '</p>'
     );
   }
 
@@ -225,11 +262,12 @@ class WaveScreen extends LineObjMixin(BaseSceneObj) {
     const tangent = this.tangent();
     const normal = this.normal();
     const length = Math.hypot(this.p2.x - this.p1.x, this.p2.y - this.p1.y);
+    const count = this.samples();
     const probes = [];
     const normals = [];
     const axis = [];
-    for (let i = 0; i < SAMPLE_COUNT; i++) {
-      const t = i / (SAMPLE_COUNT - 1);
+    for (let i = 0; i < count; i++) {
+      const t = i / (count - 1);
       probes.push({
         x: this.p1.x + (this.p2.x - this.p1.x) * t,
         y: this.p1.y + (this.p2.y - this.p1.y) * t,
@@ -264,12 +302,13 @@ class WaveScreen extends LineObjMixin(BaseSceneObj) {
       1000 * aperture
     );
 
+    const count = this.samples();
     const probes = [];
     const anchors = [];
     const normals = [];
     const axis = [];
-    for (let i = 0; i < SAMPLE_COUNT; i++) {
-      const t = i / (SAMPLE_COUNT - 1);
+    for (let i = 0; i < count; i++) {
+      const t = i / (count - 1);
       const angle = from + (to - from) * t;
       const direction = { x: Math.cos(angle), y: Math.sin(angle) };
       probes.push({
@@ -310,7 +349,7 @@ class WaveScreen extends LineObjMixin(BaseSceneObj) {
   measure() {
     const serial = fieldSerial(this.scene);
     const key = JSON.stringify([
-      serial, this.p1, this.p2, this.farField, this.plotMode,
+      serial, this.p1, this.p2, this.farField, this.plotMode, this.samples(),
     ]);
     if (this._cache?.key === key) return this._cache.result;
 
@@ -327,10 +366,11 @@ class WaveScreen extends LineObjMixin(BaseSceneObj) {
     const field = fieldAt(this.scene, layout.probes);
     if (!field) return null;
 
-    const amplitudes = new Float64Array(SAMPLE_COUNT);
-    const phases = new Float64Array(SAMPLE_COUNT);
+    const count = this.samples();
+    const amplitudes = new Float64Array(count);
+    const phases = new Float64Array(count);
     let maxAmplitude = 0;
-    for (let i = 0; i < SAMPLE_COUNT; i++) {
+    for (let i = 0; i < count; i++) {
       const re = field[i * 2];
       const im = field[i * 2 + 1];
       amplitudes[i] = Math.hypot(re, im);
@@ -343,8 +383,8 @@ class WaveScreen extends LineObjMixin(BaseSceneObj) {
     // removes it, leaving the phase *across* the pattern, which is the part
     // that means anything.
     if (this.farField) {
-      const reference = phases[(SAMPLE_COUNT - 1) >> 1];
-      for (let i = 0; i < SAMPLE_COUNT; i++) {
+      const reference = phases[(count - 1) >> 1];
+      for (let i = 0; i < count; i++) {
         phases[i] = Math.atan2(
           Math.sin(phases[i] - reference), Math.cos(phases[i] - reference)
         );
@@ -380,7 +420,9 @@ class WaveScreen extends LineObjMixin(BaseSceneObj) {
       }
     }
 
-    if (this.isSelected()) this.drawPlot(canvasRenderer, color);
+    // Selecting the screen is the usual way to bring up its plot, but a scene
+    // built to show several at once can pin them all on instead.
+    if (this.alwaysShowPlot || this.isSelected()) this.drawPlot(canvasRenderer, color);
   }
 
   /** The screen itself: a solid line, or a dashed arc for a far field. @private */
@@ -441,11 +483,12 @@ class WaveScreen extends LineObjMixin(BaseSceneObj) {
     ctx.lineWidth = 2 * ls;
     ctx.lineJoin = 'round';
 
+    const count = this.samples();
     if (this.plotMode === 'amplitudePhase') {
       // The curve is the amplitude and its colour is the phase, so one line
       // carries both without the phase needing an axis of its own.
       const chroma = this.scene?.waveOptics?.phaseChroma ?? 0.18;
-      for (let i = 0; i < SAMPLE_COUNT - 1; i++) {
+      for (let i = 0; i < count - 1; i++) {
         const rgb = amplitudePhaseColor(0.72, (phases[i] + phases[i + 1]) / 2, chroma * 1.6);
         ctx.strokeStyle = `rgb(${rgb.map((v) => Math.round(v * 255)).join(',')})`;
         const a = pointAt(i, values[i]);
@@ -458,7 +501,7 @@ class WaveScreen extends LineObjMixin(BaseSceneObj) {
     } else {
       ctx.strokeStyle = color;
       ctx.beginPath();
-      for (let i = 0; i < SAMPLE_COUNT; i++) {
+      for (let i = 0; i < count; i++) {
         const point = pointAt(i, values[i]);
         if (i === 0) ctx.moveTo(point.x, point.y); else ctx.lineTo(point.x, point.y);
       }
@@ -474,8 +517,9 @@ class WaveScreen extends LineObjMixin(BaseSceneObj) {
    * @private
    */
   plotValues(amplitudes, phases, maxAmplitude) {
-    const values = new Float64Array(SAMPLE_COUNT);
-    for (let i = 0; i < SAMPLE_COUNT; i++) {
+    const count = this.samples();
+    const values = new Float64Array(count);
+    for (let i = 0; i < count; i++) {
       if (this.plotMode === 'intensity') {
         const normalised = amplitudes[i] / maxAmplitude;
         values[i] = normalised * normalised;
@@ -507,7 +551,7 @@ class WaveScreen extends LineObjMixin(BaseSceneObj) {
     for (const level of signed ? [1, -1] : [1]) {
       ctx.setLineDash([2 * ls, 4 * ls]);
       ctx.beginPath();
-      for (let i = 0; i < SAMPLE_COUNT; i++) {
+      for (let i = 0; i < this.samples(); i++) {
         const point = at(i, level);
         if (i === 0) ctx.moveTo(point.x, point.y); else ctx.lineTo(point.x, point.y);
       }
@@ -518,7 +562,7 @@ class WaveScreen extends LineObjMixin(BaseSceneObj) {
     ctx.setLineDash([]);
     ctx.globalAlpha = 0.6;
     for (let t = 0; t <= TICK_COUNT; t++) {
-      const i = Math.round(t / TICK_COUNT * (SAMPLE_COUNT - 1));
+      const i = Math.round(t / TICK_COUNT * (this.samples() - 1));
       const base = at(i, 0);
       const tip = at(i, signed ? -0.06 : -0.04);
       ctx.beginPath();
@@ -530,7 +574,7 @@ class WaveScreen extends LineObjMixin(BaseSceneObj) {
 
     // The two ends of the axis, in whichever units the screen reports in, so
     // the ticks are a scale rather than decoration.
-    for (const i of [0, SAMPLE_COUNT - 1]) {
+    for (const i of [0, this.samples() - 1]) {
       const tip = at(i, signed ? -0.16 : -0.13);
       drawLabel(canvasRenderer, this.axisText(layout, i), tip, {
         color, align: 'center', baseline: 'middle', size: 10,
@@ -555,7 +599,7 @@ class WaveScreen extends LineObjMixin(BaseSceneObj) {
   drawPlotLabels(canvasRenderer, layout, height, measurement, color) {
     const ls = canvasRenderer.lengthScale;
     const wavelength = this.scene?.waveOptics?.wavelength || 20;
-    const last = SAMPLE_COUNT - 1;
+    const last = this.samples() - 1;
 
     const tip = {
       x: layout.anchors[last].x + layout.normals[last].x * height * 1.05,
@@ -584,7 +628,7 @@ class WaveScreen extends LineObjMixin(BaseSceneObj) {
 
   /** @private */
   extentText(layout, wavelength) {
-    const length = layout.axis[SAMPLE_COUNT - 1] - layout.axis[0];
+    const length = layout.axis[this.samples() - 1] - layout.axis[0];
     return this.units === 'wavelengths' && wavelength > 0
       ? `${(length / wavelength).toFixed(1)} λ`
       : length.toFixed(0);
