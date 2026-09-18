@@ -152,10 +152,16 @@ export function boundaryRows(grid, interfaces) {
  * spot narrower than a few samples is still a measurement of the grid rather
  * than of the optics — which the caller can tell from the sample spacing.
  *
- * A grid sample within one exclusion radius of a primary source in this
- * subspace is skipped: without that, the maximum found is trivially the
- * source itself, since the near-source clamp still leaves it far brighter
- * than any real focus nearby. See {@link fieldGrid}.
+ * Two kinds of sample are skipped, both for the same reason: they sit on top
+ * of a source rather than in the field it radiates.
+ *
+ * The first is a primary source in this subspace. The second is the interface
+ * that radiates *into* this subspace, whose secondary sources are spread along
+ * the surface itself — a sample landing on one of those sees the clamped
+ * Rayleigh-Sommerfeld kernel at essentially zero range, which is brighter than
+ * any focus further out and is an artefact of the discretisation rather than a
+ * field. Within a wavelength of a radiating aperture this model has nothing
+ * meaningful to say in any case, so excluding that band costs no real answer.
  *
  * @param {Object} field - From {@link fieldGrid}.
  * @param {number} subspaceIndex - Which subspace to search.
@@ -166,7 +172,12 @@ export function peakInSubspace(field, subspaceIndex) {
   const axisSign = field.axisSign ?? 1;
   const rows = boundaryRows(grid, interfaces);
   const excludePoints = field.excludePointsBySubspace?.[subspaceIndex] ?? [];
-  const excludeRadiusSq = (field.excludeRadiusBySubspace?.[subspaceIndex] ?? 0) ** 2;
+  const excludeRadius = field.excludeRadiusBySubspace?.[subspaceIndex] ?? 0;
+  const excludeRadiusSq = excludeRadius ** 2;
+
+  // The interface whose sample sites radiate into this subspace: the one
+  // bounding it from below. The first subspace has none, and nothing to skip.
+  const sourceSurface = subspaceIndex > 0 ? rows[subspaceIndex - 1] : null;
 
   let bestIndex = -1;
   let bestAmplitude = -1;
@@ -175,6 +186,21 @@ export function peakInSubspace(field, subspaceIndex) {
 
   for (let j = 0; j < grid.height; j++) {
     const y = grid.originY + grid.stepY * j;
+
+    // The band to skip around the radiating surface, measured perpendicular to
+    // it. `z(y)` gives the axial offset, which for a tilted or curved surface
+    // is longer than the true distance by the same factor the arc length is,
+    // so it is divided out here rather than excluding a wider band wherever the
+    // surface happens to be steep.
+    let axialBand = 0;
+    if (sourceSurface && excludeRadius > 0) {
+      const below = sourceSurface[Math.max(0, j - 1)];
+      const above = sourceSurface[Math.min(grid.height - 1, j + 1)];
+      const spanY = (Math.min(grid.height - 1, j + 1) - Math.max(0, j - 1)) * grid.stepY;
+      const slope = spanY !== 0 ? (above - below) / spanY : 0;
+      axialBand = excludeRadius * Math.hypot(1, slope);
+    }
+
     for (let i = 0; i < grid.width; i++) {
       const x = grid.originX + grid.stepX * i;
       let index = 0;
@@ -182,6 +208,8 @@ export function peakInSubspace(field, subspaceIndex) {
         if (axisSign * x >= axisSign * rows[s][j]) index++; else break;
       }
       if (index !== subspaceIndex) continue;
+
+      if (axialBand > 0 && Math.abs(x - sourceSurface[j]) < axialBand) continue;
 
       if (excludeRadiusSq > 0) {
         let tooClose = false;

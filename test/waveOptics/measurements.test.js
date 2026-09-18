@@ -340,6 +340,50 @@ describe('focus probe', () => {
       .toBeGreaterThanOrEqual(3 * WAVELENGTH);
   });
 
+  test('ignores the radiating surface itself, and follows it when it is tilted', () => {
+    // The other half of the same problem: the secondary sources that carry the
+    // field across an interface sit *on* that interface, so a sample landing on
+    // one sees the clamped kernel at zero range. The band skipped around the
+    // surface has to follow it when it is tilted, or a steep surface leaves a
+    // sliver of its own sites in the search.
+    const scene = makeScene();
+    const grid = computeFieldGrid(scene, 128);
+    const slope = 0.8;
+    const surfaceAt = (y) => 600 + slope * (y - 400);
+    const surface = {
+      zAt: surfaceAt,
+      getExtent: () => ({ yMin: -1000, yMax: 2000 }),
+      meanZ: () => 600,
+    };
+
+    const realFocus = { x: 950, y: 400 };
+    const data = new Float32Array(grid.width * grid.height * 4);
+    for (let j = 0; j < grid.height; j++) {
+      const y = grid.originY + grid.stepY * j;
+      for (let i = 0; i < grid.width; i++) {
+        const x = grid.originX + grid.stepX * i;
+        // A huge ridge along the surface, standing in for its sample sites,
+        // plus a modest genuine focus well downstream of it.
+        const perpendicular = Math.abs(x - surfaceAt(y)) / Math.hypot(1, slope);
+        data[(j * grid.width + i) * 4 + 2] = perpendicular < 0.6 * WAVELENGTH
+          ? 1e4
+          : Math.exp(-((x - realFocus.x) ** 2 + (y - realFocus.y) ** 2) / (2 * 40 * 40));
+      }
+    }
+
+    const field = {
+      data, grid, interfaces: [surface], axisSign: 1,
+      excludePointsBySubspace: [[], []],
+      excludeRadiusBySubspace: [WAVELENGTH, WAVELENGTH],
+    };
+
+    // Subspace 1 is the one the surface radiates into.
+    const peak = peakInSubspace(field, 1);
+    expect(peak.amplitude).toBeLessThan(2);
+    expect(Math.hypot(peak.x - realFocus.x, peak.y - realFocus.y))
+      .toBeLessThan(grid.spacing * 3);
+  });
+
   test('excludes the field engine\'s own point sources from fieldGrid', () => {
     // End-to-end version of the same thing: two point sources close enough
     // together that a probe between them shares their subspace, the case the
