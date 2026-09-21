@@ -56,7 +56,9 @@ WaveOpticsWidget("wave_zone_plate", height=520)
 ```
 
 `npm run build-anywidget` builds the bundle; the Python package around it lives in
-[python/](python/README.md) and is installed from this directory with `pip install .`.
+[python/](python/README.md) and is installed from this directory with `pip install .`. Each release
+also publishes the bundle on its own, readable and minified, for a page that embeds the module
+directly rather than through Python.
 
 ## Links
 - [**Launch the Web App**](https://phydemo.app/ray-optics/simulator/)
@@ -151,10 +153,27 @@ npm run build-images
 # build the web app version of simulator (unlike npm run start, this command builds the simulator in production mode)
 npm run build-app
 
+# build one self-contained page per scene in data/taskScenes, into dist/tasks.
+npm run build-tasks
+
 # build documentation
 npm run build-docs
 ```
 Note that `npm run build` is equivalent to running all the above commands.
+
+Two further builds are not part of `npm run build`, since neither belongs in the website:
+```bash
+# build the anywidget bundle, into python/ray_optics_widgets/static.
+npm run build-anywidget
+
+# open a task scene in the app as a designer, rather than as an assignment.
+npm run build-task-editor
+```
+
+The thumbnails the gallery shows for the wave-optics examples and assignments are screenshots of the
+real app, so they need a browser and are not rebuilt on every build. The output is committed;
+regenerate it with `npm i --no-save puppeteer && node ./scripts/buildWaveImages.mjs`, or one section
+of it with `--only=tasks`.
 
 ## Testing
 

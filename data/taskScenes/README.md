@@ -354,3 +354,22 @@ To put several applets on a page you control, include the bundle once and mark u
 or create them from code with `RayOptics.createWidget(element, sceneJson, options)`. The options are
 `onTaskStatus(status)`, called after every run with the score of each goal, and `onComplete(status)`,
 called the first time the task is solved — use them to report progress back to the host page.
+
+## Where an assignment ends up
+
+`npm run build-tasks` writes one self-contained page per scene in this directory to `dist/tasks/`,
+and is part of `npm run build`, so the website carries them.
+
+The wave-optics ones are also listed on the gallery page, taking their title and the first sentence
+of their description from the scene's own `task`. Their thumbnails are screenshots of the built page
+and are committed under `src/img/tasks/`; after adding or reframing a wave assignment, regenerate
+them with
+
+```bash
+npm run build-app && npm run build-tasks
+npm i --no-save puppeteer
+node ./scripts/buildWaveImages.mjs --only=tasks
+```
+
+A ray-optics scene here is built into a page the same way but is not listed in the gallery, which
+leads with wave optics.

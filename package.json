@@ -75,8 +75,8 @@
     "build-integrations:release": "npm run build-node && node ./scripts/buildIntegrations.mjs --release",
     "build-docs": "jsdoc -c jsdoc.json",
     "start": "webpack serve --open simulator/ --mode=development",
-    "build": "npm run build-pages && npm run build-scenes && npm run build-node && npm run build-images && npm run build-app && npm run build-docs",
-    "build:release": "npm run build-pages:release && npm run build-scenes && npm run build-node && npm run build-images && npm run build-app && npm run build-docs",
+    "build": "npm run build-pages && npm run build-scenes && npm run build-node && npm run build-images && npm run build-app && npm run build-tasks && npm run build-docs",
+    "build:release": "npm run build-pages:release && npm run build-scenes && npm run build-node && npm run build-images && npm run build-app && npm run build-tasks && npm run build-docs",
     "add-to-modules": "node ./scripts/addToModules.mjs",
     "sort-translations": "node ./scripts/sortTranslations.mjs",
     "test:waveOptics": "jest test/waveOptics"

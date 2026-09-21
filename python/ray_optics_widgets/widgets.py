@@ -49,8 +49,9 @@ class RayOpticsWidget(anywidget.AnyWidget):
         >>> RayOpticsWidget("collimate_the_beam", height=380)  # doctest: +SKIP
     """
 
-    _esm = read_asset("widget.js")
-    _css = read_asset("widget.css")
+    # The minified build: this string travels with every notebook the widget is saved into.
+    _esm = read_asset("widget.min.js")
+    _css = read_asset("widget.min.css")
 
     #: Which of the three widgets this is. Carried to the front end for its messages; it does not
     #: select code there, since the scene already says what has to run.

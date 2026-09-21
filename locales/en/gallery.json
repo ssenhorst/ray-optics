@@ -12,6 +12,10 @@
     "rayOptics": {
       "title": "Ray optics",
       "description": "Scenes for the ray simulator this project was forked from, which traces rays rather than summing fields."
+    },
+    "assignments": {
+      "title": "Assignments",
+      "description": "Set pieces rather than demonstrations: each states a goal, lets you change only what the exercise is about, and scores how close you are as you work. Every one is a single self-contained page, so it can be embedded in a course platform that allows no external requests."
     }
   }
 }

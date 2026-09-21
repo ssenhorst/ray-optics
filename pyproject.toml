@@ -8,7 +8,8 @@
 # The front-end bundle the widgets serve is built by `npm run build-anywidget`, which writes it to
 # `python/ray_optics_widgets/static/` along with a copy of the example scenes. Both are build
 # products, so neither is in version control, and both are listed under `artifacts` below so that
-# packaging includes them anyway.
+# packaging includes them anyway. Only the minified build goes into the distribution: the readable
+# one is several times the size and is published as a release asset instead.
 
 [build-system]
 requires = ["hatchling>=1.24", "hatch-nodejs-version>=0.3"]
@@ -60,7 +61,7 @@ packages = ["python/ray_optics_widgets"]
 # otherwise what hatchling selects files by: the bundle, and the copy of the example scenes that
 # lets `load_scene("wave_zone_plate")` work from an installed package.
 artifacts = [
-    "python/ray_optics_widgets/static/*",
+    "python/ray_optics_widgets/static/widget.min.*",
     "python/ray_optics_widgets/scenes/*",
 ]
 
@@ -75,7 +76,7 @@ include = [
     "/LICENSE",
 ]
 artifacts = [
-    "python/ray_optics_widgets/static/*",
+    "python/ray_optics_widgets/static/widget.min.*",
     "python/ray_optics_widgets/scenes/*",
 ]
 

@@ -51,6 +51,21 @@ jobs:
       - name: Build integrations
         run: npm run build-integrations:release
 
+      # The embeddable widget, in the form the anywidget spec asks for: an ES module and a
+      # stylesheet. Published as loose files rather than zipped, so a page or a notebook can point
+      # at one straight from the release.
+      - name: Build anywidget bundle
+        run: npm run build-anywidget
+
+      - name: Collect anywidget assets
+        run: |
+          mkdir -p anywidget-assets
+          static=python/ray_optics_widgets/static
+          cp "$static/widget.js"      anywidget-assets/ray-optics-anywidget.js
+          cp "$static/widget.min.js"  anywidget-assets/ray-optics-anywidget.min.js
+          cp "$static/widget.css"     anywidget-assets/ray-optics-anywidget.css
+          cp "$static/widget.min.css" anywidget-assets/ray-optics-anywidget.min.css
+
       - name: Zip website build
         run: |
           cd dist
@@ -72,3 +87,12 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: integrations-build.zip
+
+      - name: Upload anywidget bundle as release assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            anywidget-assets/ray-optics-anywidget.js
+            anywidget-assets/ray-optics-anywidget.min.js
+            anywidget-assets/ray-optics-anywidget.css
+            anywidget-assets/ray-optics-anywidget.min.css

@@ -237,6 +237,56 @@ function countStrings(json) {
 
 const homeLangs = [];
 const aboutLangs = [];
+/**
+ * Shorten a sentence to fit a caption, cutting at the last word that fits.
+ * @param {string} text
+ * @param {number} limit - The longest the result may be, the ellipsis included.
+ * @returns {string}
+ */
+function shorten(text, limit) {
+  if (text.length <= limit) return text;
+  const cut = text.slice(0, limit - 1);
+  return cut.slice(0, cut.lastIndexOf(' ')).replace(/[,;:]$/, '') + '\u2026';
+}
+
+/**
+ * The wave-optics assignments, which `npm run build-tasks` writes to `dist/tasks/` as a
+ * self-contained page each.
+ *
+ * Read from the scene files rather than from a list kept here, so an assignment added to
+ * `data/taskScenes` reaches the gallery without this script being edited. Only the wave-optics ones
+ * are listed: the ray-optics scenes in that directory are the worked examples of the task format,
+ * not finished assignments.
+ *
+ * The titles and descriptions come from each scene's `task`, so they are the same words the student
+ * reads in the assignment itself, and are not translated — the assignments are authored in English.
+ * Only the first sentence of the description is taken, shortened at a word boundary if it is still
+ * long: the rest tells the student what to do, which is worth reading once the assignment is open
+ * and is a wall of text on a thumbnail. The caption has room for three lines, and a sentence cut off
+ * mid-word by the overflow reads worse than one that ends.
+ *
+ * @returns {Array<{id: string, name: string, description: string}>}
+ */
+function waveTaskList() {
+  const dir = path.join(__dirname, '../data/taskScenes');
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir)
+    .filter((name) => name.endsWith('.json') && name !== 'index.json' && !name.startsWith('.'))
+    .map((name) => ({
+      id: name.slice(0, -'.json'.length),
+      scene: JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8')),
+    }))
+    .filter(({ scene }) => (scene.objs ?? []).some((obj) => String(obj?.type ?? '').startsWith('Wave')))
+    .map(({ id, scene }) => ({
+      id,
+      name: scene.task?.title ?? id,
+      description: shorten((scene.task?.description ?? '').split(/(?<=\.)\s+/)[0], 110),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+const waveTasks = waveTaskList();
+
 const galleryLangs = [];
 const modulesLangs = [];
 
@@ -568,6 +618,14 @@ for (const lang of homeLangs) {
         description: example.description,
         image: `${rootUrl}/img/wave/thumbnail-${example.id}.jpg`,
         url: rootUrl + urlMaps[lang]['/wave'] + '#' + example.id,
+      })),
+      // The assignments, which are pages rather than scenes: each is one self-contained file that
+      // carries the applet, the scene and the goals, so it opens without the app around it.
+      waveTasks: waveTasks.map((task) => ({
+        name: task.name,
+        description: task.description,
+        image: `${rootUrl}/img/tasks/thumbnail-${task.id}.jpg`,
+        url: `${rootUrl}/tasks/${task.id}.html`,
       })),
       isHome: false,
       isGallery: true,

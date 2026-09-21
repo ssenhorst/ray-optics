@@ -22,6 +22,12 @@
  * `python/ray_optics_widgets/static/`, which is where `RayOpticsWidget._esm` and `._css` read them
  * from. The wheel therefore carries the built bundle and the installed package needs no Node.
  *
+ * Two builds are made of each, as the release assets offer both: `widget.js` and `widget.css` are
+ * readable, for anyone embedding the module by hand or debugging what it does, and `widget.min.js`
+ * and `widget.min.css` are what the Python package serves. The example scenes are copied in beside
+ * them, so that `load_scene("wave_zone_plate")` works from an installed package without the scenes
+ * being authored twice.
+ *
  * Every dependency is compiled in and every image is inlined as a data URI, for the same reason the
  * standalone task pages do it: the module is served as a single file by JupyterLab, by MyST and by
  * a learning platform that allows no outside requests, and nothing may be fetched at runtime.
@@ -31,14 +37,26 @@ import path from 'path';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import CopyWebpackPlugin from 'copy-webpack-plugin';
 
-export default () => ({
+const OUT_DIR = path.resolve('python/ray_optics_widgets/static');
+
+/**
+ * @param {Object} options
+ * @param {boolean} options.minimize - Whether this is the minified build.
+ * @param {Array} [options.extraPlugins] - Plugins only one of the two builds needs.
+ * @returns {Object} A webpack configuration.
+ */
+const config = ({ minimize, extraPlugins = [] }) => ({
+  name: minimize ? 'min' : 'readable',
+  // The two builds share an output directory, so only the first may clean it. Naming the other as a
+  // dependency is also what keeps them from running at the same time and racing over that.
+  dependencies: minimize ? ['readable'] : [],
   entry: {
     widget: './src/anywidget/index.js',
   },
   output: {
-    filename: 'widget.js',
-    path: path.resolve('python/ray_optics_widgets/static'),
-    clean: true,
+    filename: minimize ? 'widget.min.js' : 'widget.js',
+    path: OUT_DIR,
+    clean: !minimize,
     // The anywidget front-end contract is an ES module, so the bundle keeps its `export default`
     // rather than being wrapped in a UMD factory the way the standalone widget is.
     module: true,
@@ -62,15 +80,8 @@ export default () => ({
     ],
   },
   plugins: [
-    new MiniCssExtractPlugin({ filename: 'widget.css' }),
-    new CopyWebpackPlugin({
-      patterns: [{
-        from: 'data/taskScenes',
-        to: path.resolve('python/ray_optics_widgets/scenes'),
-        // The stray metadata files some file systems leave beside the real ones are not scenes.
-        globOptions: { ignore: ['**/._*'] },
-      }],
-    }),
+    new MiniCssExtractPlugin({ filename: minimize ? 'widget.min.css' : 'widget.css' }),
+    ...extraPlugins,
   ],
   resolve: {
     alias: {
@@ -79,11 +90,28 @@ export default () => ({
     extensions: ['.js'],
   },
   optimization: {
-    minimize: true,
+    minimize,
     runtimeChunk: false,
     splitChunks: false,
   },
   performance: { hints: false },
-  mode: 'production',
+  mode: minimize ? 'production' : 'development',
   devtool: false,
 });
+
+export default () => [
+  config({
+    minimize: false,
+    extraPlugins: [
+      new CopyWebpackPlugin({
+        patterns: [{
+          from: 'data/taskScenes',
+          to: path.resolve('python/ray_optics_widgets/scenes'),
+          // The stray metadata files some file systems leave beside the real ones are not scenes.
+          globOptions: { ignore: ['**/._*'] },
+        }],
+      }),
+    ],
+  }),
+  config({ minimize: true }),
+];

@@ -17,7 +17,8 @@
 /**
  * @file Renders every wave-optics picture the site and the editor use: the home
  * page carousel and field views, the tool icons that appear both on the home
- * page and in the editor's tool menus, the gallery thumbnails, and the favicon.
+ * page and in the editor's tool menus, the gallery thumbnails of the examples
+ * and of the assignments, and the favicon.
  *
  * Unlike the ray-optics gallery images, which are drawn by the node build of
  * the core library, these are screenshots of the real app driven in a headless
@@ -31,6 +32,7 @@
  * examples or the rendering change.
  *
  *     npm run build-app          # or build-simulator, for a dist/ to serve
+ *     npm run build-tasks        # only needed for --only=tasks
  *     node ./scripts/buildWaveImages.mjs
  *
  * Puppeteer is not a dependency of this project. Point NODE_PATH at an install
@@ -52,6 +54,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const DIST = path.join(ROOT, 'dist');
 const OUT_DIR = path.join(ROOT, 'src/img/wave');
+const TASKS_OUT_DIR = path.join(ROOT, 'src/img/tasks');
 
 /** Grid resolution the previews are computed at, in place of the adaptive ladder. */
 const PREVIEW_RESOLUTION = 512;
@@ -245,6 +248,29 @@ const FAVICON = {
 /** Sizes the favicon is written at, largest first. */
 const FAVICON_SIZES = [256, 180, 32];
 
+/**
+ * The assignments shown in the gallery, which are the wave-optics ones: the
+ * pages `npm run build-tasks` writes to `dist/tasks/`.
+ *
+ * Read from the scene files rather than listed here, so an assignment added to
+ * `data/taskScenes` is picked up without this script being edited.
+ *
+ * @returns {Array<{id: string, title: string, description: string}>}
+ */
+function waveTasks() {
+  const dir = path.join(ROOT, 'data/taskScenes');
+  return fs.readdirSync(dir)
+    .filter((name) => name.endsWith('.json') && name !== 'index.json' && !name.startsWith('.'))
+    .map((name) => ({ id: name.slice(0, -'.json'.length), scene: JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8')) }))
+    .filter(({ scene }) => (scene.objs ?? []).some((obj) => String(obj?.type ?? '').startsWith('Wave')))
+    .map(({ id, scene }) => ({
+      id,
+      title: scene.task?.title ?? id,
+      description: scene.task?.description ?? '',
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+}
+
 const MIME = {
   '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
   '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png',
@@ -346,6 +372,37 @@ async function loadScene(page, base, scene) {
   await new Promise((r) => setTimeout(r, SETTLE_MS));
 }
 
+/**
+ * Load one built assignment page and wait for its field.
+ *
+ * Unlike the app, a task page is the embeddable applet with no global handle on
+ * it, so there is nothing to drive: it is waited on and photographed as a
+ * student would meet it, at the state the scene is authored in. The crop is
+ * taken from the applet's own stage element, which is the canvas area left of
+ * the assignment panel — the panel is a wall of text that says nothing at
+ * thumbnail size.
+ *
+ * @param {Object} page - A puppeteer page.
+ * @param {string} base - The server's base URL.
+ * @param {string} id - The task's id, which is its scene's file name.
+ * @returns {Promise<Object>} The stage's bounding box, as a sharp extract box.
+ */
+async function loadTaskPage(page, base, id) {
+  await page.goto(`${base}/tasks/${id}.html`, { waitUntil: 'networkidle0' });
+  await page.waitForSelector('.ro-stage canvas', { timeout: 30000 });
+  await new Promise((r) => setTimeout(r, SETTLE_MS));
+
+  return page.evaluate(() => {
+    const rect = document.querySelector('.ro-stage').getBoundingClientRect();
+    return {
+      left: Math.round(rect.left),
+      top: Math.round(rect.top),
+      width: Math.round(rect.width),
+      height: Math.round(rect.height),
+    };
+  });
+}
+
 /** Set the field view and re-colour, without recomputing the field. */
 async function setView(page, view) {
   await page.evaluate((v) => {
@@ -358,8 +415,13 @@ async function setView(page, view) {
 /**
  * Shoot the viewport and write it out, cropped to the requested aspect ratio
  * about the centre of the picture.
+ *
+ * `fit` is the usual sharp one: `cover` fills the frame and loses what does not
+ * fit, which is what a preview of a scene composed to fill the window wants;
+ * `contain` fits the whole picture inside the frame against `background`, which
+ * is what a scene wider than the frame wants when none of it may be lost.
  */
-async function shoot(page, sharp, outPath, { width, height, crop }) {
+async function shoot(page, sharp, outPath, { width, height, crop, fit = 'cover', background = '#000' }) {
   const buffer = await page.screenshot({ type: 'png' });
   const image = sharp(buffer);
   const meta = await image.metadata();
@@ -369,7 +431,7 @@ async function shoot(page, sharp, outPath, { width, height, crop }) {
   const box = crop ?? { left: 0, top: 0, width: meta.width, height: meta.height };
   await image
     .extract(box)
-    .resize(width, height, { fit: 'cover' })
+    .resize(width, height, { fit, background })
     .jpeg({ quality: 88, chromaSubsampling: '4:4:4' })
     .toFile(outPath);
   console.log('  wrote', path.relative(ROOT, outPath));
@@ -395,9 +457,11 @@ function centredCrop(viewport, aspect, bias = 0.5, zoom = 1) {
     width = Math.round(height * aspect);
   }
   const free = viewport.width - width;
+  // `left`/`top` let the box be taken from a region that is not the whole page,
+  // which is how a crop of one element rather than of the viewport is asked for.
   return {
-    left: Math.round(free * Math.min(1, Math.max(0, bias))),
-    top: Math.round((viewport.height - height) / 2),
+    left: (viewport.left ?? 0) + Math.round(free * Math.min(1, Math.max(0, bias))),
+    top: (viewport.top ?? 0) + Math.round((viewport.height - height) / 2),
     width,
     height,
   };
@@ -485,6 +549,26 @@ async function main() {
       await shoot(page, sharp, path.join(OUT_DIR, `thumbnail-${example.id}.jpg`), {
         width: 500, height: 500, crop: centredCrop(viewport, 1, 0.6),
       });
+    }
+    }
+
+    if (wanted('tasks')) {
+    console.log('assignment thumbnails');
+    if (!fs.existsSync(path.join(DIST, 'tasks'))) {
+      console.error('  dist/tasks is missing. Run `npm run build-tasks` first.');
+    } else {
+      fs.mkdirSync(TASKS_OUT_DIR, { recursive: true });
+      for (const task of waveTasks()) {
+        const stage = await loadTaskPage(page, base, task.id);
+        // The whole stage, letterboxed into the square the gallery asks for,
+        // rather than a square cut out of it. An assignment is composed across
+        // the width it is set in — the thing to change at one end, the mark to
+        // hit at the other — so a crop that keeps only the middle would leave
+        // out what the assignment is about.
+        await shoot(page, sharp, path.join(TASKS_OUT_DIR, `thumbnail-${task.id}.jpg`), {
+          width: 500, height: 500, crop: stage, fit: 'contain',
+        });
+      }
     }
     }
 

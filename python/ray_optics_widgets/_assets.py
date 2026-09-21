@@ -36,7 +36,8 @@ def read_asset(name: str) -> str:
     """Return the contents of a built asset.
 
     Args:
-        name: The file name inside ``static/``, ``widget.js`` or ``widget.css``.
+        name: The file name inside ``static/``. The build writes a readable and a minified
+            build of each: ``widget.js``, ``widget.min.js``, ``widget.css``, ``widget.min.css``.
 
     Returns:
         The file's contents.
