@@ -15,6 +15,7 @@
  */
 
 import i18next from 'i18next';
+import { validateInteraction } from '../interaction.js';
 
 /**
  * @typedef {Object} PropertyDescriptor
@@ -77,11 +78,20 @@ class BaseSceneObj {
     this.name = jsonObj?.name || '';
     /** @property {'default'|'locked'|'unlocked'} locked - Lock override: 'default' follows scene.lockObjs, 'locked' always locked, 'unlocked' always unlocked. Not serialized when 'default'. */
     this.locked = jsonObj?.locked ?? 'default';
+    /** @property {Object|null} interaction - Per-object interaction permissions overriding those of the scene. Every key left out is inherited from `scene.interaction`. See {@link module:interaction}. Null when the object simply follows the scene. */
+    this.interaction = jsonObj?.interaction ?? null;
+
+    if (this.interaction) {
+      const interactionError = validateInteraction(this.interaction, false);
+      if (interactionError) {
+        this.scene.error = `${this.constructor.type}: ${interactionError}`;
+      }
+    }
 
     // Check for unknown keys in the jsonObj
     if (jsonObj) {
       const serializableDefaults = this.constructor.serializableDefaults;
-      const knownKeys = ['type', 'name', 'locked', ...Object.keys(serializableDefaults)];
+      const knownKeys = ['type', 'name', 'locked', 'interaction', ...Object.keys(serializableDefaults)];
       for (const key in jsonObj) {
         if (!knownKeys.includes(key)) {
           this.scene.error = i18next.t('simulator:generalErrors.unknownObjectKey', { key, type: this.constructor.type }); // Here the error is stored in the scene, not the object, to prevent further errors occurring in the object from replacing it, and also because this error likely indicates an incompatible scene version.
@@ -117,6 +127,7 @@ class BaseSceneObj {
     const serializableDefaults = {
       name: '',
       locked: 'default',
+      interaction: null,
       ...this.constructor.serializableDefaults
     };
 
@@ -304,6 +315,36 @@ class BaseSceneObj {
     return {
       isCancelled: true
     }
+  }
+
+  /**
+   * @typedef {Object} InteractionHandle
+   * @property {Point} point - Where the handle is, in scene coordinates.
+   * @property {string} propertyKey - The name of the property the handle changes, which is also the
+   * name the interaction permissions use for it.
+   * @property {number} [part] - The part index the handle corresponds to in `checkMouseOver`.
+   */
+
+  /**
+   * The control points of the object that a user could drag, so that a UI can show where the object
+   * can be grabbed instead of leaving the user to discover it by hovering.
+   *
+   * The default implementation reports every point-valued serialized property, which covers the
+   * `p1`/`p2`/`p3` convention used throughout `sceneObjs`. Objects with handles that change something
+   * other than a point (such as the focal length markers of an ideal lens) add them by overriding it.
+   * @returns {Array<InteractionHandle>} The handles.
+   */
+  getInteractionHandles() {
+    const handles = [];
+    const keys = Object.keys(this.constructor.serializableDefaults || {});
+    for (const key of keys) {
+      const value = this[key];
+      if (value && typeof value.x === 'number' && typeof value.y === 'number') {
+        const part = /^p\d+$/.test(key) ? parseInt(key.slice(1), 10) : undefined;
+        handles.push({ point: value, propertyKey: key, part });
+      }
+    }
+    return handles;
   }
 
   /**

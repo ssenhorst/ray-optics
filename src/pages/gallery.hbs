@@ -98,6 +98,14 @@
       text-overflow: ellipsis;
     }
 
+    /* An assignment's title is a sentence saying what to do, not a name, so it
+       wraps over two lines instead of being cut off with an ellipsis. */
+    .task-container .example-title-text {
+      white-space: normal;
+      line-height: 1.25;
+      height: 2.5em;
+    }
+
     .anchor {
       padding-top: 65px; 
     }
@@ -110,6 +118,9 @@
     <h1>{{t "gallery:galleryPage.title"}}</h1>
     {{t "gallery:galleryPage.description"}}
     
+    <h2 class="anchor" id="examples">{{t "gallery:galleryPage.waveOptics.title"}}</h2>
+    <p>{{t "gallery:galleryPage.waveOptics.description"}}</p>
+
     {{#each waveExamples}}
       <a href="{{url}}" class="thumbnail example-container">
         <img src="{{image}}" alt="{{name}}" class="img-rounded example-image" loading="lazy">
@@ -120,6 +131,22 @@
       </a>
     {{/each}}
     <br>
+
+    {{#if waveTasks}}
+      <h2 class="anchor" id="assignments">{{t "gallery:galleryPage.assignments.title"}}</h2>
+      <p>{{t "gallery:galleryPage.assignments.description"}}</p>
+
+      {{#each waveTasks}}
+        <a href="{{url}}" class="thumbnail example-container task-container">
+          <img src="{{image}}" alt="{{name}}" class="img-rounded example-image" loading="lazy">
+          <div class="caption">
+            <p class="example-title"><span class="example-title-text">{{name}}</span></p>
+            <p class="example-contributor example-description">{{description}}</p>
+          </div>
+        </a>
+      {{/each}}
+      <br>
+    {{/if}}
 
     {{> footer}}
   </div>

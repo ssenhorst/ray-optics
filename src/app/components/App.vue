@@ -55,9 +55,44 @@ import ColorModeModal from './ColorModeModal.vue';
 import ThemeModal from './ThemeModal.vue';
 import LanguageModal from './LanguageModal.vue';
 import SimulationEngineModal from './SimulationEngineModal.vue';
+import { computed, watchEffect } from 'vue';
+import { useSceneStore } from '../store/scene';
+import { resolveUiOptions } from '../../core/uiOptions.js';
+import { app } from '../services/app';
 
 
 export default {
+  setup() {
+    const sceneStore = useSceneStore();
+
+    // The scene can hide parts of the interface, which is how a scene meant as a classroom exercise
+    // keeps the app down to what the exercise needs. See `src/core/uiOptions.js`.
+    //
+    // The parts are hidden with a class on `body` rather than with `v-if`, because the app service
+    // reaches into these elements directly by id and would fail if they were not in the document.
+    // Resolved through the same function the widget uses, so the task designer (which ignores these
+    // settings while still editing them) behaves identically in both.
+    const ui = computed(() => resolveUiOptions({
+      designMode: app.scene ? app.scene.designMode : false,
+      ui: sceneStore.ui.value,
+    }));
+
+    watchEffect(() => {
+      const hidden = {
+        'ro-hide-toolbar': !ui.value.toolbar,
+        'ro-hide-objbar': !ui.value.objectBar,
+        'ro-hide-sidebar': !ui.value.sidebar,
+        'ro-hide-statusbar': !ui.value.statusBar,
+        'ro-hide-footer': !ui.value.footer,
+        'ro-hide-welcome': !ui.value.welcomeMessage,
+      };
+      for (const [className, on] of Object.entries(hidden)) {
+        document.body.classList.toggle(className, on);
+      }
+    });
+
+    return { ui };
+  },
   components: {
     CanvasContainer,
     WelcomeMessage,
@@ -79,6 +114,32 @@ export default {
 </script>
 
 <style>
+/* Parts of the interface the scene's `ui` property switches off. */
+body.ro-hide-toolbar #toolbar,
+body.ro-hide-toolbar #toolbar-mobile-collapse {
+  display: none !important;
+}
+
+body.ro-hide-objbar #obj_bar {
+  display: none !important;
+}
+
+body.ro-hide-sidebar #sidebar {
+  display: none !important;
+}
+
+body.ro-hide-statusbar #footer-left {
+  display: none !important;
+}
+
+body.ro-hide-footer #footer-right {
+  display: none !important;
+}
+
+body.ro-hide-welcome #welcome {
+  display: none !important;
+}
+
 .popover-image {
   float:left;
   margin-right: 10px;

@@ -6,6 +6,12 @@ on:
     branches:
       - master
 
+# Checking out and running the tests needs nothing more than read access. Declared explicitly so
+# that it does not depend on the repository's default, which is what left the bot without a token
+# it could use.
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest

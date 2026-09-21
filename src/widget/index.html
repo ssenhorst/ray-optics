@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ray Optics Task Widget</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #f6f8fa;
+      color: #1b1f24;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .page {
+      max-width: 1150px;
+      margin: 0 auto;
+      padding: 24px 16px 48px;
+    }
+
+    h1 {
+      font-size: 20px;
+      margin: 0 0 4px;
+    }
+
+    .lede {
+      margin: 0 0 18px;
+      color: #57606a;
+      font-size: 14px;
+    }
+
+    .applet {
+      height: 560px;
+    }
+
+    .picker {
+      margin: 0 0 14px;
+      font-size: 14px;
+    }
+
+    select {
+      font: inherit;
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid #d0d7de;
+      background: #fff;
+    }
+
+    @media (max-width: 700px) {
+      .applet { height: 700px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page">
+    <h1>Ray Optics task widget</h1>
+    <p class="lede">A development page for the embeddable applet. Pick a task scene, or open this page with
+      <code>?scene=&lt;name&gt;</code>.</p>
+
+    <p class="picker">
+      <label for="scene-picker">Task scene:</label>
+      <select id="scene-picker"></select>
+    </p>
+
+    <div class="applet" id="applet"></div>
+  </div>
+
+  <script>
+    // The bundle is injected at the end of <body>, so wait for it before using the global.
+    window.addEventListener('load', function () {
+      var picker = document.getElementById('scene-picker');
+      var widget = null;
+
+      function sceneUrl(name) {
+        return 'taskScenes/' + name + '.json';
+      }
+
+      function show(name) {
+        fetch(sceneUrl(name))
+          .then(function (r) {
+            if (!r.ok) throw new Error('Could not load ' + sceneUrl(name) + ' (' + r.status + ')');
+            return r.text();
+          })
+          .then(function (json) {
+            if (widget) widget.destroy();
+            widget = RayOptics.createWidget('applet', json, {
+              onComplete: function () { console.log('task complete'); }
+            });
+            // Exposed so that the development page can be driven from a script.
+            window.__widget = widget;
+          })
+          .catch(function (e) {
+            document.getElementById('applet').textContent = e.message;
+          });
+      }
+
+      fetch('taskScenes/index.json')
+        .then(function (r) { return r.ok ? r.json() : []; })
+        .catch(function () { return []; })
+        .then(function (names) {
+          var params = new URLSearchParams(location.search);
+          var requested = params.get('scene');
+          if (requested && names.indexOf(requested) === -1) names.unshift(requested);
+          if (names.length === 0) names = ['parabolic_by_parts'];
+
+          names.forEach(function (name) {
+            var option = document.createElement('option');
+            option.value = name;
+            option.textContent = name;
+            picker.appendChild(option);
+          });
+          picker.value = requested || names[0];
+          picker.addEventListener('change', function () { show(picker.value); });
+          show(picker.value);
+        });
+    });
+  </script>
+</body>
+
+</html>

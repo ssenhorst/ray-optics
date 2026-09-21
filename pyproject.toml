@@ -1,0 +1,84 @@
+# The Python distribution of the ray optics widgets.
+#
+# The Python code is not the core of this repository — the simulator is — so it lives under
+# `python/` rather than at the root, in the same spirit as `packages/mystmd-py` in mystmd. What sits
+# at the root is only this file, so that the repository as a whole is the installable project and
+# `pip install .` (or a build to PyPI) works from here.
+#
+# The front-end bundle the widgets serve is built by `npm run build-anywidget`, which writes it to
+# `python/ray_optics_widgets/static/` along with a copy of the example scenes. Both are build
+# products, so neither is in version control, and both are listed under `artifacts` below so that
+# packaging includes them anyway. Only the minified build goes into the distribution: the readable
+# one is several times the size and is published as a release asset instead.
+
+[build-system]
+requires = ["hatchling>=1.24", "hatch-nodejs-version>=0.3"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ray-optics-widgets"
+dynamic = ["version"]
+description = "Embeddable ray optics, wave optics and assignment widgets, as anywidgets."
+readme = "python/README.md"
+requires-python = ">=3.9"
+license = "Apache-2.0"
+authors = [{ name = "The Ray Optics Simulation authors and contributors" }]
+keywords = ["optics", "ray tracing", "wave optics", "anywidget", "jupyter", "myst", "education"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Framework :: Jupyter",
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: JavaScript",
+    "Programming Language :: Python :: 3",
+    "Topic :: Education",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+dependencies = [
+    "anywidget>=0.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7",
+    "anywidget[dev]>=0.9",
+]
+
+[project.urls]
+Homepage = "https://phydemo.app/ray-optics/"
+Source = "https://github.com/ricktu288/ray-optics"
+
+# One source of truth for the version: the npm package, which is what the simulator is versioned by.
+[tool.hatch.version]
+source = "nodejs"
+path = "package.json"
+
+[tool.hatch.build.targets.wheel]
+packages = ["python/ray_optics_widgets"]
+# Both directories are written by `npm run build-anywidget` and so are ignored by git, which is
+# otherwise what hatchling selects files by: the bundle, and the copy of the example scenes that
+# lets `load_scene("wave_zone_plate")` work from an installed package.
+artifacts = [
+    "python/ray_optics_widgets/static/widget.min.*",
+    "python/ray_optics_widgets/scenes/*",
+]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/python",
+    "/src",
+    "/data/taskScenes",
+    "/locales",
+    "/package.json",
+    "/webpack.anywidget.config.mjs",
+    "/LICENSE",
+]
+artifacts = [
+    "python/ray_optics_widgets/static/widget.min.*",
+    "python/ray_optics_widgets/scenes/*",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["python/tests"]

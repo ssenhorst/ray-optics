@@ -18,6 +18,7 @@ import Glass from './Glass.js';
 import BaseGlass from '../BaseGlass.js';
 import geometry from '../../geometry.js';
 import i18next from 'i18next';
+import { drawOpticalAxis, drawFocalPoints } from '../opticalAxisDecoration.js';
 
 /**
  * Spherical lens.
@@ -30,10 +31,12 @@ import i18next from 'i18next';
  * @extends sceneObjs.Glass
  * @memberof sceneObjs
  * @property {Array<object>} path - The path of the lens if it is built.
- * @property {string} defBy - The way the lens is defined. Either 'DR1R2' or 'DFfdBfd'.
+ * @property {string} defBy - The way the lens is defined. Either 'DR1R2' (thickness and radii of curvature), 'DFfdBfd' (thickness and front/back focal distances), or 'DF' (thickness and effective focal length, giving a symmetric lens).
  * @property {Point} p1 - The intersection of the perpendicular bisector of the segment for the `d` parameter with the top edge of the lens, if it is not built.
  * @property {Point} p2 - The intersection of the perpendicular bisector of the segment for the `d` parameter with the bottom edge of the lens, if it is not built.
- * @property {object} params - The parameters of the lens if it is not built. It has the following properties: `d`, `r1`, and `r2` if `defBy` is 'DR1R2', and `d`, `ffd`, and `bfd` if `defBy` is 'DFfdBfd'.
+ * @property {object} params - The parameters of the lens if it is not built. It has the following properties: `d`, `r1`, and `r2` if `defBy` is 'DR1R2', `d`, `ffd`, and `bfd` if `defBy` is 'DFfdBfd', and `d` and `f` if `defBy` is 'DF'.
+ * @property {boolean} showOpticalAxis - Whether the optical axis of the lens is drawn as a reference.
+ * @property {boolean} showFocalPoints - Whether the focal points of the lens are drawn as a reference, rather than only while the lens is hovered.
  * @property {number} refIndex - The refractive index of the glass, or the Cauchy coefficient A of the glass if "Simulate Colors" is on.
  * @property {number} cauchyB - The Cauchy coefficient B of the glass if "Simulate Colors" is on, in micrometer squared.
  */
@@ -49,7 +52,9 @@ class SphericalLens extends Glass {
     params: null,
     refIndex: 1.5,
     cauchyB: 0.004,
-    partialReflect: true
+    partialReflect: true,
+    showOpticalAxis: false,
+    showFocalPoints: false
   };
 
   static getDescription(objData, scene, detailed = false) {
@@ -65,6 +70,8 @@ class SphericalLens extends Glass {
       { key: 'path.4', type: 'point', label: i18next.t('simulator:sceneObjs.common.pointN', { i: 5 }) },
       { key: 'path.5', type: 'point', label: i18next.t('simulator:sceneObjs.common.pointN', { i: 6 }) },
       ...BaseGlass.getPropertySchema(objData, scene),
+      { key: 'showOpticalAxis', type: 'boolean', label: i18next.t('simulator:sceneObjs.common.showOpticalAxis') },
+      { key: 'showFocalPoints', type: 'boolean', label: i18next.t('simulator:sceneObjs.common.showFocalPoints') },
     ];
   }
 
@@ -77,6 +84,8 @@ class SphericalLens extends Glass {
         this.createLensWithDR1R2(this.params.d, this.params.r1, this.params.r2);
       } else if (this.defBy == 'DFfdBfd') {
         this.createLensWithDFfdBfd(this.params.d, this.params.ffd, this.params.bfd);
+      } else if (this.defBy == 'DF') {
+        this.createLensWithDF(this.params.d, this.params.f);
       }
     }
   }
@@ -85,7 +94,8 @@ class SphericalLens extends Glass {
     objBar.setTitle(i18next.t('main:tools.SphericalLens.title'));
     objBar.createDropdown('', this.defBy, {
       'DR1R2': i18next.t('simulator:sceneObjs.SphericalLens.defBy.radiiOfCurvature'),
-      'DFfdBfd': i18next.t('simulator:sceneObjs.SphericalLens.defBy.focalDistances')
+      'DFfdBfd': i18next.t('simulator:sceneObjs.SphericalLens.defBy.focalDistances'),
+      'DF': i18next.t('simulator:sceneObjs.SphericalLens.defBy.focalLength')
     }, function (obj, value) {
       obj.defBy = value;
     }, null, true);
@@ -113,6 +123,15 @@ class SphericalLens extends Glass {
         var r1 = params.r1;
         var r2 = params.r2;
         obj.createLensWithDR1R2(value, r1, r2);
+      }, null, true);
+    } else if (this.defBy == 'DF') {
+      var params = this.getDF();
+
+      objBar.createNumber(i18next.t('simulator:sceneObjs.common.focalLength'), -1000, 1000, 1, params.f, function (obj, value) {
+        obj.createLensWithDF(obj.getDF().d, value);
+      }, i18next.t('simulator:sceneObjs.common.lengthUnitInfo'), true);
+      objBar.createNumber('d', 0, 100, 1, params.d, function (obj, value) {
+        obj.createLensWithDF(value, obj.getDF().f);
       }, null, true);
     } else if (this.defBy == 'DFfdBfd') {
       objBar.createInfoBox('<img src="../img/FFD_BFD.svg" width=100%>');
@@ -205,17 +224,84 @@ class SphericalLens extends Glass {
     var dpx = dy;
     var dpy = -dx;
 
-    if (isHovered) {
-      // Draw the focal points
+    this.drawOpticalDecorations(canvasRenderer);
 
-      var params = this.getDFfdBfd();
-      var ffd = params.ffd;
-      var bfd = params.bfd;
-
-      ctx.fillStyle = 'rgb(255,0,255)';
-      ctx.fillRect(this.path[2].x + bfd * dpx - 1.5 * ls, this.path[2].y + bfd * dpy - 1.5 * ls, 3 * ls, 3 * ls);
-      ctx.fillRect(this.path[5].x - ffd * dpx - 1.5 * ls, this.path[5].y - ffd * dpy - 1.5 * ls, 3 * ls, 3 * ls);
+    if (isHovered && !this.showFocalPoints) {
+      // Draw the focal points, which when the lens is defined by its focal length are also the
+      // handles for dragging it.
+      drawFocalPoints(canvasRenderer, this.scene, this.getFocalPoints());
     }
+  }
+
+  /**
+   * The centre of the lens and the unit vector along its optical axis.
+   * @returns {{center: Point, direction: Point}|null} The axis, or null if the lens is not built.
+   */
+  getOpticalAxis() {
+    if (!this.path) return null;
+    const p1 = geometry.midpoint(this.path[0], this.path[1]);
+    const p2 = geometry.midpoint(this.path[3], this.path[4]);
+    const len = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+    if (!(len > 0)) return null;
+    return {
+      center: geometry.midpoint(this.path[2], this.path[5]),
+      direction: geometry.point((p2.y - p1.y) / len, -(p2.x - p1.x) / len),
+    };
+  }
+
+  /**
+   * The focal points of the lens, measured from its vertices by the front and back focal distances,
+   * which is where a student would find them by experiment.
+   * @returns {Array<Point>} The back focal point then the front one, or an empty array if the lens is
+   * not built or has no finite focal length.
+   */
+  getFocalPoints() {
+    const axis = this.getOpticalAxis();
+    // `getDFfdBfd` reports the stored parameters when the lens could not be built, which are not
+    // focal distances, so there is nothing to draw in that case.
+    if (!axis || this.params) return [];
+    const { ffd, bfd } = this.getDFfdBfd();
+    if (!isFinite(ffd) || !isFinite(bfd)) return [];
+    const d = axis.direction;
+    return [
+      geometry.point(this.path[2].x + bfd * d.x, this.path[2].y + bfd * d.y),
+      geometry.point(this.path[5].x - ffd * d.x, this.path[5].y - ffd * d.y),
+    ];
+  }
+
+  getInteractionHandles() {
+    const handles = super.getInteractionHandles();
+    if (this.defBy === 'DF') {
+      this.getFocalPoints().forEach((point, i) => {
+        handles.push({ point, propertyKey: 'focalLength', part: 3 + i });
+      });
+    }
+    return handles;
+  }
+
+  /**
+   * Draw the reference marks the scene asked for: the optical axis through the lens and its focal
+   * points.
+   * @param {CanvasRenderer} canvasRenderer - The renderer.
+   */
+  drawOpticalDecorations(canvasRenderer) {
+    const axis = this.getOpticalAxis();
+    if (!axis) return;
+    if (this.showOpticalAxis) {
+      drawOpticalAxis(canvasRenderer, this.scene, axis.center, axis.direction);
+    }
+    if (this.showFocalPoints) {
+      drawFocalPoints(canvasRenderer, this.scene, this.getFocalPoints());
+    }
+  }
+
+  getDefaultCenter() {
+    // While the lens is held as parameters rather than as a shape (the user has asked for something
+    // that cannot be built), there is no path for the inherited implementation to average.
+    if (!this.path) {
+      return this.p1 && this.p2 ? geometry.midpoint(this.p1, this.p2) : null;
+    }
+    return super.getDefaultCenter();
   }
 
   move(diffX, diffY) {
@@ -318,6 +404,23 @@ class SphericalLens extends Glass {
       }
       return null;
     };
+    if (this.defBy === 'DF') {
+      // The focal points double as handles for the focal length, so that a lens can be adjusted
+      // directly on the canvas rather than only through a number.
+      const focalPoints = this.getFocalPoints();
+      for (let i = 0; i < focalPoints.length; i++) {
+        if (mouse.isOnPoint(focalPoints[i])) {
+          return {
+            part: 3 + i,
+            targetPoint_: geometry.point(focalPoints[i].x, focalPoints[i].y),
+            propertyKey: 'focalLength',
+            requiresObjBarUpdate: true,
+            cursor: 'pointer',
+          };
+        }
+      }
+    }
+
     dragContext = super.checkMouseOver(mouse);
     if (dragContext) {
       if (dragContext.part != 0) {
@@ -329,6 +432,27 @@ class SphericalLens extends Glass {
   }
 
   onDrag(mouse, dragContext, ctrl, shift) {
+    if (dragContext.part === 3 || dragContext.part === 4) {
+      // Dragging a focal point sets the focal length to the distance from the matching vertex, which
+      // is what the back and front focal distances mean.
+      const axis = this.getOpticalAxis();
+      if (!axis) return;
+      const vertex = dragContext.part === 3 ? this.path[2] : this.path[5];
+      const sign = dragContext.part === 3 ? 1 : -1;
+      const pos = mouse.getPosSnappedToGrid();
+      const focalDistance = sign * ((pos.x - vertex.x) * axis.direction.x + (pos.y - vertex.y) * axis.direction.y);
+
+      // Close to the lens the focal length is shorter than any lens of this aperture can have, so
+      // the build fails. Keep the last shape that worked rather than leaving a lens that cannot be
+      // drawn or grabbed any more; the drag then simply pauses while the handle crosses the lens and
+      // picks up again with the opposite sign on the other side.
+      const snapshot = this.captureShape();
+      this.setFocalDistance(this.getDF().d, focalDistance, dragContext.part === 3);
+      if (!this.path) {
+        this.restoreShape(snapshot);
+      }
+      return;
+    }
     if (dragContext.part == -1) return;
     var p1 = geometry.midpoint(this.path[0], this.path[1]);
     var p2 = geometry.midpoint(this.path[3], this.path[4]);
@@ -516,6 +640,169 @@ class SphericalLens extends Glass {
       }
       if (this.params) this.params = null;
     }
+  }
+
+  /**
+   * Build a symmetric lens of a given centre thickness and effective focal length.
+   *
+   * A focal length does not determine a lens on its own, so the lens is taken to be symmetric
+   * (r1 = -r2 = R), which is the shape a student pictures when given only a focal length. R follows
+   * from the thick-lens maker's equation
+   *
+   *     1/f = (n - 1) (2/R - (n - 1) d / (n R^2))
+   *
+   * which is a quadratic in 1/R; the root that tends to the thin-lens value R = 2(n - 1)f as the
+   * thickness goes to zero is the one taken. A negative focal length gives a negative R, that is a
+   * symmetric diverging lens.
+   * @param {number} d - The centre thickness.
+   * @param {number} f - The effective focal length. Negative for a diverging lens.
+   */
+  createLensWithDF(d, f) {
+    this.error = null;
+    this.defBy = 'DF';
+
+    const n = this.getRefIndexAt(null, { wavelength: 546 });
+    const a = (n - 1) * (n - 1) * d / n;
+    let r;
+
+    if (!isFinite(f) || f === 0) {
+      r = NaN;
+    } else if (Math.abs(a) < 1e-12) {
+      r = 2 * (n - 1) * f;
+    } else {
+      const discriminant = (n - 1) * (n - 1) - a / f;
+      if (discriminant < 0) {
+        r = NaN;
+      } else {
+        r = a / ((n - 1) - Math.sqrt(discriminant));
+      }
+    }
+
+    if (isNaN(r)) {
+      // The focal length cannot be reached at this thickness. Keep the parameters so the user can
+      // enter another pair, exactly as the other definitions do.
+      if (this.path) {
+        const p1 = geometry.midpoint(this.path[0], this.path[1]);
+        const p2 = geometry.midpoint(this.path[3], this.path[4]);
+        this.p1 = p1;
+        this.p2 = p2;
+        this.path = null;
+      }
+      this.params = { d: d, f: f };
+      this.error = i18next.t('simulator:sceneObjs.SphericalLens.invalidParameters');
+      return;
+    }
+
+    this.createLensWithDR1R2(d, r, -r);
+    if (!this.path) {
+      this.params = { d: d, f: f };
+      this.error = i18next.t('simulator:sceneObjs.SphericalLens.invalidParameters');
+      return;
+    }
+
+    // A focal length short enough for the aperture makes the two surfaces meet before the rim, which
+    // builds a shape whose edges cross over. The lens still traces rays, but not as the lens the user
+    // asked for, so say so rather than letting it look correct.
+    const p1 = geometry.midpoint(this.path[0], this.path[1]);
+    const p2 = geometry.midpoint(this.path[3], this.path[4]);
+    const halfAperture = Math.hypot(p1.x - p2.x, p1.y - p2.y) / 2;
+    const sagitta = Math.abs(r) - Math.sqrt(Math.max(0, r * r - halfAperture * halfAperture));
+    this.warning = (d / 2 < sagitta)
+      ? i18next.t('simulator:sceneObjs.SphericalLens.thicknessTooSmall')
+      : null;
+  }
+
+  /**
+   * A copy of everything that defines the current shape of the lens, for undoing a failed rebuild.
+   * @returns {Object} The snapshot.
+   */
+  captureShape() {
+    return {
+      path: this.path ? JSON.parse(JSON.stringify(this.path)) : null,
+      params: this.params ? { ...this.params } : null,
+      p1: this.p1 ? { ...this.p1 } : null,
+      p2: this.p2 ? { ...this.p2 } : null,
+      error: this.error,
+      warning: this.warning,
+    };
+  }
+
+  /**
+   * Put back a shape captured by {@link captureShape}.
+   * @param {Object} snapshot - The snapshot.
+   */
+  restoreShape(snapshot) {
+    this.path = snapshot.path;
+    this.params = snapshot.params;
+    this.p1 = snapshot.p1;
+    this.p2 = snapshot.p2;
+    this.error = snapshot.error;
+    this.warning = snapshot.warning;
+  }
+
+  /**
+   * Rebuild the lens so that the focal point sits a given distance from its vertex.
+   *
+   * The handle the user drags is a focal *distance* from a vertex, while the property that defines
+   * the lens is its effective focal length. For a thick lens the two differ by a factor that itself
+   * depends on the curvature, so the focal length is refined a few times until the focal point lands
+   * where the user put it rather than a little short of it.
+   * @param {number} d - The centre thickness to keep.
+   * @param {number} focalDistance - The distance from the vertex to the focal point.
+   * @param {boolean} isBack - Whether the back focal distance is the one being set.
+   */
+  setFocalDistance(d, focalDistance, isBack) {
+    const n = this.getRefIndexAt(null, { wavelength: 546 });
+    const { r1 } = this.getDR1R2();
+    const slope = isFinite(r1) && r1 !== 0 ? 1 - (n - 1) * d / (n * r1) : 1;
+    let f = Math.abs(slope) < 1e-9 ? focalDistance : focalDistance / slope;
+
+    for (let i = 0; i < 4; i++) {
+      this.createLensWithDF(d, f);
+      if (this.error || !this.path) return;
+      const achieved = isBack ? this.getDFfdBfd().bfd : this.getDFfdBfd().ffd;
+      const error = achieved - focalDistance;
+      if (!isFinite(error) || Math.abs(error) < 1e-9) return;
+      const step = Math.abs(slope) < 1e-9 ? error : error / slope;
+      f -= step;
+    }
+  }
+
+  /**
+   * The centre thickness and effective focal length of the lens.
+   * @returns {{d: number, f: number}} The parameters.
+   */
+  getDF() {
+    if (this.params) {
+      if ('f' in this.params) return this.params;
+      const fallback = this.getDR1R2();
+      return { d: fallback.d, f: this.getFocalLength() };
+    }
+    return { d: this.getDR1R2().d, f: this.getFocalLength() };
+  }
+
+  /**
+   * The effective focal length of the lens, from the thick-lens maker's equation.
+   * @returns {number} The focal length, or Infinity if the lens has no power.
+   */
+  getFocalLength() {
+    const { d, r1, r2 } = this.getDR1R2();
+    const n = this.getRefIndexAt(null, { wavelength: 546 });
+    return 1 / ((n - 1) * (1 / r1 - 1 / r2 + (n - 1) * d / (n * r1 * r2)));
+  }
+
+  /**
+   * @property {number} focalLength - The effective focal length of the lens. Setting it rebuilds the
+   * lens as a symmetric one of the same thickness. The name matches that of the ideal elements, so
+   * that a scene's interaction permissions and a UI control can address it the same way whichever
+   * kind of lens it is.
+   */
+  get focalLength() {
+    return this.getFocalLength();
+  }
+
+  set focalLength(value) {
+    this.createLensWithDF(this.getDF().d, value);
   }
 
   createLensWithDFfdBfd(d, ffd, bfd) {

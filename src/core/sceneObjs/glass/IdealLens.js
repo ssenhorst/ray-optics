@@ -16,6 +16,8 @@
 
 import BaseSceneObj from '../BaseSceneObj.js';
 import LineObjMixin from '../LineObjMixin.js';
+import FocalLengthHandleMixin from '../FocalLengthHandleMixin.js';
+import { getLensShape, drawLensShape } from '../realisticLensShape.js';
 import i18next from 'i18next';
 import geometry from '../../geometry.js';
 import { parseFormula } from '../../formula/formula-parser.js';
@@ -53,13 +55,19 @@ const IDEAL_LENS_SURFACE_TYPE = {
  * @property {Point} p2 - The second endpoint.
  * @property {number} focalLength - The focal length.
  */
-class IdealLens extends LineObjMixin(BaseSceneObj) {
+class IdealLens extends FocalLengthHandleMixin(LineObjMixin(BaseSceneObj)) {
   static type = 'IdealLens';
   static isOptical = true;
   static serializableDefaults = {
     p1: null,
     p2: null,
-    focalLength: 100
+    focalLength: 100,
+    appearance: 'basic',
+    curvedSurfaces: 'both',
+    refIndex: 1.5,
+    lensThickness: 0,
+    showOpticalAxis: false,
+    showFocalPoints: false
   };
 
   static getDescription(objData, scene, detailed = false) {
@@ -70,6 +78,27 @@ class IdealLens extends LineObjMixin(BaseSceneObj) {
     return [
       ...super.getPropertySchema(objData, scene),
       { key: 'focalLength', type: 'number', label: i18next.t('simulator:sceneObjs.common.focalLength') },
+      {
+        key: 'appearance', type: 'dropdown',
+        label: i18next.t('simulator:sceneObjs.IdealLens.appearance.title'),
+        options: {
+          'basic': i18next.t('simulator:sceneObjs.IdealLens.appearance.basic'),
+          'realistic': i18next.t('simulator:sceneObjs.IdealLens.appearance.realistic'),
+        },
+      },
+      {
+        key: 'curvedSurfaces', type: 'dropdown',
+        label: i18next.t('simulator:sceneObjs.IdealLens.curvedSurfaces.title'),
+        options: {
+          'both': i18next.t('simulator:sceneObjs.IdealLens.curvedSurfaces.both'),
+          'front': i18next.t('simulator:sceneObjs.IdealLens.curvedSurfaces.front'),
+          'back': i18next.t('simulator:sceneObjs.IdealLens.curvedSurfaces.back'),
+        },
+      },
+      { key: 'refIndex', type: 'number', label: i18next.t('simulator:sceneObjs.IdealLens.appearanceRefIndex') },
+      { key: 'lensThickness', type: 'number', label: i18next.t('simulator:sceneObjs.IdealLens.lensThickness') },
+      { key: 'showOpticalAxis', type: 'boolean', label: i18next.t('simulator:sceneObjs.common.showOpticalAxis') },
+      { key: 'showFocalPoints', type: 'boolean', label: i18next.t('simulator:sceneObjs.common.showFocalPoints') },
     ];
   }
 
@@ -78,6 +107,38 @@ class IdealLens extends LineObjMixin(BaseSceneObj) {
     objBar.createNumber(i18next.t('simulator:sceneObjs.common.focalLength'), -1000 * this.scene.lengthScale, 1000 * this.scene.lengthScale, 1 * this.scene.lengthScale, this.focalLength, function (obj, value) {
       obj.focalLength = value;
     }, i18next.t('simulator:sceneObjs.common.lengthUnitInfo'));
+
+    objBar.createDropdown(i18next.t('simulator:sceneObjs.IdealLens.appearance.title'), this.appearance, {
+      'basic': i18next.t('simulator:sceneObjs.IdealLens.appearance.basic'),
+      'realistic': i18next.t('simulator:sceneObjs.IdealLens.appearance.realistic')
+    }, function (obj, value) {
+      obj.appearance = value;
+    }, i18next.t('simulator:sceneObjs.IdealLens.appearanceInfo'), true);
+
+    if (this.appearance === 'realistic') {
+      objBar.createDropdown(i18next.t('simulator:sceneObjs.IdealLens.curvedSurfaces.title'), this.curvedSurfaces, {
+        'both': i18next.t('simulator:sceneObjs.IdealLens.curvedSurfaces.both'),
+        'front': i18next.t('simulator:sceneObjs.IdealLens.curvedSurfaces.front'),
+        'back': i18next.t('simulator:sceneObjs.IdealLens.curvedSurfaces.back')
+      }, function (obj, value) {
+        obj.curvedSurfaces = value;
+      }, null, true);
+
+      objBar.createNumber(i18next.t('simulator:sceneObjs.IdealLens.appearanceRefIndex'), 1.01, 3, 0.01, this.refIndex, function (obj, value) {
+        obj.refIndex = value;
+      }, null, true);
+
+      objBar.createNumber(i18next.t('simulator:sceneObjs.IdealLens.lensThickness'), 0, 100, 1, this.lensThickness, function (obj, value) {
+        obj.lensThickness = value;
+      }, i18next.t('simulator:sceneObjs.common.lengthUnitInfo'), true);
+    }
+
+    objBar.createBoolean(i18next.t('simulator:sceneObjs.common.showOpticalAxis'), this.showOpticalAxis, function (obj, value) {
+      obj.showOpticalAxis = value;
+    }, null, true);
+    objBar.createBoolean(i18next.t('simulator:sceneObjs.common.showFocalPoints'), this.showFocalPoints, function (obj, value) {
+      obj.showFocalPoints = value;
+    }, null, true);
   }
 
   draw(canvasRenderer, isAboveLight, isHovered) {
@@ -99,6 +160,33 @@ class IdealLens extends LineObjMixin(BaseSceneObj) {
     var arrow_size_per = this.scene.theme.idealCurveArrow.size / 2 * ls;
     var arrow_size_par = this.scene.theme.idealCurveArrow.size / 2 * ls;
     var center_size = this.scene.theme.idealCurveArrow.size / 5 * ls;
+
+    const shape = this.appearance === 'realistic'
+      ? getLensShape(this, this.refIndex, this.curvedSurfaces, ls, this.lensThickness)
+      : null;
+
+    if (shape) {
+      // Drawn as the piece of glass this focal length would correspond to. The ray tracing is
+      // unaffected: the lens still obeys the lens equation exactly.
+      drawLensShape(ctx, canvasRenderer, this.scene, shape, this.refIndex, isHovered);
+
+      // The centre mark, which is where the ideal lens actually bends the light.
+      const middle = geometry.segmentMidpoint(this);
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = canvasRenderer.rgbaToCssColor(this.scene.theme.idealCurveCenter.color);
+      ctx.lineWidth = 1 * ls;
+      ctx.beginPath();
+      ctx.moveTo(middle.x - per_x * center_size, middle.y - per_y * center_size);
+      ctx.lineTo(middle.x + per_x * center_size, middle.y + per_y * center_size);
+      ctx.stroke();
+
+      this.drawOpticalDecorations(canvasRenderer);
+
+      if (isHovered && !this.showFocalPoints) {
+        this.drawFocalHandles(canvasRenderer);
+      }
+      return;
+    }
 
     // Draw the line segment
     ctx.strokeStyle = isHovered ? this.scene.highlightColorCss : canvasRenderer.rgbaToCssColor([(this.scene.theme.glass.color.r + this.scene.theme.background.color.r) / 2, (this.scene.theme.glass.color.g + this.scene.theme.background.color.g) / 2, (this.scene.theme.glass.color.b + this.scene.theme.background.color.b) / 2, 1]);
@@ -153,12 +241,11 @@ class IdealLens extends LineObjMixin(BaseSceneObj) {
       ctx.fill();
     }
 
-    if (isHovered) {
-      // show focal length
-      var mp = geometry.segmentMidpoint(this);
-      ctx.fillStyle = 'rgb(255,0,255)';
-      ctx.fillRect(mp.x + this.focalLength * per_x - 1.5 * ls, mp.y + this.focalLength * per_y - 1.5 * ls, 3 * ls, 3 * ls);
-      ctx.fillRect(mp.x - this.focalLength * per_x - 1.5 * ls, mp.y - this.focalLength * per_y - 1.5 * ls, 3 * ls, 3 * ls);
+    this.drawOpticalDecorations(canvasRenderer);
+
+    if (isHovered && !this.showFocalPoints) {
+      // Show the focal points, which are also the handles for dragging the focal length.
+      this.drawFocalHandles(canvasRenderer);
     }
   }
 

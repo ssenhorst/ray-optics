@@ -173,6 +173,27 @@ class Simulator {
     /** @property {object} eventListeners - The event listeners of the simulator. */
     this.eventListeners = {};
 
+    /**
+     * @property {boolean} recordRaySegments - Whether the geometry of every ray segment traced is
+     * recorded in `raySegments`. This is off by default since it costs memory proportional to the
+     * number of segments; it is turned on by features that need to measure where the light actually
+     * goes, such as the goal evaluation of a task scene.
+     */
+    this.recordRaySegments = false;
+
+    /**
+     * @property {number} raySegmentLimit - The maximum number of segments kept when
+     * `recordRaySegments` is on, so that a pathological scene cannot exhaust memory.
+     */
+    this.raySegmentLimit = 20000;
+
+    /**
+     * @property {Array<RaySegment>} raySegments - The segments recorded during the last simulation
+     * run when `recordRaySegments` is on. Segments belonging to the same ray (before and after each
+     * reflection or refraction) share the same `id`.
+     */
+    this.raySegments = [];
+
     this.canvasRendererMain = null;
     this.canvasRendererBelowLight = null;
     this.canvasRendererAboveLight = null;
@@ -302,6 +323,62 @@ class Simulator {
    * @param {Object|null} canvasRenderer - {@link CanvasRenderer} instance or null.
    * @returns {void}
    */
+  /**
+   * Draw the handles the application owns, such as the targets of a task's goals while the task is
+   * being designed. They are drawn above the light so that they can always be found and grabbed.
+   * @param {CanvasRenderer} canvasRenderer - The renderer for the layer above the light.
+   */
+  drawExternalHandles(canvasRenderer) {
+    if (!canvasRenderer || !canvasRenderer.ctx || !this.scene.editor) return;
+    const handles = this.scene.editor.externalHandles;
+    if (!handles || !handles.length) return;
+
+    const ctx = canvasRenderer.ctx;
+    const ls = canvasRenderer.lengthScale;
+    const scale = this.scene.scale || 1;
+
+    ctx.save();
+    ctx.globalAlpha = 1;
+    for (const handle of handles) {
+      const p = handle && handle.point;
+      if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) continue;
+
+      if (handle.lineTo && Number.isFinite(handle.lineTo.x)) {
+        ctx.strokeStyle = 'rgb(240,180,41)';
+        ctx.lineWidth = 1 / scale;
+        ctx.setLineDash([5 / scale, 4 / scale]);
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(handle.lineTo.x, handle.lineTo.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      if (handle.radius > 0) {
+        ctx.strokeStyle = 'rgb(240,180,41)';
+        ctx.lineWidth = 1 / scale;
+        ctx.setLineDash([4 / scale, 3 / scale]);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, handle.radius, 0, Math.PI * 2, false);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      ctx.fillStyle = 'rgb(240,180,41)';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 4 / scale, 0, Math.PI * 2, false);
+      ctx.fill();
+
+      if (handle.label) {
+        ctx.fillStyle = 'rgb(240,180,41)';
+        ctx.font = `${12 / scale}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.fillText(handle.label, p.x, p.y - 9 / scale);
+      }
+    }
+    ctx.restore();
+  }
+
   drawExternalHighlightPoints(canvasRenderer) {
     if (!canvasRenderer || !canvasRenderer.ctx || !this.scene.editor) {
       return;
@@ -405,6 +482,9 @@ class Simulator {
       //clearError();
       //clearWarning();
       this.simulationStartTime = new Date();
+      if (this.recordRaySegments) {
+        this.raySegments = [];
+      }
       this.emit('simulationStart', null);
     }
 
@@ -538,6 +618,11 @@ class Simulator {
               if (newRay && newRay.depth == null) {
                 newRay.depth = 0;
               }
+              if (newRay && newRay.sourceName === undefined) {
+                // Remember which light source emitted the ray, so that features measuring the light
+                // (such as the goals of a task scene) can tell the sources apart.
+                newRay.sourceName = obj.name || null;
+              }
               this.pendingRays.push(newRay);
             }
           }
@@ -574,6 +659,7 @@ class Simulator {
         this.scene.objs[i].draw(aboveLightRenderer, true, isHighlighted); // Draw this.scene.objs[i]
       }
       this.drawExternalHighlightPoints(aboveLightRenderer);
+      this.drawExternalHandles(aboveLightRenderer);
       if (this.scene.mode == 'observer' && this.ctxAboveLight) {
         // Draw the observer
         this.ctxAboveLight.globalAlpha = 1;
@@ -734,6 +820,23 @@ class Simulator {
 
         if (s_undefinedBehavior) {
           this.declareUndefinedBehavior(this.pendingRays[j], s_undefinedBehaviorObjs);
+        }
+
+        if (this.recordRaySegments && this.raySegments.length < this.raySegmentLimit) {
+          const ray = this.pendingRays[j];
+          const end = s_point || ray.p2;
+          this.raySegments.push({
+            id: j,
+            x1: ray.p1.x,
+            y1: ray.p1.y,
+            x2: end.x,
+            y2: end.y,
+            unbounded: !s_point,
+            brightness: (ray.brightness_s || 0) + (ray.brightness_p || 0),
+            wavelength: ray.wavelength,
+            depth: ray.depth || 0,
+            sourceName: ray.sourceName ?? null,
+          });
         }
         
         // Only calculate color and alpha if we have a canvas to draw on
@@ -937,6 +1040,7 @@ class Simulator {
           }
           this.pendingRays[j].depth += 1;
           const incidentDepth = this.pendingRays[j].depth;
+          const incidentSourceName = this.pendingRays[j].sourceName ?? null;
           let maxRayDepth = this.scene.maxRayDepth;
           if (!Number.isFinite(maxRayDepth)) {
             maxRayDepth = Infinity;
@@ -962,6 +1066,9 @@ class Simulator {
               for (let newRay of ret.newRays) {
                 if (newRay && newRay.depth == null) {
                   newRay.depth = incidentDepth;
+                }
+                if (newRay && newRay.sourceName === undefined) {
+                  newRay.sourceName = incidentSourceName;
                 }
                 this.pendingRays.push(newRay);
               }

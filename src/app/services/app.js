@@ -33,6 +33,7 @@ import {
   sceneObjs,
 } from '../../core/index.js';
 import { DATA_VERSION } from '../../core/Scene.js';
+import { sceneAllows, objAllows } from '../../core/interaction.js';
 import { objBar } from '../services/objBar.js';
 import { saveAs } from 'file-saver';
 import i18next, { t, use } from 'i18next';
@@ -55,9 +56,23 @@ import {
   resolveSimulationEngineConfig
 } from '../../core/simulationEngines/config.js';
 
+/**
+ * Whether the app was opened as a task designer, which is asked for with `?design=1` in the URL.
+ * In this mode the scene's interaction permissions and interface options are not enforced, so that
+ * whoever is authoring the task can reach everything; they are still edited and saved as usual.
+ * @returns {boolean} Whether the task designer is on.
+ */
+function isDesignMode() {
+  if (typeof window === 'undefined') return false;
+  const design = new URLSearchParams(window.location.search).get('design');
+  return design !== null && design !== '0' && design !== 'false';
+}
+
 function initScene() {
   scene = new Scene();
+  scene.designMode = isDesignMode();
   app.scene = scene;
+  app.designMode = scene.designMode;
 }
 
 const SIMULATION_ENGINES = [
@@ -735,6 +750,7 @@ function initAppService() {
     }
     //Ctrl+D or Cmd+D
     if ((e.ctrlKey || e.metaKey) && e.keyCode == 68) {
+      if (!sceneAllows(scene, 'create')) return false;
       if (editor.selectedObjIndex != -1) {
         if (scene.objs[editor.selectedObjIndex].constructor.type == 'Handle') {
           scene.cloneObjsByHandle(editor.selectedObjIndex);
@@ -783,6 +799,17 @@ function initAppService() {
       if (editor.isConstructing) {
         editor.undo();
       }
+    }
+
+    // The keyboard shortcuts that edit the scene obey the same interaction permissions as the mouse,
+    // so that a scene authored as an exercise cannot be changed in ways it forbids.
+    const isDeleteKey = e.keyCode == 46 || e.keyCode == 8;
+    const isMoveKey = (e.keyCode >= 37 && e.keyCode <= 40)
+      || [107, 187, 61, 109, 189, 173].includes(e.keyCode);
+    if (isDeleteKey || isMoveKey) {
+      if (!sceneAllows(scene, 'keyboard')) return false;
+      const selectedObj = editor.selectedObjIndex >= 0 ? scene.objs[editor.selectedObjIndex] : null;
+      if (selectedObj && !objAllows(selectedObj, isDeleteKey ? 'remove' : 'move')) return false;
     }
 
     //Delete
@@ -854,6 +881,7 @@ function initAppService() {
       else {
         // TODO: Is this a historical remnant? Should the expected behavior be to change `scene.origin` instead? Note however that some users may be using the current behavior to align the scene with the background image or the grid.
         for (var i = 0; i < scene.objs.length; i++) {
+          if (!objAllows(scene.objs[i], 'move')) continue;
           if (e.keyCode == 37) {
             scene.objs[i].move(-step, 0);
           }
@@ -1020,6 +1048,71 @@ function initAppService() {
     error = `${i18next.t('simulator:appErrors.jsError', { msg, url })}`;
     document.getElementById('welcome').style.display = 'none';
     updateErrorAndWarning();
+  }
+
+  if (scene.designMode) {
+    // The designer is a tool for whoever is authoring the task, so its internals are reachable from
+    // the console for scripting and debugging. The app students get does not expose this.
+    window.rayOpticsApp = app;
+
+    // While designing, the target of each goal is a handle on the canvas, so that it can be placed
+    // by dragging rather than by typing coordinates into the JSON.
+    const refreshGoalHandles = () => {
+      const goals = (scene.task && scene.task.goals) || [];
+      const handles = [];
+      goals.forEach((goal, index) => {
+        if (!goal) return;
+        const label = goal.targetLabel || goal.id || `goal ${index + 1}`;
+
+        if (goal.point && typeof goal.point.x === 'number') {
+            handles.push({
+              point: goal.point,
+              radius: goal.radius,
+              label,
+              onDrag: (pos) => {
+                  goal.point.x = Math.round(pos.x * 100) / 100;
+                  goal.point.y = Math.round(pos.y * 100) / 100;
+              },
+            });
+        }
+
+        // A goal that measures along a line is placed by its two ends.
+        if (goal.line && goal.line.p1 && goal.line.p2) {
+            for (const [end, other] of [['p1', 'p2'], ['p2', 'p1']]) {
+              handles.push({
+                  point: goal.line[end],
+                  label: end === 'p1' ? `${label} probe` : '',
+                  lineTo: goal.line[other],
+                  onDrag: (pos) => {
+                    goal.line[end].x = Math.round(pos.x * 100) / 100;
+                    goal.line[end].y = Math.round(pos.y * 100) / 100;
+                  },
+              });
+            }
+        }
+      });
+      for (const handle of handles) {
+        handle.onDone = () => document.dispatchEvent(new Event('sceneChanged'));
+      }
+      editor.externalHandles = handles;
+    };
+
+    refreshGoalHandles();
+    document.addEventListener('sceneChanged', refreshGoalHandles);
+    editor.on('sceneLoaded', refreshGoalHandles);
+    editor.on('newAction', refreshGoalHandles);
+    editor.on('selectionChange', function () {
+      document.dispatchEvent(new Event('selectionChanged'));
+    });
+  }
+
+  // A scene given in the URL, which is how the task designer opens a task file to work on.
+  const requestedScene = new URLSearchParams(window.location.search).get('scene');
+  // A path relative to the app only: no scheme and no protocol-relative URL, so the parameter cannot
+  // be used to pull a scene off another site.
+  if (requestedScene && /^[\w./-]+$/.test(requestedScene)
+    && !requestedScene.includes(':') && !requestedScene.startsWith('//')) {
+    openSceneFromUrl(requestedScene);
   }
 
   // Update the scene when the URL changes
@@ -1206,6 +1299,34 @@ function updateErrorAndWarning() {
       warning: obj.getWarning()
     }))
   });
+}
+
+/**
+ * Load a scene from a URL relative to the app.
+ * @param {string} url - The URL of the scene JSON.
+ */
+function openSceneFromUrl(url) {
+  const client = new XMLHttpRequest();
+  client.open('GET', url);
+  client.onload = function () {
+    if (client.status >= 300) {
+      error = "openScene: " + i18next.t('simulator:appErrors.httpStatusError', { status: client.status });
+      updateErrorAndWarning();
+      return;
+    }
+    scene.backgroundImage = null;
+    editor.loadJSON(client.responseText);
+    editor.onActionComplete();
+    hasUnsavedChange = false;
+    jsonEditorService.updateContent(editor.lastActionJson, null, true);
+    document.getElementById('welcome').style.display = 'none';
+    document.dispatchEvent(new Event('sceneChanged'));
+  };
+  client.onerror = function () {
+    error = "openScene: " + i18next.t('simulator:appErrors.httpError');
+    updateErrorAndWarning();
+  };
+  client.send();
 }
 
 function openSample(name) {
@@ -1608,6 +1729,8 @@ function importShapes(paths, options) {
 
 export const app = {
   initScene,
+  isDesignMode,
+  openSceneFromUrl,
   initAppService,
   setSimulationEngine,
   setSimulationEngineConfigs,

@@ -12,6 +12,10 @@ jobs:
   build-and-deploy:
     needs: test
     runs-on: ubuntu-latest
+    # The job force-pushes the build to the `dist-integrations` branch, so the token it is given
+    # has to be allowed to write to the repository.
+    permissions:
+      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3

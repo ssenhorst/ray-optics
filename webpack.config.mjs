@@ -52,9 +52,19 @@ export default (env, argv) => {
     entry: {
       simulator: './src/app/main.js',
       wave: './src/waveApp/main.js',
+      // The standalone task widget, exposed as a global so that a page can also create widgets
+      // programmatically rather than only through the `data-ray-optics` attribute.
+      widget: {
+        import: './src/widget/main.js',
+        library: { name: 'RayOptics', type: 'umd', export: 'default' },
+      },
     },
     output: {
-      filename: '[name]/main.js',
+      // The apps are each served from their own directory; the widget is a library file rather than
+      // an app, so it keeps a name an embedding page can refer to.
+      filename: (pathData) => pathData.chunk.name === 'widget'
+        ? 'widget/ray-optics-widget.js'
+        : '[name]/main.js',
       path: path.resolve('dist'),
       assetModuleFilename: (pathData) => {
         const filepath = path.dirname(pathData.filename).split('/').slice(1).join('/');
@@ -106,9 +116,16 @@ export default (env, argv) => {
         filename: 'wave/index.html',
         chunks: ['wave'],
       }),
+      new HtmlWebpackPlugin({
+        template: './src/widget/index.html',
+        filename: 'widget/index.html',
+        chunks: ['widget'],
+        inject: 'body',
+      }),
       new CopyWebpackPlugin({
         patterns: [
           { from: 'src/img', to: 'img', noErrorOnMissing: true },
+          { from: 'data/taskScenes', to: 'widget/taskScenes', noErrorOnMissing: true },
           { from: 'src/app/manifest', to: 'simulator/manifest', noErrorOnMissing: true },
           { from: 'locales', to: 'locales', noErrorOnMissing: true },
           { from: 'LICENSE', to: '', noErrorOnMissing: true },

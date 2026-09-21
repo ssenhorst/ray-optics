@@ -68,6 +68,23 @@ body {
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
+/* Parts of the interface the scene's `ui` property switches off. See `src/core/uiOptions.js`. */
+body.ro-hide-toolbar .wave-toolbar {
+  display: none !important;
+}
+
+body.ro-hide-objbar #wave_obj_bar {
+  display: none !important;
+}
+
+body.ro-hide-statusbar .wave-status {
+  display: none !important;
+}
+
+body.ro-hide-sidebar .wave-sidebar {
+  display: none !important;
+}
+
 .wave-chrome {
   position: fixed;
   inset: 0;

@@ -21,6 +21,7 @@ import * as C2S from 'canvas2svg';
 import { saveAs } from 'file-saver';
 import Scene from './Scene.js';
 import Simulator from './Simulator.js';
+import { objAllows, objAllowsProperty, sceneAllows, getDragPropertyKey } from './interaction.js';
 
 /**
  * @typedef {Object} DragContext
@@ -45,6 +46,16 @@ import Simulator from './Simulator.js';
  * @typedef {Object} ControlPoint
  * @property {DragContext} dragContext - The drag context of the virtual mouse that is dragging the control point.
  * @property {Point} newPoint - The new position of the control point.
+ */
+
+/**
+ * @typedef {Object} ExternalHandle
+ * @property {Point} point - Where the handle is, in scene coordinates.
+ * @property {number} [radius] - A circle to draw around the handle, for a handle that stands for a
+ * tolerance rather than only a position.
+ * @property {string} [label] - A label drawn next to the handle.
+ * @property {function(Point): void} onDrag - Called with the new position while the handle is dragged.
+ * @property {function(): void} [onDone] - Called when the drag finishes.
  */
 
 /**
@@ -136,6 +147,14 @@ class Editor {
     /** @property {number[]} externalHighlightPrimitiveCurveIds - Processed primitive curve IDs highlighted by diagnostic UI. */
     this.externalHighlightPrimitiveCurveIds = [];
 
+    /**
+     * @property {Array<ExternalHandle>} externalHandles - Draggable points that belong to the
+     * application rather than to any scene object, such as the target of a task goal while the task
+     * is being designed. They take priority over the objects, are drawn above the light layer, and
+     * report their new position through their own callback.
+     */
+    this.externalHandles = [];
+
     /** @property {string} addingObjType - The type of the object that will be added when the user clicks on the canvas. Empty if 'Move view' tool is selected so that no object will be added. */
     this.addingObjType = '';
 
@@ -222,6 +241,131 @@ class Editor {
     if (obj.locked === 'locked') return true;
     if (obj.locked === 'unlocked') return false;
     return this.scene.lockObjs;
+  }
+
+  /**
+   * Annotate a drag context with what the interaction permissions of the scene and the object allow,
+   * and report whether the user may interact with that part of the object at all.
+   *
+   * The permissions distinguish dragging the object as a whole from dragging one of its defining
+   * points, and can single out individual properties, so that (for example) only one endpoint of a
+   * mirror is movable while the rest of the scene is frozen. See {@link module:interaction}.
+   * @param {BaseSceneObj} obj - The object under the mouse.
+   * @param {DragContext} dragContext - The drag context reported by the object, modified in place.
+   * @returns {boolean} Whether the object should respond to the mouse at this position.
+   */
+  applyInteractionPermissions(obj, dragContext) {
+    const canDrag = this.canDragPart(obj, dragContext);
+    const canSelect = objAllows(obj, 'select');
+
+    dragContext.propertyKey = getDragPropertyKey(obj, dragContext);
+    dragContext.canDrag = canDrag;
+    dragContext.canSelect = canSelect;
+
+    return canDrag || canSelect;
+  }
+
+  /**
+   * Whether the interaction permissions let the user drag the part of the object that a drag context
+   * describes. Dragging the object as a whole is the `move` category; dragging any of its control
+   * points is `reshape`, refined by the per-property overrides.
+   * @param {BaseSceneObj} obj - The object under the mouse.
+   * @param {DragContext} dragContext - The drag context reported by the object.
+   * @returns {boolean} Whether the drag is allowed.
+   */
+  canDragPart(obj, dragContext) {
+    return dragContext.part === 0
+      ? objAllowsProperty(obj, 'move', null)
+      : objAllowsProperty(obj, 'reshape', getDragPropertyKey(obj, dragContext));
+  }
+
+  /**
+   * When the cursor is over a control point the scene does not let the user move, find out what the
+   * user would be interacting with if that point were not there. This keeps the cursor, the
+   * highlight and the drag describing the same thing: on an object whose shape is pinned but which
+   * may be moved, grabbing a corner moves the whole object rather than doing nothing.
+   *
+   * The object is asked again with a mouse that cannot see control points, first at the cursor and
+   * then a little way towards the object's centre, since a control point usually sits at the very
+   * edge of its object and the cursor may be just outside it.
+   * @param {BaseSceneObj} obj - The object under the mouse.
+   * @param {Mouse} mouse - The mouse.
+   * @returns {DragContext|null} A drag context the user is allowed to use, or null if there is none.
+   */
+  searchBodyUnderPinnedPoint(obj, mouse) {
+    const blind = mouse.withoutPoints();
+
+    const positions = [mouse.pos];
+    const center = obj.getDefaultCenter?.();
+    if (center) {
+      const dx = center.x - mouse.pos.x;
+      const dy = center.y - mouse.pos.y;
+      const distance = Math.hypot(dx, dy);
+      const reach = mouse.getClickExtent(true);
+      if (distance > 0) {
+        const step = Math.min(reach, distance);
+        positions.push(geometry.point(mouse.pos.x + dx / distance * step, mouse.pos.y + dy / distance * step));
+      }
+    }
+
+    for (const pos of positions) {
+      blind.pos = pos;
+      const context = obj.checkMouseOver(blind);
+      if (context && context.part === 0 && this.canDragPart(obj, context)) {
+        // The drag must still follow the real cursor, not the probe position, or the object would
+        // jump by the offset between them on the first movement.
+        const mousePos = mouse.getPosSnappedToGrid();
+        if (context.mousePos0) context.mousePos0 = mousePos;
+        if (context.mousePos1) context.mousePos1 = mousePos;
+        return context;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Hold the mouse to the axes along which the object is allowed to move.
+   *
+   * The objects move themselves by following the mouse, so confining an object to one axis is done
+   * by confining the mouse it is given: the forbidden coordinate is frozen at the value it had when
+   * the drag started. This is what `interaction.moveX` / `moveY` express, and is how an element is
+   * kept on an optical axis.
+   * @param {BaseSceneObj} obj - The object being dragged.
+   * @param {DragContext} dragContext - The drag context of the ongoing drag.
+   * @param {Point} mousePos - The unconstrained mouse position.
+   * @returns {Point} The position to hand to the object.
+   */
+  constrainDragToAllowedAxes(obj, dragContext, mousePos) {
+    if (dragContext.part !== 0) return mousePos;
+
+    const canMoveX = objAllows(obj, 'moveX');
+    const canMoveY = objAllows(obj, 'moveY');
+    if (canMoveX && canMoveY) return mousePos;
+
+    if (!dragContext.axisAnchor) {
+      // Started somewhere other than a mouse press on the object (a handle, say); anchor here.
+      dragContext.axisAnchor = geometry.point(mousePos.x, mousePos.y);
+    }
+    return geometry.point(
+      canMoveX ? mousePos.x : dragContext.axisAnchor.x,
+      canMoveY ? mousePos.y : dragContext.axisAnchor.y
+    );
+  }
+
+  /**
+   * The position of the top-left corner of the canvas in page coordinates, used to convert pointer
+   * events into scene coordinates. This is measured from the rendered geometry rather than from the
+   * canvas's offset properties, so that the editor also works when the canvas is embedded somewhere
+   * in a larger page rather than filling the window.
+   * @returns {{left: number, top: number}} The offset in page coordinates.
+   */
+  getCanvasPageOffset() {
+    const rect = this.canvas.getBoundingClientRect();
+    return {
+      left: rect.left + (window.scrollX || window.pageXOffset || 0),
+      top: rect.top + (window.scrollY || window.pageYOffset || 0),
+    };
   }
 
   /**
@@ -458,6 +602,7 @@ class Editor {
     let zoomThrottle = 16; // ~60fps for smoother feel
 
     this.canvas.addEventListener('wheel', function (e) {
+      if (!sceneAllows(self.scene, 'zoom')) return;
       e.preventDefault(); // Prevent default scrolling
       
       var now = Date.now();
@@ -486,10 +631,11 @@ class Editor {
       const finalScale = newScale * 100;
       
       // Apply zoom centered on mouse position
+      const canvasOffset = self.getCanvasPageOffset();
       self.setScaleWithCenter(
         finalScale / self.scene.lengthScale / 100,
-        (e.pageX - e.target.offsetLeft) / self.scene.scale,
-        (e.pageY - e.target.offsetTop) / self.scene.scale
+        (e.pageX - canvasOffset.left) / self.scene.scale,
+        (e.pageY - canvasOffset.top) / self.scene.scale
       );
       
       self.onActionComplete();
@@ -549,6 +695,7 @@ class Editor {
       if (e.touches.length === 2) {
         // Pinch to zoom - cancel long press
         self.cancelLongPress();
+        if (!sceneAllows(self.scene, 'zoom')) return;
 
         // Calculate current distance between two touches
         const dx = e.touches[0].clientX - e.touches[1].clientX;
@@ -583,7 +730,8 @@ class Editor {
         self.scene.origin.y += dy2;
 
         // Apply the scale transformation
-        self.setScaleWithCenter(newScale, (x - e.target.offsetLeft) / self.scene.scale, (y - e.target.offsetTop) / self.scene.scale);
+        const canvasOffset = self.getCanvasPageOffset();
+        self.setScaleWithCenter(newScale, (x - canvasOffset.left) / self.scene.scale, (y - canvasOffset.top) / self.scene.scale);
 
         // Update last values
         lastX = x;
@@ -663,8 +811,9 @@ class Editor {
     }
 
     // Get raw coordinates first
-    const rawX = (et.pageX - e.target.offsetLeft - this.scene.origin.x) / this.scene.scale;
-    const rawY = (et.pageY - e.target.offsetTop - this.scene.origin.y) / this.scene.scale;
+    const canvasOffset = this.getCanvasPageOffset();
+    const rawX = (et.pageX - canvasOffset.left - this.scene.origin.x) / this.scene.scale;
+    const rawY = (et.pageY - canvasOffset.top - this.scene.origin.y) / this.scene.scale;
 
     this.lastMousePos = geometry.point(rawX, rawY);
     
@@ -676,8 +825,8 @@ class Editor {
     var mousePos2;
     if (this.scene.snapToGrid && !(e.altKey && !this.isConstructing)) {
       mousePos2 = geometry.point(
-        Math.round(((et.pageX - e.target.offsetLeft - this.scene.origin.x) / this.scene.scale) / this.scene.gridSize) * this.scene.gridSize,
-        Math.round(((et.pageY - e.target.offsetTop - this.scene.origin.y) / this.scene.scale) / this.scene.gridSize) * this.scene.gridSize
+        Math.round(((et.pageX - canvasOffset.left - this.scene.origin.x) / this.scene.scale) / this.scene.gridSize) * this.scene.gridSize,
+        Math.round(((et.pageY - canvasOffset.top - this.scene.origin.y) / this.scene.scale) / this.scene.gridSize) * this.scene.gridSize
       );
     }
     else {
@@ -697,7 +846,7 @@ class Editor {
     }
 
     if (this.scene.snapToGrid) {
-      this.mousePos = geometry.point(Math.round(((et.pageX - e.target.offsetLeft - this.scene.origin.x) / this.scene.scale) / this.scene.gridSize) * this.scene.gridSize, Math.round(((et.pageY - e.target.offsetTop - this.scene.origin.y) / this.scene.scale) / this.scene.gridSize) * this.scene.gridSize);
+      this.mousePos = geometry.point(Math.round(((et.pageX - canvasOffset.left - this.scene.origin.x) / this.scene.scale) / this.scene.gridSize) * this.scene.gridSize, Math.round(((et.pageY - canvasOffset.top - this.scene.origin.y) / this.scene.scale) / this.scene.gridSize) * this.scene.gridSize);
 
     }
     else {
@@ -729,6 +878,14 @@ class Editor {
 
         this.dragContext = {};
 
+        const handleIndex = this.searchExternalHandles(mousePos_nogrid);
+        if (handleIndex >= 0) {
+          this.draggingObjIndex = -5;
+          this.dragContext = { handleIndex: handleIndex, part: 0 };
+          this.selectObj(-1);
+          return;
+        }
+
         if (this.scene.mode == 'observer') {
           if (geometry.distanceSquared(mousePos_nogrid, this.scene.observer.c) < this.scene.observer.r * this.scene.observer.r) {
             // The mousePos clicked the observer
@@ -758,10 +915,20 @@ class Editor {
               ret.targetObjIndex--;
             }
           }
-          this.selectObj(ret.targetObjIndex);
+          if (ret.dragContext.canSelect !== false) {
+            this.selectObj(ret.targetObjIndex);
+          }
+          if (ret.dragContext.canDrag === false) {
+            // The object reacts to the mouse (so it can be selected and inspected) but this part of
+            // it may not be moved.
+            return;
+          }
           this.dragContext = ret.dragContext;
           this.dragContext.originalObj = this.scene.objs[ret.targetObjIndex].serialize(); // Store the obj status before dragging
           this.dragContext.hasDuplicated = false;
+          // Anchor the axis constraint at the moment the drag starts, so that an object confined to
+          // one axis does not pick up the movement of the very first step across it.
+          this.dragContext.axisAnchor = geometry.point(mousePos_nogrid.x, mousePos_nogrid.y);
           this.draggingObjIndex = ret.targetObjIndex;
           if (e.ctrlKey) {
             // If we're clicking on an entire object, prepare to bind it to a new handle
@@ -798,6 +965,10 @@ class Editor {
           }
         }
         if ((this.addingObjType == '') || (e.which == 3)) {
+          if (!sceneAllows(this.scene, 'pan')) {
+            this.selectObj(-1);
+            return;
+          }
           // To drag the entire scene
           this.draggingObjIndex = -3;
           this.dragContext = {};
@@ -805,6 +976,9 @@ class Editor {
           this.dragContext.mousePos1 = this.mousePos; // Mouse position at the last moment during dragging
           this.dragContext.mousePos2 = this.scene.origin; //Original origin.
           this.dragContext.snapContext = {};
+          this.selectObj(-1);
+        }
+        else if (!sceneAllows(this.scene, 'create')) {
           this.selectObj(-1);
         }
         else {
@@ -844,8 +1018,9 @@ class Editor {
     }
     
     // Get raw coordinates first
-    const rawX = (et.pageX - e.target.offsetLeft - this.scene.origin.x) / this.scene.scale;
-    const rawY = (et.pageY - e.target.offsetTop - this.scene.origin.y) / this.scene.scale;
+    const canvasOffset = this.getCanvasPageOffset();
+    const rawX = (et.pageX - canvasOffset.left - this.scene.origin.x) / this.scene.scale;
+    const rawY = (et.pageY - canvasOffset.top - this.scene.origin.y) / this.scene.scale;
 
     if (this.lastMousePos) {
       // Calculate the distance moved
@@ -864,8 +1039,8 @@ class Editor {
     var mousePos2;
     if (this.scene.snapToGrid && !(e.altKey && !this.isConstructing)) {
       mousePos2 = geometry.point(
-        Math.round(((et.pageX - e.target.offsetLeft - this.scene.origin.x) / this.scene.scale) / this.scene.gridSize) * this.scene.gridSize,
-        Math.round(((et.pageY - e.target.offsetTop - this.scene.origin.y) / this.scene.scale) / this.scene.gridSize) * this.scene.gridSize
+        Math.round(((et.pageX - canvasOffset.left - this.scene.origin.x) / this.scene.scale) / this.scene.gridSize) * this.scene.gridSize,
+        Math.round(((et.pageY - canvasOffset.top - this.scene.origin.y) / this.scene.scale) / this.scene.gridSize) * this.scene.gridSize
       );
     }
     else {
@@ -881,7 +1056,15 @@ class Editor {
 
     
 
-    if (!this.isConstructing && this.draggingObjIndex == -1 && this.canSelectAnyObject()) {
+    if (!this.isConstructing && this.draggingObjIndex == -1 && this.searchExternalHandles(mousePos_nogrid) >= 0) {
+      // An application handle takes priority over the objects underneath it.
+      this.canvas.style.cursor = 'pointer';
+      if (this.hoveredObjIndex != -1) {
+        this.hoveredObjIndex = -1;
+        this.simulator.updateSimulation(true, true);
+      }
+    }
+    else if (!this.isConstructing && this.draggingObjIndex == -1 && this.canSelectAnyObject()) {
       // highlight object under mousePos cursor
       var ret = this.selectionSearch(mousePos_nogrid)[0];
       //console.log(mousePos_nogrid);
@@ -892,6 +1075,10 @@ class Editor {
       if (ret.dragContext) {
         if (ret.dragContext.cursor) {
           this.canvas.style.cursor = ret.dragContext.cursor;
+        } else if (ret.dragContext.canDrag === false) {
+          // The object reacts to the mouse but this part of it cannot be moved, so do not offer a
+          // cursor that promises a drag.
+          this.canvas.style.cursor = '';
         } else if (ret.dragContext.targetPoint || ret.dragContext.targetPoint_) {
           this.canvas.style.cursor = 'pointer';
         } else if (ret.dragContext.part == 0) {
@@ -966,10 +1153,21 @@ class Editor {
         this.simulator.updateSimulation(false, true);
       }
 
+      if (this.draggingObjIndex == -5) {
+        // Dragging a handle that belongs to the application rather than to the scene.
+        const handle = this.externalHandles[this.dragContext.handleIndex];
+        if (handle) {
+          handle.onDrag(geometry.point(mousePos2.x, mousePos2.y));
+          this.simulator.updateSimulation(false, true);
+        }
+      }
+
       if (this.draggingObjIndex >= 0) {
         // Here the mouse is dragging an object
 
-        this.scene.objs[this.draggingObjIndex].onDrag(new Mouse(mousePos_nogrid, this.scene, this.lastDeviceIsTouch, e.altKey * 1), this.dragContext, e.ctrlKey, e.shiftKey);
+        const dragPos = this.constrainDragToAllowedAxes(
+          this.scene.objs[this.draggingObjIndex], this.dragContext, mousePos_nogrid);
+        this.scene.objs[this.draggingObjIndex].onDrag(new Mouse(dragPos, this.scene, this.lastDeviceIsTouch, e.altKey * 1), this.dragContext, e.ctrlKey, e.shiftKey);
         // If dragging an entire object, then when Ctrl is hold, clone the object
         if (this.dragContext.part == 0) {
           if (e.ctrlKey && !this.dragContext.hasDuplicated) {
@@ -1033,8 +1231,9 @@ class Editor {
     }
 
     // Get raw coordinates first
-    const rawX = (et.pageX - e.target.offsetLeft - this.scene.origin.x) / this.scene.scale;
-    const rawY = (et.pageY - e.target.offsetTop - this.scene.origin.y) / this.scene.scale;
+    const canvasOffset = this.getCanvasPageOffset();
+    const rawX = (et.pageX - canvasOffset.left - this.scene.origin.x) / this.scene.scale;
+    const rawY = (et.pageY - canvasOffset.top - this.scene.origin.y) / this.scene.scale;
     
     // Truncate to binary fractions
     const truncX = this.truncateToBinaryFraction(rawX, this.scene.scale);
@@ -1044,8 +1243,8 @@ class Editor {
     var mousePos2;
     if (this.scene.snapToGrid && !(e.altKey && !this.isConstructing)) {
       mousePos2 = geometry.point(
-        Math.round(((et.pageX - e.target.offsetLeft - this.scene.origin.x) / this.scene.scale) / this.scene.gridSize) * this.scene.gridSize,
-        Math.round(((et.pageY - e.target.offsetTop - this.scene.origin.y) / this.scene.scale) / this.scene.gridSize) * this.scene.gridSize
+        Math.round(((et.pageX - canvasOffset.left - this.scene.origin.x) / this.scene.scale) / this.scene.gridSize) * this.scene.gridSize,
+        Math.round(((et.pageY - canvasOffset.top - this.scene.origin.y) / this.scene.scale) / this.scene.gridSize) * this.scene.gridSize
       );
     }
     else {
@@ -1103,6 +1302,9 @@ class Editor {
         this.onCanvasDblClick(e);
         return;
       }
+      if (this.draggingObjIndex == -5) {
+        this.externalHandles[this.dragContext.handleIndex]?.onDone?.();
+      }
       this.onActionComplete();
       this.draggingObjIndex = -1;
       this.dragContext = {};
@@ -1121,8 +1323,9 @@ class Editor {
   onCanvasDblClick(e) {
     //console.log("dblclick");
     // Get raw coordinates first
-    const rawX = (e.pageX - e.target.offsetLeft - this.scene.origin.x) / this.scene.scale;
-    const rawY = (e.pageY - e.target.offsetTop - this.scene.origin.y) / this.scene.scale;
+    const canvasOffset = this.getCanvasPageOffset();
+    const rawX = (e.pageX - canvasOffset.left - this.scene.origin.x) / this.scene.scale;
+    const rawY = (e.pageY - canvasOffset.top - this.scene.origin.y) / this.scene.scale;
     
     // Truncate to binary fractions
     const truncX = this.truncateToBinaryFraction(rawX, this.scene.scale);
@@ -1150,7 +1353,7 @@ class Editor {
       }
 
       var ret = this.selectionSearch(this.mousePos)[0];
-      if (ret.targetObjIndex != -1 && ret.dragContext.targetPoint) {
+      if (ret.targetObjIndex != -1 && ret.dragContext.targetPoint && ret.dragContext.canDrag !== false) {
         this.selectObj(ret.targetObjIndex);
         this.dragContext = ret.dragContext;
         this.dragContext.originalObj = this.scene.objs[ret.targetObjIndex].serialize(); // Store the obj status before dragging
@@ -1173,6 +1376,21 @@ class Editor {
   }
 
   /**
+   * Find which external handle, if any, is under the mouse.
+   * @param {Point} mousePos - The mouse position in the scene.
+   * @returns {number} The index of the handle, or -1 if none is under the mouse.
+   */
+  searchExternalHandles(mousePos) {
+    if (!this.externalHandles || this.externalHandles.length === 0) return -1;
+    const mouse = new Mouse(mousePos, this.scene, this.lastDeviceIsTouch);
+    for (let i = 0; i < this.externalHandles.length; i++) {
+      const handle = this.externalHandles[i];
+      if (handle && handle.point && mouse.isOnPoint(handle.point)) return i;
+    }
+    return -1;
+  }
+
+  /**
    * search for best object to select at mouse position
    * @param {Point} mousePos_nogrid - The mouse position in the scene (without snapping to grid).
    * @returns {SelectionSearchResult[]} - The search results.
@@ -1189,8 +1407,18 @@ class Editor {
 
     for (var i = 0; i < this.scene.objs.length; i++) {
       if (typeof this.scene.objs[i] != 'undefined') {
-        let dragContext_ = this.scene.objs[i].checkMouseOver(new Mouse(mousePos_nogrid, this.scene, this.lastDeviceIsTouch));
-        if (dragContext_ && !this.isObjLocked(i)) {
+        const mouse = new Mouse(mousePos_nogrid, this.scene, this.lastDeviceIsTouch);
+        let dragContext_ = this.scene.objs[i].checkMouseOver(mouse);
+
+        if (dragContext_ && dragContext_.part !== 0 && !this.isObjLocked(i)
+          && !this.canDragPart(this.scene.objs[i], dragContext_)) {
+          const bodyContext = this.searchBodyUnderPinnedPoint(this.scene.objs[i], mouse);
+          if (bodyContext) {
+            dragContext_ = bodyContext;
+          }
+        }
+
+        if (dragContext_ && !this.isObjLocked(i) && this.applyInteractionPermissions(this.scene.objs[i], dragContext_)) {
           // the mouse is over the object and it is selectable
 
           if (dragContext_.targetPoint || dragContext_.targetPoint_) {

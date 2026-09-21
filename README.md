@@ -27,9 +27,38 @@ A web app for creating and simulating 2D geometric optical scenes, with a galler
 - Import shapes from SVG files as optical components
 - Export as SVG diagram
 - Create modularized combinations of optical elements with custom parameters.
+- Author interactive assignments: restrict what the student may change, hide parts of the interface, and set goals that are scored live against the simulation.
 - Run with high-performance ray tracing engine based on WebGPU. <sup>Beta</sup>
 - Use the simulator as a node module in your own project and integrate with other programming languages.
 - Simulate 2D scalar wave optics — diffraction, interference and refraction by summing point-source fields — in a companion app sharing the same editor. <sup>Experimental</sup>
+
+## Task scenes
+
+A scene can carry an `interaction` property saying what the user may change (scene-wide and per
+object, down to individual properties), a `ui` property saying which parts of the interface are
+shown, and a `task` property stating an assignment with goals that are scored after every
+simulation run. Both simulators are supported: ray goals count where rays go, wave goals measure the
+field. `npm run build-tasks` packs each scene in `data/taskScenes/` into a single
+self-contained HTML file under `dist/tasks/`, suitable for embedding in a course platform that
+allows only static HTML with no external dependencies. See
+[data/taskScenes/README.md](data/taskScenes/README.md) for the authoring guide.
+
+## Jupyter and MyST
+
+The same applet is published as three [anywidget](https://anywidget.dev) classes, so a scene, a wave
+optics scene or an assignment can be dropped into a notebook or a MyST Markdown document, which
+passes the scene it wants to show:
+
+```python
+from ray_optics_widgets import RayOpticsWidget, WaveOpticsWidget, TaskWidget
+
+WaveOpticsWidget("wave_zone_plate", height=520)
+```
+
+`npm run build-anywidget` builds the bundle; the Python package around it lives in
+[python/](python/README.md) and is installed from this directory with `pip install .`. Each release
+also publishes the bundle on its own, readable and minified, for a page that embeds the module
+directly rather than through Python.
 
 ## Links
 - [**Launch the Web App**](https://phydemo.app/ray-optics/simulator/)
@@ -97,6 +126,7 @@ The full build may takes about half an hour to complete due to the generation of
 - `locales` contains the translations for the project in i18next format, managed by Weblate.
 - `scripts` contains the scripts for custom build steps.
 - `test` contains the automatic tests for the project.
+- `python` contains the Python distribution of the widgets, which wraps the built bundle as anywidgets. The project it belongs to is described by `pyproject.toml` at the root, so the repository as a whole is what `pip install .` installs.
 - `integrations` contains the integration tools for the simulator with other programming languages.
 - `dist` (generated at build time) contains the built files for the project (the entire content for the [https://phydemo.app/ray-optics](https://phydemo.app/ray-optics) website).
 - `dist-node` (generated at build time) contains the built files for the node module version of the simulator, which is required for the image generation, and can also be used in your own project.
@@ -123,10 +153,27 @@ npm run build-images
 # build the web app version of simulator (unlike npm run start, this command builds the simulator in production mode)
 npm run build-app
 
+# build one self-contained page per scene in data/taskScenes, into dist/tasks.
+npm run build-tasks
+
 # build documentation
 npm run build-docs
 ```
 Note that `npm run build` is equivalent to running all the above commands.
+
+Two further builds are not part of `npm run build`, since neither belongs in the website:
+```bash
+# build the anywidget bundle, into python/ray_optics_widgets/static.
+npm run build-anywidget
+
+# open a task scene in the app as a designer, rather than as an assignment.
+npm run build-task-editor
+```
+
+The thumbnails the gallery shows for the wave-optics examples and assignments are screenshots of the
+real app, so they need a browser and are not rebuilt on every build. The output is committed;
+regenerate it with `npm i --no-save puppeteer && node ./scripts/buildWaveImages.mjs`, or one section
+of it with `--only=tasks`.
 
 ## Testing
 

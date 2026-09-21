@@ -1,6 +1,15 @@
 /node_modules
 /dist
 /dist-node
+/dist-widget
 /dist-integrations
 /.local-test-output/
 .hintrc
+
+# The anywidget bundle, built by `npm run build-anywidget`.
+python/ray_optics_widgets/static/
+python/ray_optics_widgets/scenes/
+
+# Python build products.
+*.egg-info/
+__pycache__/

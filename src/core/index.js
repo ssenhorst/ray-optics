@@ -39,6 +39,10 @@ import { FLOAT32_EPSILON } from './primitive/numeric.js';
 import Editor from './Editor.js';
 import * as sceneObjs from './sceneObjs.js';
 import geometry from './geometry.js';
+import TaskEvaluator, { validateTask } from './goals/TaskEvaluator.js';
+import { GOAL_TYPES, isWaveScene } from './goals/TaskEvaluator.js';
+import * as interaction from './interaction.js';
+import * as uiOptions from './uiOptions.js';
 import i18next from 'i18next';
 
 // Check if we're in a Node.js environment
@@ -70,5 +74,11 @@ export {
   FLOAT32_EPSILON,
   Editor,
   sceneObjs,
-  geometry
+  geometry,
+  TaskEvaluator,
+  validateTask,
+  GOAL_TYPES,
+  isWaveScene,
+  interaction,
+  uiOptions
 };
