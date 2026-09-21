@@ -1265,6 +1265,13 @@ class Editor {
         if (!this.isConstructing) {
           // The object says the contruction is done
           this.onActionComplete();
+          // Distinct from 'newAction', which also fires for every ordinary
+          // drag and edit: this fires only when a *new* object has just
+          // finished being placed, which is what a caller wanting to return
+          // to a neutral tool after one placement needs to know.
+          this.emit('objectConstructed', {
+            type: this.scene.objs[this.scene.objs.length - 1]?.constructor.type
+          });
           this.emit('resetVirtualKeys');
           if (!this.canSelectAnyObject()) {
             this.hoveredObjIndex = -1;

@@ -4,12 +4,6 @@
     "shortName": "ແສງເລຂາ",
     "description": "ເວັບແອັບຟຣີ ແລະ ໂອເພນຊອດ ສຳລັບການສ້າງ ແລະ ຈຳລອງພາບແສງເລຂາຄະນິດ 2 ມິຕິ."
   },
-  "meta": {
-    "languageName": "ລາວ",
-    "parentheses": "{{main}} ({{sub}})",
-    "colon": "{{name}}: {{value}}",
-    "list": "{{first}}, {{others}}"
-  },
   "pages": {
     "simulator": "ຕົວຈຳລອງ",
     "home": "ໜ້າຫຼັກ",
@@ -269,5 +263,11 @@
   "languageDropdown": {
     "title": "ພາສາ: {{language}}",
     "translatedFraction": "ແປແລ້ວ {{fraction}}"
+  },
+  "meta": {
+    "languageName": "ລາວ",
+    "parentheses": "{{main}} ({{sub}})",
+    "colon": "{{name}}: {{value}}",
+    "list": "{{first}}, {{others}}"
   }
 }

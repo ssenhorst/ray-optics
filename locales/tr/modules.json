@@ -72,33 +72,6 @@
       "N": "Noktasal kaynakların sayısı",
       "brightness": "Toplam parlaklık"
     },
-    "CubeBeamSplitter": {
-      "splitRatio": "Diyagonal ışın ayırıcının iletim oranı",
-      "cauchyB": "Küpün Cauchy katsayısı \\(B\\) (kare mikrometre cinsinden)",
-      "refIndex": "Küpün kırılma indisi (“Renkleri Simüle Et” seçeneği etkin olduğunda Cauchy katsayısı \\(A\\))",
-      "angle": "Küpün dönme açısı (derece cinsinden)",
-      "size": "Küpün boyutu",
-      "point1": "Küpün (karenin) merkezi",
-      "description": "Küp ışın ayırıcı, yaygın olarak kullanılan bir optik bileşendir. Bu, boyut ve açı açısından ayarlanabilen bir küp ışın ayırıcı modülüdür.",
-      "title": "Küp Işın Ayırıcı"
-    },
-    "OpticalFiber": {
-      "n2": "Kaplamanın kırılma indisi",
-      "Y": "Kaplamanın kalınlığı",
-      "point2": "Optik fiberin ikinci uç noktası",
-      "point1": "Optik fiberin ilk uç noktası",
-      "description": "Belirli bir çekirdek ve kaplama kalınlığına ve kırılma indislerine sahip çizgi şeklindeki optik fiber.",
-      "title": "Optik Fiber"
-    },
-    "RayRelay": {
-      "N": "Lens sayısı",
-      "d": "Mercekler arasındaki mesafe",
-      "f": "Merceklerin odak uzaklığı",
-      "point2": "İlk merceğin ikinci uç noktası (ilk nokta ile aynı \\(x\\) değerine sahip olmalıdır)",
-      "title": "Işın Aktarıcı",
-      "description": "Odak uzaklığı \\(f\\) olan ve mercekler arasındaki mesafe \\(d\\) olan bir dizi ideal özdeş mercek. Işın yörüngesinin sapmaması, ancak ve ancak \\(d\\leq 4f\\) olduğunda garanti edilir. [Bu Galeri örneğinin](/gallery/ray-relaying) modülerleştirilmiş versiyonu.",
-      "point1": "İlk merceğin ilk odak noktası"
-    },
     "EllipticalMirror": {
       "title": "Eliptik Ayna",
       "description": "İki odak noktası ve büyük yarı eksenin uzunluğu ile tanımlanan eliptik bir ayna.",
@@ -123,6 +96,33 @@
       "point1": "İlk merceğin merkezi",
       "point2": "İkinci merceğin ikinci noktası",
       "point3": "Lenslerin ortak odak noktasını belirler"
+    },
+    "RayRelay": {
+      "title": "Işın Aktarıcı",
+      "description": "Odak uzaklığı \\(f\\) olan ve mercekler arasındaki mesafe \\(d\\) olan bir dizi ideal özdeş mercek. Işın yörüngesinin sapmaması, ancak ve ancak \\(d\\leq 4f\\) olduğunda garanti edilir. [Bu Galeri örneğinin](/gallery/ray-relaying) modülerleştirilmiş versiyonu.",
+      "point1": "İlk merceğin ilk odak noktası",
+      "point2": "İlk merceğin ikinci uç noktası (ilk nokta ile aynı \\(x\\) değerine sahip olmalıdır)",
+      "f": "Merceklerin odak uzaklığı",
+      "d": "Mercekler arasındaki mesafe",
+      "N": "Lens sayısı"
+    },
+    "OpticalFiber": {
+      "title": "Optik Fiber",
+      "description": "Belirli bir çekirdek ve kaplama kalınlığına ve kırılma indislerine sahip çizgi şeklindeki optik fiber.",
+      "point1": "Optik fiberin ilk uç noktası",
+      "point2": "Optik fiberin ikinci uç noktası",
+      "Y": "Kaplamanın kalınlığı",
+      "n2": "Kaplamanın kırılma indisi"
+    },
+    "CubeBeamSplitter": {
+      "title": "Küp Işın Ayırıcı",
+      "description": "Küp ışın ayırıcı, yaygın olarak kullanılan bir optik bileşendir. Bu, boyut ve açı açısından ayarlanabilen bir küp ışın ayırıcı modülüdür.",
+      "point1": "Küpün (karenin) merkezi",
+      "size": "Küpün boyutu",
+      "angle": "Küpün dönme açısı (derece cinsinden)",
+      "refIndex": "Küpün kırılma indisi (“Renkleri Simüle Et” seçeneği etkin olduğunda Cauchy katsayısı \\(A\\))",
+      "cauchyB": "Küpün Cauchy katsayısı \\(B\\) (kare mikrometre cinsinden)",
+      "splitRatio": "Diyagonal ışın ayırıcının iletim oranı"
     }
   }
 }

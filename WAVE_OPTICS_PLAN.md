@@ -518,6 +518,28 @@ asked of the editor rather than inferred from update timing, since on a machine 
 redraw already exceeds the inference window a drag would never get the responsive
 budget — precisely where it matters most.*
 
+**Second follow-up round. ✅ Done.** Grouping (the shared `Handle`, which turned out to
+need nothing new — only the examples' missing viewport metadata, which had been rescaling
+every one of them to fit a default window). A real lens: two spherical surfaces with
+glass between, shaped from a focal length by the lensmaker's equation, kept alongside the
+quadratic phase plate so an aberrated focus can be compared with an ideal one. Every
+parameter with an obvious place on the canvas set there — focal marks at ±f, grating pitch
+and duty cycle, slit width and spacing, a plane wave aimed by dragging its own arrow —
+drawn only while the object is selected. Interfaces can colour their drawn profile by
+their own transmission, which is what finally makes a grating look like a grating. Two
+measurement objects: a focus probe that searches one subspace of the computed grid, and a
+screen that plots a slice, including the far field at infinity. A reversed optical axis.
+`λ` usable in any equation. Scene settings moved to a folding sidebar with `(?)`
+explanations, scenes shareable as links, and the site linking to the app.
+
+*Two bugs behind this round were the same mistake in different places: a quantity that
+cannot be negative being computed as a subtraction that can. A slit spacing no wider than
+the slits gave a "gap" of zero and asked for two billion samples; the overlap check
+compared raw `x` and called every reversed scene ambiguous. The sampling rule also stopped
+refining below half a wavelength, where there is nothing left that can radiate, and
+averages the transmission over each cell instead — which is why narrowing a slit now costs
+fewer sources rather than more.*
+
 **M5 — Pulses. Deferred.** Frequency decomposition, per-component cached field textures,
 animated recombination, Gaussian pulse UI. The per-frequency architecture is already in
 place, so this is a loop over cached field textures; note that the chain cost multiplies

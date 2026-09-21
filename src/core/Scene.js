@@ -256,6 +256,7 @@ class Scene {
       lowerCutoff: 0,
       logScale: false,
       dynamicRange: 40,
+      reversed: false,
     },
     theme: {
       background: {

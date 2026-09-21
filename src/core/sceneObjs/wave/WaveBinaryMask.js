@@ -94,6 +94,7 @@ class WaveBinaryMask extends WaveInterface {
     objBar.createEquation('f(y)', this.eqnMask, function (obj, value) {
       obj.eqnMask = value;
     }, WaveBinaryMask.maskHelp(this.scene));
+    this.populateProfileObjBar(objBar);
   }
 
   transmissionAt(y) {

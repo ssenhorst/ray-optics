@@ -82,6 +82,11 @@
       "title": "Curva Paramétrica",
       "description": "Um espelho cuja forma é definida por equações paramétricas personalizadas."
     },
+    "CurveMirror": {
+      "title": "Curvas de Bézier",
+      "description": "Um espelho definido por curvas cúbicas de Bézier.",
+      "instruction": "Clique para criar um segmento. Clique no ponto de início para finalizar como forma fechada, ou clique no último ponto âncora duas vezes para finalizar como curva aberta. Após isso, arraste as caixas para manipular os pontos de controle, mudando a curva."
+    },
     "ConcaveDiffractionGrating": {
       "title": "Rede de Difração Côncava",
       "description": "Uma rede de difração cuja forma é parte de um círculo."
@@ -202,11 +207,15 @@
       "title": "Curva Paramétrica Personalizada",
       "description": "Uma superfície personalizada com forma definida por equações paramétricas."
     },
+    "CustomCurveSurface": {
+      "title": "Curvas de Bézier Personalizadas",
+      "description": "Uma superfície personalizada com forma definida por curvas cúbicas de Bézier."
+    },
     "modules": {
       "import": "Importar Módulos…",
-      "remove": "Remover módulo",
       "createModule": "Criar Módulo…",
-      "description": "Crie novos componentes combinando componentes existentes. Veja \"Importar Módulos\" para exemplos."
+      "description": "Crie novos componentes combinando componentes existentes. Veja \"Importar Módulos\" para exemplos.",
+      "remove": "Remover módulo"
     },
     "moveView": {
       "title": "Mover Vista",
@@ -214,15 +223,6 @@
     },
     "moreTools": {
       "title": "Mais Ferramentas"
-    },
-    "CurveMirror": {
-      "title": "Curvas de Bézier",
-      "description": "Um espelho definido por curvas cúbicas de Bézier.",
-      "instruction": "Clique para criar um segmento. Clique no ponto de início para finalizar como forma fechada, ou clique no último ponto âncora duas vezes para finalizar como curva aberta. Após isso, arraste as caixas para manipular os pontos de controle, mudando a curva."
-    },
-    "CustomCurveSurface": {
-      "title": "Curvas de Bézier Personalizadas",
-      "description": "Uma superfície personalizada com forma definida por curvas cúbicas de Bézier."
     }
   },
   "view": {

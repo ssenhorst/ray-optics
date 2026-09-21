@@ -65,8 +65,11 @@ for (const lang of langs) {
 
 const modulesDir = path.join(__dirname, '../dist/modules/');
 
-// Check if the required directories exist
-if (Object.keys(galleryDirs).length === 0 || !fs.existsSync(modulesDir)) {
+// Check if the required directories exist. The gallery is optional: this
+// project's examples are wave-optics ones, which the app builds from the
+// viewport they are loaded into and whose previews come from
+// `buildWaveImages.mjs` instead.
+if (!fs.existsSync(modulesDir)) {
   console.error('Error: Required directories not found. Please run `npm run build-scenes` first.');
   process.exit(1);
 }

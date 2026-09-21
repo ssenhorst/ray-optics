@@ -19,7 +19,8 @@ is only the app shell.
   the ray app's engine selection, colour modes and export paths do not apply.
 - `store/wave.js` — a Vue store over `scene.waveOptics`, plus the transient view
   state (time, animation, tool) that is intentionally not saved with the scene.
-- `components/` — the toolbar, canvas stack, object bar and status area.
+- `components/` — the toolbar, the scene-settings sidebar, the canvas stack, the
+  object bar and the status area.
 - `exampleScenes.js` — the worked examples in the toolbar, built against the
   current viewport so each one fills the window it is loaded into.
 
@@ -47,7 +48,8 @@ polarization.
 
 ## Elements
 
-Sources radiate; interfaces divide space. Both live under their own toolbar menu.
+Sources radiate, interfaces divide space, and measurements only look. Each has
+its own toolbar menu.
 
 - **Point source** — the 2D Green's function, the primitive everything else is
   built from.
@@ -71,6 +73,57 @@ sampling raises a warning instead of quietly diffracting into the wrong orders.
 - **Fresnel zone plate** — focal length, blocking or phase-reversing.
 - **Binary mask** — open wherever a function of the transverse coordinate is
   non-negative, with the feature size measured from the pattern itself.
+- **Lens** — two spherical surfaces with glass between them, shaped from a focal
+  length by the lensmaker's equation. The only element here that refracts by
+  curvature alone, so unlike a quadratic phase plate its focus carries the
+  spherical aberration of its own geometry and shifts as the glass thickens.
+
+Any interface can also colour its drawn profile by its own transmission, with
+the bivariate amplitude-and-phase mapping or with a single colormap for one of
+the two. Drawn as a plain line, a grating, a zone plate and a clear window are
+the same stroke.
+
+Measurements take no part in the optics — putting a detector into a scene should
+not change the scene.
+
+- **Focus probe** — the brightest point of the subspace it is dropped into, and
+  the full width at half maximum of the intensity across it. Confined to one
+  subspace on purpose: the brightest point of a whole scene is almost always the
+  source.
+- **Screen** — a slice of the field plotted as a curve, as intensity, as the
+  real part, or as the amplitude with the phase as its colour. In far-field mode
+  it shows the pattern at infinity over the angles its endpoints subtend at the
+  last surface, drawn as a dashed arc because nothing in the scene is there.
+
+## Equations
+
+The amplitude, phase, sag and mask fields accept ordinary arithmetic, the usual
+functions, and the symbol `λ` (typed `\lambda`), bound to the scene's
+wavelength. It is read on each evaluation rather than captured, so a phase
+profile written as a wavenumber times a position keeps meaning the same angle
+when the wavelength is changed instead of silently becoming a different tilt.
+
+## Which way the light goes
+
+By default the optical axis is the canvas `+x` and light travels left to right.
+**Right-to-left** in the sidebar reverses it: surfaces order the other way, each
+transmits into the space behind it, and a plane wave at zero degrees points that
+way, since angles are measured from the optical axis rather than from the
+canvas. It is a single sign rather than a second set of formulas, and the test
+suite checks that the same system built mirrored and reversed produces the same
+field.
+
+## Grouping and sharing
+
+Hold Ctrl and click several objects, then click empty space, to drop a handle
+that moves them together — the same handle the ray simulator uses, so its object
+bar switches between translation, rotation and scaling in the same way.
+
+**Auto sync URL** writes the whole scene into the address bar as it is edited,
+so the URL is always a link to what is on screen; the **Link** button copies one
+on demand. A bare example name in the hash (`/wave/#doubleSlit`) loads that
+example, which is what the gallery links to: an example is built from the window
+it is loaded into, so there is no fixed scene to encode.
 
 ## Resolution
 
@@ -105,6 +158,20 @@ status bar reports what the settings can actually represent:
 Both of these produce warnings rather than silent failure. The scene extent is
 also checked: past about 10⁴ wavelengths across, float32 can no longer carry the
 phase.
+
+## Pictures
+
+The previews on the site and the icons in the editor's tool menus are renders
+of this app rather than drawings, made by `scripts/buildWaveImages.mjs`: it
+drives the built app in a headless browser, pins the grid resolution so a
+preview does not depend on the machine that made it, and writes the results to
+`src/img/wave`. Reproducing the field and display shaders in node would have
+meant a second implementation of the display mapping that could drift from the
+one people see.
+
+That needs a browser, so it is not part of `npm run build` — the output is
+committed and the script is re-run by hand when the examples or the rendering
+change. `--only=tools` re-renders one section.
 
 ## Testing
 

@@ -8,10 +8,10 @@
     "saveButton": "Speichern",
     "cancelButton": "Abbrechen",
     "defaultOption": "Standard",
-    "closeButton": "Schließen",
-    "reloadToTakeEffect": "Bitte Seite neu laden, um Änderungen zu sehen.",
     "customOption": "Benutzerdefiniert",
-    "resetButton": "Zurücksetzen"
+    "closeButton": "Schließen",
+    "resetButton": "Zurücksetzen",
+    "reloadToTakeEffect": "Bitte Seite neu laden, um Änderungen zu sehen."
   },
   "file": {
     "title": "Datei",
@@ -31,6 +31,9 @@
       "title": "Öffnen…",
       "description": "Öffnet eine existierende Datei oder ein Hintergrundbild. Das Hintergundbild wird relativ zum Koordinatenursprung angezeigt. (Oder Datei hierher ziehen.)"
     },
+    "importShapes": {
+      "title": "Formen importieren…"
+    },
     "export": {
       "title": "Als PNG/SVG exportieren…"
     },
@@ -40,13 +43,11 @@
     "viewGallery": {
       "title": "Galerie ansehen",
       "description": "Zur Galerie-Seite wechseln und ein Beispiel laden."
-    },
-    "importShapes": {
-      "title": "Formen importieren…"
     }
   },
   "settings": {
     "title": "Einstellungen",
+    "more": "Mehr",
     "rayDensity": {
       "title": "Strahl-Anzahldichte"
     },
@@ -55,42 +56,29 @@
       "snapToGrid": "Anrasten",
       "lockObjs": "Objekte sperren"
     },
+    "showRayArrows": {
+      "title": "Strahlpfeile anzeigen"
+    },
     "correctBrightness": {
       "title": "Helligkeit korrigieren"
     },
     "gridSize": {
       "title": "Rastergröße"
     },
-    "zoom": {
-      "title": "Zoom"
-    },
-    "colorMode": {
-      "title": "Farbmodus"
-    },
-    "language": {
-      "title": "Sprache"
-    },
-    "showSidebar": {
-      "title": "JSON-Editor anzeigen"
-    },
-    "showStatusBox": {
-      "title": "Statusbox anzeigen"
-    },
-    "showHelpPopups": {
-      "title": "Hilfe-Popups anzeigen"
-    },
-    "more": "Mehr",
-    "showRayArrows": {
-      "title": "Strahlpfeile anzeigen"
-    },
     "lengthScale": {
       "title": "Längenskala"
+    },
+    "zoom": {
+      "title": "Zoom"
     },
     "showAdvancedSettings": {
       "title": "Weitere Szeneneinstellungen"
     },
     "theme": {
       "title": "Thema"
+    },
+    "colorMode": {
+      "title": "Farbmodus"
     },
     "redWavelength": {
       "title": "Rote Wellenlänge"
@@ -101,8 +89,20 @@
     "maxRayDepth": {
       "title": "Maximale Strahltiefe"
     },
+    "language": {
+      "title": "Sprache"
+    },
+    "showSidebar": {
+      "title": "JSON-Editor anzeigen"
+    },
+    "showStatusBox": {
+      "title": "Statusbox anzeigen"
+    },
     "showSimulatorControls": {
       "title": "Simulator-Steuerelemente anzeigen"
+    },
+    "showHelpPopups": {
+      "title": "Hilfe-Popups anzeigen"
     }
   },
   "objBar": {
@@ -128,14 +128,10 @@
       "wavelength": "Wellenlänge",
       "emisAngle": "Emissionswinkel",
       "random": "Zufällig",
-      "focalLength": "Brennweite",
-      "eqnInfo": {
-        "constants": "Unterstützte Konstanten",
-        "functions": "Unterstützte Funktionen"
-      },
       "lambert": "Lambertisch",
       "coordOrigin": "Ursprung",
       "bezierControlPoints": "Bézier-Kontrollpunkte",
+      "focalLength": "Brennweite",
       "lineStyle": "Linienstil",
       "fillStyle": "Füllstil",
       "useThemeStyle": "Themenstil verwenden",
@@ -144,7 +140,31 @@
       "styleBlue": "Blau",
       "styleAlpha": "Alpha",
       "styleWidth": "Breite",
+      "eqnInfo": {
+        "constants": "Unterstützte Konstanten",
+        "functions": "Unterstützte Funktionen"
+      },
       "pointN": "Punkt {{i}}"
+    },
+    "LineObjMixin": {
+      "endpoint1": "1. Endpunkt",
+      "endpoint2": "2. Endpunkt",
+      "sourcePoint": "Quellpunkt",
+      "directionPoint": "Richtungspunkt"
+    },
+    "CircleObjMixin": {
+      "radiusPoint": "Punkt auf Kreis"
+    },
+    "ParamCurveObjMixin": {
+      "pieces": "Stücke",
+      "addPiece": "Stück hinzufügen",
+      "removePiece": "Stück entfernen",
+      "step": "Schritt",
+      "error": {
+        "invalidStepSize": "Ungültige Schrittweite: {{step}}",
+        "invalidRange": "Ungültiger Parameterbereich: tMin ({{tMin}}) >= tMax ({{tMax}})",
+        "pieceError": "Fehler bei Stück {{pieceIndex}}, t={{t}}: {{error}}"
+      }
     },
     "AngleSource": {
       "symmetric": "symmetrisch"
@@ -156,6 +176,12 @@
     },
     "IdealMirror": {
       "cartesianSign": "Kartesische Zeichenkonvention"
+    },
+    "ArcMirror": {
+      "pointOnArc": "Punkt auf Bogen"
+    },
+    "ParabolicMirror": {
+      "vertex": "Scheitelpunkt"
     },
     "BeamSplitter": {
       "transRatio": "Transmissionsgrad"
@@ -169,12 +195,17 @@
       "cauchyCoeff": "Cauchy Koeffizient",
       "partialReflect": "Teilreflexionen simulieren"
     },
+    "Glass": {
+      "vertices": "Scheitelpunkte",
+      "vertex": "Scheitelpunkt",
+      "arc": "Kreisbogen"
+    },
     "SphericalLens": {
-      "invalidParameters": "Ungültige Linsenparameter",
       "defBy": {
         "radiiOfCurvature": "Krümmungsradien",
         "focalDistances": "Brennweiten"
-      }
+      },
+      "invalidParameters": "Ungültige Linsenparameter"
     },
     "CircleGrinGlass": {
       "epsInfo": {
@@ -228,43 +259,22 @@
       "title": "Exportieren",
       "width": "Breite",
       "svgWarning": "Export als SVG-Datei. Farbmischungen und relative Brechungsindizes kleiner 1 sind nicht unterstützt."
-    },
-    "LineObjMixin": {
-      "endpoint1": "1. Endpunkt",
-      "endpoint2": "2. Endpunkt",
-      "sourcePoint": "Quellpunkt",
-      "directionPoint": "Richtungspunkt"
-    },
-    "CircleObjMixin": {
-      "radiusPoint": "Punkt auf Kreis"
-    },
-    "ParamCurveObjMixin": {
-      "pieces": "Stücke",
-      "addPiece": "Stück hinzufügen",
-      "removePiece": "Stück entfernen",
-      "step": "Schritt",
-      "error": {
-        "invalidStepSize": "Ungültige Schrittweite: {{step}}",
-        "invalidRange": "Ungültiger Parameterbereich: tMin ({{tMin}}) >= tMax ({{tMax}})",
-        "pieceError": "Fehler bei Stück {{pieceIndex}}, t={{t}}: {{error}}"
-      }
-    },
-    "ArcMirror": {
-      "pointOnArc": "Punkt auf Bogen"
-    },
-    "ParabolicMirror": {
-      "vertex": "Scheitelpunkt"
-    },
-    "Glass": {
-      "vertices": "Scheitelpunkte",
-      "vertex": "Scheitelpunkt",
-      "arc": "Kreisbogen"
     }
   },
   "saveModal": {
     "title": "Speichern",
     "fileName": "Name",
     "rename": "Umbenennen"
+  },
+  "importShapesModal": {
+    "title": "Formen importieren",
+    "stats_one": "{{total}} Pfad — {{closed}} geschlossen / {{open}} offen",
+    "stats_other": "{{total}} Pfade — {{closed}} geschlossen / {{open}} offen",
+    "actions": {
+      "ignore": "Ignorieren"
+    },
+    "scale": "Skala",
+    "importButton": "Importieren"
   },
   "moduleModal": {
     "title": "Module importieren"
@@ -278,6 +288,20 @@
     "title": "Sprache",
     "translatedFraction": "übersetzt",
     "helpTranslate": "Helfen beim Übersetzen"
+  },
+  "simulationEngineModal": {
+    "configuration": {
+      "sections": {
+        "primitiveCpu": {
+          "title": "CPU"
+        }
+      },
+      "fields": {
+        "workgroupSize": {
+          "title": "Arbeitsgruppengröße"
+        }
+      }
+    }
   },
   "generalWarnings": {
     "shareLinkTooLong": "Die URL ist zu lang für einige Platformen. Es kann nötig sein die Datei zu \"Speichern\" und zu teilen."
@@ -310,30 +334,6 @@
       },
       "integrations": {
         "title": "Integrationen mit Programmiersprachen"
-      }
-    }
-  },
-  "importShapesModal": {
-    "importButton": "Importieren",
-    "scale": "Skala",
-    "actions": {
-      "ignore": "Ignorieren"
-    },
-    "title": "Formen importieren",
-    "stats_one": "{{total}} Pfad — {{closed}} geschlossen / {{open}} offen",
-    "stats_other": "{{total}} Pfade — {{closed}} geschlossen / {{open}} offen"
-  },
-  "simulationEngineModal": {
-    "configuration": {
-      "fields": {
-        "workgroupSize": {
-          "title": "Arbeitsgruppengröße"
-        }
-      },
-      "sections": {
-        "primitiveCpu": {
-          "title": "CPU"
-        }
       }
     }
   }

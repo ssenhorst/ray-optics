@@ -17,6 +17,19 @@
 import BaseSceneObj from '../BaseSceneObj.js';
 import geometry from '../../geometry.js';
 import i18next from 'i18next';
+import { drawHandle, drawGuide, isOnHandle } from './waveHandles.js';
+
+/**
+ * How far along the direction of travel the angle control sits, in scene units.
+ *
+ * It is a fixed scene distance rather than a fixed screen distance so that the
+ * control stays put relative to the wave it is steering when the view is
+ * zoomed, which is what makes it feel attached to the object.
+ */
+const DIRECTION_HANDLE_DISTANCE = 60;
+
+/** The largest angle from the axis a plane wave may be given, in degrees. */
+const MAX_ANGLE = 89;
 
 /**
  * A plane wave filling the subspace it sits in.
@@ -82,10 +95,48 @@ class WavePlaneWave extends BaseSceneObj {
     );
   }
 
-  /** The unit propagation direction. */
+  /**
+   * The unit propagation direction.
+   *
+   * The angle is measured from the optical axis, not from the canvas, so a
+   * scene running right to left aims its plane waves that way without every
+   * angle in it needing to be rewritten.
+   */
   direction() {
     const radians = this.angle * Math.PI / 180;
-    return { x: Math.cos(radians), y: Math.sin(radians) };
+    const axisSign = this.scene?.waveOptics?.reversed ? -1 : 1;
+    return { x: axisSign * Math.cos(radians), y: Math.sin(radians) };
+  }
+
+  /**
+   * Where the control that aims the wave sits: out along the direction of
+   * travel, at the tip of the arrow that already shows that direction.
+   * @returns {{x: number, y: number}}
+   */
+  directionHandlePoint() {
+    const direction = this.direction();
+    return {
+      x: this.x + direction.x * DIRECTION_HANDLE_DISTANCE,
+      y: this.y + direction.y * DIRECTION_HANDLE_DISTANCE,
+    };
+  }
+
+  /**
+   * The angle a point off the anchor implies, clamped to the half space the
+   * model can carry.
+   *
+   * The field is summed forward only, so a wave aimed backwards would simply
+   * not exist; the control stops at grazing instead of allowing that.
+   *
+   * @param {{x: number, y: number}} point
+   * @returns {number} Degrees.
+   */
+  angleTowards(point) {
+    const axisSign = this.scene?.waveOptics?.reversed ? -1 : 1;
+    const degrees = Math.atan2(
+      point.y - this.y, axisSign * (point.x - this.x)
+    ) * 180 / Math.PI;
+    return Math.min(MAX_ANGLE, Math.max(-MAX_ANGLE, degrees));
   }
 
   draw(canvasRenderer, isAboveLight, isHovered) {
@@ -140,6 +191,14 @@ class WavePlaneWave extends BaseSceneObj {
       isHovered ? this.scene.highlightColor : this.scene.theme.sourcePoint.color,
       this.scene.theme.sourcePoint.size
     );
+
+    // The angle is set by dragging the tip of the arrow, so the tip only
+    // becomes a grabbable control once the wave is selected.
+    if (this.isSelected()) {
+      const handle = this.directionHandlePoint();
+      drawGuide(canvasRenderer, this, handle);
+      drawHandle(canvasRenderer, handle);
+    }
   }
 
   move(diffX, diffY) {
@@ -171,10 +230,22 @@ class WavePlaneWave extends BaseSceneObj {
     return { x: this.x, y: this.y };
   }
 
+  /**
+   * Placing a plane wave is a drag: the press puts the anchor down and the
+   * drag aims it, so the direction is chosen at the moment of creation rather
+   * than typed in afterwards. Releasing without moving leaves it on the axis,
+   * so a plain click still works.
+   */
   onConstructMouseDown(mouse, ctrl, shift) {
     const mousePos = mouse.getPosSnappedToGrid();
     this.x = mousePos.x;
     this.y = mousePos.y;
+  }
+
+  onConstructMouseMove(mouse, ctrl, shift) {
+    const mousePos = mouse.getPosSnappedToGrid();
+    if (mousePos.x === this.x && mousePos.y === this.y) return;
+    this.angle = Math.round(this.angleTowards(mousePos));
   }
 
   onConstructMouseUp(mouse, ctrl, shift) {
@@ -182,6 +253,10 @@ class WavePlaneWave extends BaseSceneObj {
   }
 
   checkMouseOver(mouse) {
+    if (this.isSelected() && isOnHandle(mouse, this.directionHandlePoint())) {
+      const handle = this.directionHandlePoint();
+      return { part: 1, targetPoint: geometry.point(handle.x, handle.y) };
+    }
     if (mouse.isOnPoint(this)) {
       return {
         part: 0,
@@ -192,6 +267,12 @@ class WavePlaneWave extends BaseSceneObj {
   }
 
   onDrag(mouse, dragContext, ctrl, shift) {
+    if (dragContext.part === 1) {
+      this.angle = this.angleTowards(mouse.pos);
+      // Holding shift steps the angle, for setting a round number by hand.
+      if (shift) this.angle = Math.round(this.angle / 5) * 5;
+      return;
+    }
     const mousePos = mouse.getPosSnappedToGrid();
     this.x = mousePos.x;
     this.y = mousePos.y;

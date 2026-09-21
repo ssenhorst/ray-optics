@@ -15,7 +15,12 @@
  */
 
 import WaveInterface, { SHARED_INTERFACE_DEFAULTS } from './WaveInterface.js';
+import geometry from '../../geometry.js';
 import i18next from 'i18next';
+import { drawHandle, drawGuide, drawHandleLabel, isOnHandle } from './waveHandles.js';
+
+/** The finest pitch a drag may set, in scene length units. */
+const MIN_PITCH = 1;
 
 /**
  * A grating whose transmission is a square wave across the interface.
@@ -85,6 +90,78 @@ class WaveSquareGrating extends WaveInterface {
         function (obj, value) { obj.barPhase = value; }
       );
     }
+    this.populateProfileObjBar(objBar);
+  }
+
+  /**
+   * Where the two on-canvas controls sit.
+   *
+   * The pattern is laid out from the centre of the aperture, so one period runs
+   * from there; the pitch control marks its far end and the duty control marks
+   * the edge of the first bar. Dragged, each is literally the boundary it
+   * represents moving, which is why the numbers do not need reading.
+   *
+   * @returns {{pitch: Point, duty: Point, origin: Point}|null}
+   */
+  controlPoints() {
+    if (!this.isValid()) return null;
+    const originY = this.centerY();
+    const extent = this.getExtent();
+    const pitch = this.pitch > 0 ? this.pitch : MIN_PITCH;
+    // Kept inside the aperture, so neither control can be dragged off the end
+    // of the surface it belongs to.
+    const at = (offset) => {
+      const y = Math.min(extent.yMax, Math.max(extent.yMin, originY + offset));
+      return { x: this.zAt(y), y };
+    };
+    return {
+      origin: at(0),
+      pitch: at(pitch),
+      duty: at(pitch * this.dutyCycle),
+    };
+  }
+
+  checkMouseOver(mouse) {
+    const controls = this.isSelected() ? this.controlPoints() : null;
+    if (controls) {
+      if (isOnHandle(mouse, controls.pitch)) {
+        return {
+          part: 3, targetPoint: geometry.point(controls.pitch.x, controls.pitch.y),
+        };
+      }
+      if (isOnHandle(mouse, controls.duty)) {
+        return {
+          part: 4, targetPoint: geometry.point(controls.duty.x, controls.duty.y),
+        };
+      }
+    }
+    return super.checkMouseOver(mouse);
+  }
+
+  onDrag(mouse, dragContext, ctrl, shift) {
+    if (dragContext.part === 3) {
+      this.pitch = Math.max(MIN_PITCH, Math.abs(mouse.pos.y - this.centerY()));
+      return;
+    }
+    if (dragContext.part === 4) {
+      const pitch = this.pitch > 0 ? this.pitch : MIN_PITCH;
+      const fraction = Math.abs(mouse.pos.y - this.centerY()) / pitch;
+      this.dutyCycle = Math.min(0.98, Math.max(0.02, fraction));
+      return;
+    }
+    super.onDrag(mouse, dragContext, ctrl, shift);
+  }
+
+  drawControls(canvasRenderer, isHovered) {
+    super.drawControls(canvasRenderer, isHovered);
+    const controls = this.isSelected() ? this.controlPoints() : null;
+    if (!controls) return;
+
+    drawGuide(canvasRenderer, controls.origin, controls.pitch);
+    drawHandle(canvasRenderer, controls.duty);
+    drawHandle(canvasRenderer, controls.pitch);
+    drawHandleLabel(canvasRenderer, 'd', controls.duty);
+    drawHandleLabel(canvasRenderer, 'p', controls.pitch);
   }
 
   transmissionAt(y) {

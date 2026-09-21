@@ -1,8 +1,8 @@
 {
   "project": {
-    "name": "Ray Optics Simulation",
-    "shortName": "Ray Optics",
-    "description": "A free, open-source web app for creating and simulating 2D geometric optical scenes."
+    "name": "Wave Optics Simulation",
+    "shortName": "Wave Optics",
+    "description": "A free, open-source web app for creating and simulating 2D wave-optical scenes."
   },
   "pages": {
     "simulator": "Simulator",
@@ -10,11 +10,14 @@
     "gallery": "Gallery",
     "modules": "Modules",
     "about": "About",
-    "github": "GitHub"
+    "github": "GitHub",
+    "waveOptics": "Wave Optics"
   },
   "homePage": {
     "description": "Create & simulate 2D geometric optical scenes interactively.\nTotally free and web-based. Source code is [available on GitHub](/github).",
-    "launchSimulator": "Launch Simulator"
+    "launchSimulator": "Launch Simulator",
+    "waveOpticsDescription": "There is also a companion wave-optics simulator, where the light is a complex scalar field summed from point sources rather than a set of rays: diffraction, interference and focusing all come out of the same sum.",
+    "launchWaveOptics": "Launch Wave Optics"
   },
   "tools": {
     "title": "Tools",
@@ -301,7 +304,8 @@
     },
     "categories": {
       "sources": "Sources",
-      "interfaces": "Interfaces"
+      "interfaces": "Interfaces",
+      "measure": "Measure"
     },
     "WaveSquareGrating": {
       "title": "Square grating",
@@ -322,6 +326,62 @@
     "WaveZonePlate": {
       "title": "Fresnel zone plate",
       "description": "Zones alternating every half wave of extra path to the focus, either blocking or phase-reversing."
+    },
+    "WaveLens": {
+      "title": "Lens",
+      "description": "Two spherical surfaces with glass between them, shaped from a focal length. Unlike a quadratic phase plate it refracts by curvature alone, so it carries the aberration of its own geometry."
+    },
+    "WaveScreen": {
+      "title": "Screen",
+      "description": "A line the field is read out along, plotted as a curve. Takes no part in the optics. Can instead show the pattern at infinity over the angles its endpoints subtend at the last surface."
+    },
+    "WaveFocusProbe": {
+      "title": "Focus probe",
+      "description": "Finds the brightest point of the subspace it is dropped into, and the full width at half maximum of the intensity across it."
     }
+  },
+  "waveHomePage": {
+    "title": "Wave Optics Simulation",
+    "description": "Create and simulate 2D wave-optical scenes interactively. The light is a complex scalar field summed from point sources, so diffraction, interference and focusing all come out of the same sum rather than being added on as special cases.",
+    "launch": "Launch Wave Optics",
+    "rayOpticsNote": "Forked from Ray Optics Simulation, which traces rays instead. That simulator ships alongside this one:",
+    "launchRayOptics": "Ray optics simulator",
+    "componentsTitle": "Components",
+    "viewsTitle": "Field views",
+    "viewsDescription": "The same double slit, in each of the three ways the field can be shown.",
+    "examplesTitle": "Examples",
+    "examplesMore": "All examples in the gallery",
+    "views": {
+      "intensity": {
+        "title": "Intensity",
+        "description": "The time-averaged |U|², which is what a detector or a photograph would record. The colour scale saturates at a percentile of the field rather than at its maximum, so the singularity at a point source cannot set the scale for the whole picture."
+      },
+      "field": {
+        "title": "Instantaneous field",
+        "description": "The real part of the field at one instant, on a cyclic colormap. The field is time-harmonic, so animating it costs only a re-colouring of a cached texture: the frame rate does not depend on how many sources there are."
+      },
+      "amplitudePhase": {
+        "title": "Amplitude and phase",
+        "description": "Both at once, in Oklch: lightness carries the amplitude and hue carries the phase. Chroma follows an envelope that vanishes at black and white, where sRGB has no room for it, so the lightness and hue stay exact and only the saturation gives way."
+      }
+    },
+    "categories": {
+      "sources": {
+        "title": "Sources",
+        "description": "Point and line sources radiating the 2D Green’s function, with amplitude and phase given as functions of position, plus an ideal plane wave evaluated in closed form."
+      },
+      "interfaces": {
+        "title": "Interfaces",
+        "description": "Surfaces that divide space into an ordered stack of subspaces, each with its own refractive index. Refraction is not a rule here: it emerges from sampling the incident field on a surface and re-radiating it with the wavenumber of the medium beyond."
+      },
+      "measure": {
+        "title": "Measurements",
+        "description": "Instruments that read the field without taking any part in it: a probe that finds the brightest point of a subspace and the width of it, and a screen that plots a slice — including the pattern at infinity."
+      }
+    }
+  },
+  "rayProject": {
+    "name": "Ray Optics Simulation",
+    "shortName": "Ray Optics"
   }
 }

@@ -40,6 +40,30 @@
       "max": "O comprimento de onda máximo",
       "brightness": "O brilho total"
     },
+    "RainbowPointSource": {
+      "title": "Fonte Pontual Arco-Íris",
+      "description": "Fonte pontual de luz <360 graus - porém emite um espectro de cores. Necessita de \"Simular Cores\" ativado.",
+      "point1": "A fonte",
+      "N": "A quantidade de raios",
+      "brightness": "O brilho total",
+      "angle": "O ângulo de emissão",
+      "lambdaMin": "O comprimento de onda mínimo",
+      "lambdaMax": "O comprimento de onda máximo"
+    },
+    "CoatedLens": {
+      "title": "Lente Esférica Revestida",
+      "description": "Uma lente esférica com revestimento de camada única em ambos os lados. O módulo `ArcCoating` inserido neste módulo representa uma única camada de filme fino, que, quando se sobrepõe com uma superfície de vidro, faz-se o seu revestimento.",
+      "point1": "O centro da lente",
+      "h": "A altura da lente",
+      "d": "A espessura da lente",
+      "R1": "O raio de curvatura da superfície frontal",
+      "R2": "O raio de curvatura da superfície traseira",
+      "A": "O coeficiente de Cauchy \\(A\\) do vidro",
+      "B": "O coeficiente de Cauchy \\(B\\) do vidro em micrômetros quadrados",
+      "dc": "A espessura da camada de revestimento em nanômetros",
+      "Ac": "O coeficiente de cauchy \\(A\\) do material do revestimento",
+      "Bc": "O coeficiente de Cauchy \\(B\\) do material do revestimento em micrômetros quadrados"
+    },
     "CircleSource": {
       "title": "Fonte de luz circular",
       "description": "Um círculo com fontes pontuais de 180 graus uniformes postas ao redor da sua circunferência.",
@@ -47,6 +71,16 @@
       "r": "O raio do círculo",
       "N": "A quantidade de fontes pontuais",
       "brightness": "O brilho total"
+    },
+    "EllipticalMirror": {
+      "title": "Espelho Elíptico",
+      "description": "Um espelho elíptico definido pelos dois focos e o comprimento do semieixo maior.",
+      "point1": "O primeiro foco",
+      "point2": "O segundo foco",
+      "a": "O comprimento do semieixo maior",
+      "tMin": "O mínimo ângulo da curva",
+      "tMax": "O máximo ângulo da curva",
+      "tStep": "O ângulo de passo da curva"
     },
     "Chaff": {
       "title": "Chaff",
@@ -89,42 +123,8 @@
       "size": "O tamanho do cubo",
       "angle": "O ânuglo de rotação do cubo em graus",
       "refIndex": "O índice refrativo do cubo (ou coeficiente de Cauchy \\(A\\) quando \"Simular Cores\" está ligado)",
-      "splitRatio": "A razão de transmissão do divisor de feixe diagonal",
-      "cauchyB": "O coeficiente de Cauchy \\(B\\) do cubo em micrômetros quadrados"
-    },
-    "RainbowPointSource": {
-      "title": "Fonte Pontual Arco-Íris",
-      "description": "Fonte pontual de luz <360 graus - porém emite um espectro de cores. Necessita de \"Simular Cores\" ativado.",
-      "point1": "A fonte",
-      "N": "A quantidade de raios",
-      "brightness": "O brilho total",
-      "angle": "O ângulo de emissão",
-      "lambdaMin": "O comprimento de onda mínimo",
-      "lambdaMax": "O comprimento de onda máximo"
-    },
-    "CoatedLens": {
-      "title": "Lente Esférica Revestida",
-      "description": "Uma lente esférica com revestimento de camada única em ambos os lados. O módulo `ArcCoating` inserido neste módulo representa uma única camada de filme fino, que, quando se sobrepõe com uma superfície de vidro, faz-se o seu revestimento.",
-      "point1": "O centro da lente",
-      "h": "A altura da lente",
-      "d": "A espessura da lente",
-      "R1": "O raio de curvatura da superfície frontal",
-      "R2": "O raio de curvatura da superfície traseira",
-      "A": "O coeficiente de Cauchy \\(A\\) do vidro",
-      "B": "O coeficiente de Cauchy \\(B\\) do vidro em micrômetros quadrados",
-      "dc": "A espessura da camada de revestimento em nanômetros",
-      "Ac": "O coeficiente de cauchy \\(A\\) do material do revestimento",
-      "Bc": "O coeficiente de Cauchy \\(B\\) do material do revestimento em micrômetros quadrados"
-    },
-    "EllipticalMirror": {
-      "title": "Espelho Elíptico",
-      "description": "Um espelho elíptico definido pelos dois focos e o comprimento do semieixo maior.",
-      "point1": "O primeiro foco",
-      "point2": "O segundo foco",
-      "a": "O comprimento do semieixo maior",
-      "tMin": "O mínimo ângulo da curva",
-      "tMax": "O máximo ângulo da curva",
-      "tStep": "O ângulo de passo da curva"
+      "cauchyB": "O coeficiente de Cauchy \\(B\\) do cubo em micrômetros quadrados",
+      "splitRatio": "A razão de transmissão do divisor de feixe diagonal"
     }
   }
 }

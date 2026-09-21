@@ -15,7 +15,12 @@
  */
 
 import WaveInterface, { SHARED_INTERFACE_DEFAULTS } from './WaveInterface.js';
+import geometry from '../../geometry.js';
 import i18next from 'i18next';
+import { drawHandle, drawGuide, drawHandleLabel, isOnHandle } from './waveHandles.js';
+
+/** The finest pitch a drag may set, in scene length units. */
+const MIN_PITCH = 1;
 
 /**
  * A grating that imposes a sinusoidal phase across the interface.
@@ -68,6 +73,44 @@ class WaveSinusoidalGrating extends WaveInterface {
       function (obj, value) { obj.maxPhaseShift = value; },
       '<p>' + i18next.t('simulator:waveSceneObjs.common.maxPhaseShiftInfo') + '</p>'
     );
+    this.populateProfileObjBar(objBar);
+  }
+
+  /** The control marking one period from the centre of the aperture. */
+  pitchHandlePoint() {
+    if (!this.isValid()) return null;
+    const extent = this.getExtent();
+    const pitch = this.pitch > 0 ? this.pitch : MIN_PITCH;
+    const y = Math.min(extent.yMax, Math.max(extent.yMin, this.centerY() + pitch));
+    return { x: this.zAt(y), y };
+  }
+
+  checkMouseOver(mouse) {
+    if (this.isSelected()) {
+      const handle = this.pitchHandlePoint();
+      if (handle && isOnHandle(mouse, handle)) {
+        return { part: 3, targetPoint: geometry.point(handle.x, handle.y) };
+      }
+    }
+    return super.checkMouseOver(mouse);
+  }
+
+  onDrag(mouse, dragContext, ctrl, shift) {
+    if (dragContext.part === 3) {
+      this.pitch = Math.max(MIN_PITCH, Math.abs(mouse.pos.y - this.centerY()));
+      return;
+    }
+    super.onDrag(mouse, dragContext, ctrl, shift);
+  }
+
+  drawControls(canvasRenderer, isHovered) {
+    super.drawControls(canvasRenderer, isHovered);
+    const handle = this.isSelected() ? this.pitchHandlePoint() : null;
+    if (!handle) return;
+    const originY = this.centerY();
+    drawGuide(canvasRenderer, { x: this.zAt(originY), y: originY }, handle);
+    drawHandle(canvasRenderer, handle);
+    drawHandleLabel(canvasRenderer, 'p', handle);
   }
 
   transmissionAt(y) {

@@ -66,8 +66,17 @@ const element = (type, x, y0, y1, extra = {}) => ({
 
 const interface_ = (x, y0, y1, extra = {}) => element('WaveInterface', x, y0, y1, extra);
 
+/** The viewport the scene being built is laid out for, in scene length units. */
+let viewport = { width: 1500, height: 900 };
+
 /**
  * Wrap objects into a loadable scene.
+ *
+ * The viewport is stored with the scene because loading rescales to fit: a
+ * scene that does not say what it was laid out for is assumed to be the default
+ * 1500 by 900 and is then shrunk to fit the real window, which is how an example
+ * built to fill the screen ends up with a margin round it.
+ *
  * @param {string} name
  * @param {Array<Object>} objs
  * @param {Object} waveOptics
@@ -79,6 +88,8 @@ const build = (name, objs, waveOptics) => ({
   objs,
   origin: { x: 0, y: 0 },
   scale: 1,
+  width: round(viewport.width),
+  height: round(viewport.height),
   waveOptics: {
     wavelength: WAVELENGTH,
     refractiveIndex: 1,
@@ -111,8 +122,11 @@ export const EXAMPLE_SCENES = [
     description: 'A point source behind an opaque screen with one narrow opening.',
     build: (width, height) => build('Single slit', [
       pointSource(width * 0.16, height * 0.5),
+      // The spacing does nothing at one slit, but it is what raising the count
+      // will use, so it is set wide enough here to give real fringes.
       element('WaveMultiSlit', width * 0.38, height * 0.28, height * 0.72, {
-        slitCount: 1, slitWidth: 3 * WAVELENGTH,
+        slitCount: 1, slitWidth: 3 * WAVELENGTH, slitSpacing: 9 * WAVELENGTH,
+        profileDisplay: 'amplitudePhase',
       }),
     ], { upperCutoff: 0.8 }),
   },
@@ -124,6 +138,7 @@ export const EXAMPLE_SCENES = [
       pointSource(width * 0.12, height * 0.5),
       element('WaveMultiSlit', width * 0.34, height * 0.22, height * 0.78, {
         slitCount: 2, slitWidth: 1.5 * WAVELENGTH, slitSpacing: 6 * WAVELENGTH,
+        profileDisplay: 'amplitudePhase',
       }),
     ], { upperCutoff: 0.7 }),
   },
@@ -135,6 +150,7 @@ export const EXAMPLE_SCENES = [
       planeWave(width * 0.1, height * 0.5),
       element('WaveMultiSlit', width * 0.3, height * 0.28, height * 0.72, {
         slitCount: 5, slitWidth: 0.7 * WAVELENGTH, slitSpacing: 3.5 * WAVELENGTH,
+        profileDisplay: 'amplitudePhase',
       }),
     ], { upperCutoff: 0.7 }),
   },
@@ -145,7 +161,7 @@ export const EXAMPLE_SCENES = [
     build: (width, height) => build('Diffraction grating', [
       planeWave(width * 0.1, height * 0.5),
       element('WaveSquareGrating', width * 0.3, height * 0.15, height * 0.85, {
-        pitch: 3 * WAVELENGTH, dutyCycle: 0.5,
+        pitch: 3 * WAVELENGTH, dutyCycle: 0.5, profileDisplay: 'amplitudePhase',
       }),
     ], { upperCutoff: 2.2 }),
   },
@@ -157,24 +173,96 @@ export const EXAMPLE_SCENES = [
       planeWave(width * 0.08, height * 0.5),
       element('WaveZonePlate', width * 0.22, height * 0.22, height * 0.78, {
         focalLength: width * 0.42, phaseReversing: true,
+        profileDisplay: 'amplitudePhase',
       }),
     ], { upperCutoff: 1.1 }),
   },
   {
     id: 'lens',
     name: 'Lens',
-    description: 'A collimated beam brought to a focus by a quadratic phase profile.',
+    description: 'A collimated beam brought to a focus by two spherical glass surfaces.',
     build: (width, height) => {
-      const halfHeight = height * 0.22;
-      const lensX = width * 0.35;
+      // A moderate aperture at f/2.4. Opening it further makes the spherical
+      // aberration of a single glass singlet unmistakable, which is worth
+      // seeing, but it is not what the example should open on.
+      const halfHeight = height * 0.13;
+      const lensX = width * 0.28;
       return build('Lens', [
         planeWave(width * 0.1, height * 0.5),
+        element('WaveLens', lensX, height * 0.5 - halfHeight, height * 0.5 + halfHeight, {
+          focalLength: round(width * 0.4),
+          refractiveIndex: 1.5,
+          thickness: 8,
+        }),
+      ], { upperCutoff: 1.5 });
+    },
+  },
+  {
+    id: 'thinLens',
+    name: 'Thin lens (phase plate)',
+    description: 'The same focus from an ideal quadratic phase, with no aberration.',
+    build: (width, height) => {
+      const halfHeight = height * 0.13;
+      const lensX = width * 0.28;
+      return build('Thin lens', [
+        planeWave(width * 0.1, height * 0.5),
+        // The same focal length as the glass lens above, so the two can be
+        // compared directly: this one has no thickness and no aberration, so
+        // its focus lands exactly where the phase says it should.
         interface_(
           lensX, height * 0.5 - halfHeight, height * 0.5 + halfHeight,
-          { eqnPhase: focusPhase('y', width * 0.32) }
+          { eqnPhase: focusPhase('y', width * 0.4) }
         ),
-      ], { upperCutoff: 3 });
+      ], { upperCutoff: 1.5 });
     },
+  },
+  {
+    id: 'focusMeasurement',
+    name: 'Measuring a focus',
+    description: 'A lens with a probe on its focus and a screen across it. Select either to read it.',
+    build: (width, height) => {
+      const halfHeight = height * 0.13;
+      const lensX = width * 0.28;
+      const focal = round(width * 0.4);
+      return build('Measuring a focus', [
+        planeWave(width * 0.1, height * 0.5),
+        element('WaveLens', lensX, height * 0.5 - halfHeight, height * 0.5 + halfHeight, {
+          focalLength: focal, refractiveIndex: 1.5, thickness: 8,
+        }),
+        // Dropped past the lens, so it reports the image rather than the beam
+        // arriving at the glass.
+        {
+          type: 'WaveFocusProbe',
+          x: round(lensX + focal * 0.6), y: round(height * 0.5 - halfHeight * 0.7),
+        },
+        // Across the focus, to see the spot the probe puts a number on.
+        {
+          type: 'WaveScreen',
+          p1: { x: round(lensX + focal * 0.95), y: round(height * 0.5 - halfHeight) },
+          p2: { x: round(lensX + focal * 0.95), y: round(height * 0.5 + halfHeight) },
+          plotMode: 'intensity',
+        },
+      ], { upperCutoff: 1.5 });
+    },
+  },
+  {
+    id: 'farField',
+    name: 'Far field of a double slit',
+    description: 'The pattern at infinity, over the angles the screen subtends at the slits.',
+    build: (width, height) => build('Far field of a double slit', [
+      planeWave(width * 0.08, height * 0.5),
+      element('WaveMultiSlit', width * 0.25, height * 0.25, height * 0.75, {
+        slitCount: 2, slitWidth: WAVELENGTH, slitSpacing: 6 * WAVELENGTH,
+        profileDisplay: 'amplitudePhase',
+      }),
+      {
+        type: 'WaveScreen',
+        p1: { x: round(width * 0.8), y: round(height * 0.1) },
+        p2: { x: round(width * 0.8), y: round(height * 0.9) },
+        plotMode: 'intensity',
+        farField: true,
+      },
+    ], { upperCutoff: 0.7 }),
   },
   {
     id: 'refraction',
@@ -256,5 +344,6 @@ export const EXAMPLE_SCENES = [
 export function buildExampleScene(id, width, height) {
   const example = EXAMPLE_SCENES.find((entry) => entry.id === id);
   if (!example) return null;
+  viewport = { width, height };
   return JSON.stringify(example.build(width, height));
 }

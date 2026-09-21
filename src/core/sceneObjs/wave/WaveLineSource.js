@@ -71,7 +71,7 @@ class WaveLineSource extends LineObjMixin(BaseSceneObj) {
       phase: equationInfo({
         role: i18next.t('simulator:waveSceneObjs.common.phaseRadiansInfo'),
         variable,
-        examples: phaseExamples('u', scene),
+        examples: phaseExamples('u'),
       }),
     };
   }
@@ -125,6 +125,19 @@ class WaveLineSource extends LineObjMixin(BaseSceneObj) {
     ctx.lineTo(this.p2.x, this.p2.y);
     ctx.stroke();
     ctx.lineWidth = 1 * ls;
+
+    // The endpoints are drag handles, shown only when the source is selected or
+    // under the pointer so that a scene of several sources is not a scene of
+    // several sources plus a dozen dots.
+    if (isHovered || this.isSelected()) {
+      for (const end of [this.p1, this.p2]) {
+        canvasRenderer.drawPoint(
+          end,
+          isHovered ? this.scene.highlightColor : this.scene.theme.sourcePoint.color,
+          this.scene.theme.sourcePoint.size
+        );
+      }
+    }
   }
 
   onConstructMouseDown(mouse, ctrl, shift) {
@@ -157,6 +170,7 @@ class WaveLineSource extends LineObjMixin(BaseSceneObj) {
       return [];
     }
 
+    const lambda = settings?.wavelength > 0 ? settings.wavelength : 20;
     const count = this.sampleCount(settings, samplesPerWavelength, length);
     const step = length / count;
     const dirX = (this.p2.x - this.p1.x) / length;
@@ -172,8 +186,11 @@ class WaveLineSource extends LineObjMixin(BaseSceneObj) {
       let localAmplitude;
       let localPhase;
       try {
-        localAmplitude = amplitudeOf({ u });
-        localPhase = phaseOf({ u });
+        // `lambda` is bound to the scene's wavelength, so a phase ramp can be
+        // written in terms of it and keep meaning the same angle when the
+        // wavelength changes.
+        localAmplitude = amplitudeOf({ u, lambda });
+        localPhase = phaseOf({ u, lambda });
       } catch (e) {
         this.error = e.toString();
         return [];

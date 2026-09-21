@@ -26,6 +26,12 @@ export function evaluateLatex(latex) {
   var latex_replaced = latex
     .replaceAll("\\cdot","*")
     .replaceAll("\\pi","(PI)")
+    // Greek letters reach the parser as an unknown command and are rejected, so
+    // they are spelled out as ordinary symbols. `\lambda` is the one that
+    // matters: the wave-optics objects bind it to the scene's wavelength, which
+    // is what lets a phase profile be written once and keep meaning the same
+    // thing when the wavelength changes.
+    .replaceAll("\\lambda"," lambda")
     .replaceAll("\\ln"," log")
     .replaceAll("\\log"," log")
     .replaceAll("\\exp"," exp")
