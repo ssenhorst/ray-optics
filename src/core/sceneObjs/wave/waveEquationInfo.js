@@ -69,19 +69,9 @@ function syntaxHelp() {
 export function equationInfo({ variable, role, examples }) {
   return (role ? `<p>${role}</p>` : '')
     + `<p>${variable}</p>`
+    + `<p>${i18next.t('simulator:waveSceneObjs.eqnInfo.lambdaInfo')}</p>`
     + exampleList(examples)
     + syntaxHelp();
-}
-
-/**
- * The wavenumber written out, so examples can name a concrete number rather
- * than an unexplained constant.
- * @param {Scene} scene
- * @returns {string}
- */
-export function wavenumberText(scene) {
-  const wavelength = scene?.waveOptics?.wavelength || 20;
-  return (2 * Math.PI / wavelength).toFixed(4);
 }
 
 /**
@@ -108,24 +98,23 @@ export function amplitudeExamples(variable) {
 }
 
 /**
- * Examples for a phase profile, using the scene's current wavenumber so the
- * numbers can be copied straight in.
+ * Examples for a phase profile.
  * @param {string} variable - 'u' or 'y'.
- * @param {Scene} scene
  * @returns {Array<{expression: string, meaning: string}>}
  */
-export function phaseExamples(variable, scene) {
-  const k = 2 * Math.PI / (scene?.waveOptics?.wavelength || 20);
-  const tilt = (k * Math.sin(20 * Math.PI / 180)).toFixed(4);
-  const focus = (k / (2 * 500)).toFixed(6);
+export function phaseExamples(variable) {
   return [
     { expression: '0', meaning: i18next.t('simulator:waveSceneObjs.eqnInfo.flat') },
+    // Written in terms of lambda rather than with the wavenumber evaluated, so
+    // that copying one in gives a profile that stays a 20 degree tilt (or a
+    // focus at 500) when the scene's wavelength is changed. `2*pi/lambda` is
+    // the wavenumber; `sin(20 degrees)` is 0.342.
     {
-      expression: `${tilt}*${variable}`,
+      expression: `0.342*2*pi/λ*${variable}`,
       meaning: i18next.t('simulator:waveSceneObjs.eqnInfo.tilt', { degrees: 20 }),
     },
     {
-      expression: `-${focus}*${variable}^2`,
+      expression: `-pi/λ/500*${variable}^2`,
       meaning: i18next.t('simulator:waveSceneObjs.eqnInfo.focus', { distance: 500 }),
     },
   ];

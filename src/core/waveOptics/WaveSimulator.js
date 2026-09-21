@@ -108,6 +108,19 @@ class WaveSimulator {
     /** @property {number} currentResolution - The resolution last computed at. */
     this.currentResolution = 0;
 
+    /**
+     * @property {number} fieldSerial - Bumped whenever the field changes.
+     * Measurement objects key their cached results on it, so a redraw that
+     * changes nothing — a hover, a selection — costs them nothing.
+     */
+    this.fieldSerial = 0;
+
+    /**
+     * @property {Float32Array|null} fieldReadback - The last field brought back
+     * from the GPU, or null if nothing has asked for one.
+     */
+    this.fieldReadback = null;
+
     /** Whether the colour scale still needs reading back for this change. */
     this.needsStats = true;
     this.animationFrameId = -1;
@@ -205,7 +218,22 @@ class WaveSimulator {
       isInteracting
     );
     this.render();
+    // Measurements read the field they annotate, so they can only be drawn once
+    // it exists. The object layer was drawn before the field was computed, so
+    // it is drawn again now rather than showing the previous answer.
+    if (this.needsFieldReadback()) this.drawObjects();
     this.scheduleRefine(target);
+  }
+
+  /**
+   * Whether anything in the scene wants the computed samples back.
+   *
+   * Reading the framebuffer costs a pipeline stall and a transfer of the whole
+   * grid, so it is worth asking rather than doing it unconditionally.
+   * @returns {boolean}
+   */
+  needsFieldReadback() {
+    return (this.scene.objs ?? []).some((obj) => obj.readsField?.());
   }
 
   /**
@@ -259,6 +287,7 @@ class WaveSimulator {
       // constant.
       this.computeField(next, false);
       this.render();
+      if (this.needsFieldReadback()) this.drawObjects();
       this.scheduleRefine(target);
     }, REFINE_DELAY_MS);
   }
@@ -294,7 +323,13 @@ class WaveSimulator {
         const stats = this.engine.readFieldStats(model.settings.scalePercentile);
         this.referenceAmplitude = stats.referenceAmplitude;
         this.needsStats = false;
+        this.fieldReadback = this.engine.readbackBuffer;
+      } else if (this.needsFieldReadback()) {
+        // A measurement reads the field itself, so it needs the samples back
+        // even on the passes the colour scale does not.
+        this.fieldReadback = this.engine.readField();
       }
+      this.fieldSerial++;
       this.error = null;
     } catch (e) {
       this.error = e.message;

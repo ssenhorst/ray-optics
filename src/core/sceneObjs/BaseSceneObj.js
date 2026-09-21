@@ -407,6 +407,21 @@ class BaseSceneObj {
     return this.warning;
   }
 
+  /**
+   * Whether this object is the one currently selected in the editor.
+   *
+   * Objects are drawn without knowing their own index, so this compares
+   * identities rather than trusting one. It is what lets an object show its
+   * drag handles only while it is being worked on, instead of every object
+   * showing every control at once.
+   * @returns {boolean}
+   */
+  isSelected() {
+    const editor = this.scene?.editor;
+    if (!editor || editor.selectedObjIndex < 0) return false;
+    return this.scene.objs[editor.selectedObjIndex] === this;
+  }
+
 }
 
 export default BaseSceneObj;

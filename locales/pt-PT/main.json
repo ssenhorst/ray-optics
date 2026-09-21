@@ -82,6 +82,11 @@
       "title": "Curva Paramétrica",
       "description": "Um espelho cuja forma é definida por equações paramétricas personalizadas."
     },
+    "CurveMirror": {
+      "title": "Curvas de Bézier",
+      "description": "Um espelho definido por curvas cúbicas de Bézier.",
+      "instruction": "Clique para criar um segmento. Clique no ponto de início para finalizar como forma fechada, ou clique no último ponto âncora duas vezes para finalizar como curva aberta. Após isso, arraste as caixas para manipular os pontos de controlo, a mudar a curva."
+    },
     "ConcaveDiffractionGrating": {
       "title": "Grade de Difração Côncava",
       "description": "Uma grade de difração cuja forma é parte de um círculo."
@@ -120,6 +125,11 @@
       "title": "Curva Paramétrica",
       "description": "Vidro com a forma definida por equações paramétricas personalizadas."
     },
+    "CurveGlass": {
+      "title": "Curvas de Bézier",
+      "description": "Vidro delimitado por curvas cúbicas de Bézier.",
+      "instruction": "Clique para criar um pedaço, clique no ponto de início ao finalizar o desenho. Após isso, arraste as caixas para manipular os pontos de controlo, a mudar a curva."
+    },
     "CircleGrinGlass": {
       "title": "Círculo GRIN",
       "description": "Material com uma função personalizada de índice refrativo n(x,y) e um formato circular."
@@ -133,6 +143,10 @@
     "ParamGrinGlass": {
       "title": "Curva Paramétrica GRIN",
       "description": "Material de gradiente de índice com limite definido por equações paramétricas personalizadas."
+    },
+    "CurveGrinGlass": {
+      "title": "Curvas de Bézier GRIN",
+      "description": "Material de gradiente de índice delimitado por curvas cúbicas de Bézier."
     },
     "otherGrinGlass": {
       "title": "Material de gradiente de índice",
@@ -193,11 +207,15 @@
       "title": "Curva Paramétrica Personalizada",
       "description": "Uma superfície personalizada com forma definida por equações paramétricas."
     },
+    "CustomCurveSurface": {
+      "title": "Curvas de Bézier Personalizadas",
+      "description": "Uma superfície personalizada com forma definida por curvas cúbicas de Bézier."
+    },
     "modules": {
       "import": "Importar Módulos…",
-      "remove": "Remover módulo",
       "createModule": "Criar Módulo…",
-      "description": "Crie novos componentes a combinar componentes existentes. Veja \"Importar Módulos\" para exemplos."
+      "description": "Crie novos componentes a combinar componentes existentes. Veja \"Importar Módulos\" para exemplos.",
+      "remove": "Remover módulo"
     },
     "moveView": {
       "title": "Mover Vista",
@@ -205,24 +223,6 @@
     },
     "moreTools": {
       "title": "Mais Ferramentas"
-    },
-    "CurveMirror": {
-      "title": "Curvas de Bézier",
-      "description": "Um espelho definido por curvas cúbicas de Bézier.",
-      "instruction": "Clique para criar um segmento. Clique no ponto de início para finalizar como forma fechada, ou clique no último ponto âncora duas vezes para finalizar como curva aberta. Após isso, arraste as caixas para manipular os pontos de controlo, a mudar a curva."
-    },
-    "CurveGlass": {
-      "title": "Curvas de Bézier",
-      "description": "Vidro delimitado por curvas cúbicas de Bézier.",
-      "instruction": "Clique para criar um pedaço, clique no ponto de início ao finalizar o desenho. Após isso, arraste as caixas para manipular os pontos de controlo, a mudar a curva."
-    },
-    "CurveGrinGlass": {
-      "title": "Curvas de Bézier GRIN",
-      "description": "Material de gradiente de índice delimitado por curvas cúbicas de Bézier."
-    },
-    "CustomCurveSurface": {
-      "title": "Curvas de Bézier Personalizadas",
-      "description": "Uma superfície personalizada com forma definida por curvas cúbicas de Bézier."
     }
   },
   "view": {

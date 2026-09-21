@@ -23,38 +23,11 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load the gallery data.
-const galleryList = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/galleryList.json'), 'utf8'));
-
 // Load the module data.
 const moduleList = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/moduleList.json'), 'utf8'));
 
-// Load the English strings for the gallery.
-const galleryStrings = JSON.parse(fs.readFileSync(path.join(__dirname, '../locales/en/gallery.json'), 'utf8'));
-
 // Load the English strings for the modules.
 const moduleStrings = JSON.parse(fs.readFileSync(path.join(__dirname, '../locales/en/modules.json'), 'utf8'));
-
-// Sort the gallery strings by the order in the gallery list.
-const galleryData = galleryStrings.galleryData;
-const newGalleryData = { common: galleryData.common };
-for (const category of galleryList) {
-  for (const item of category.content) {
-    const idCamelCase = item.id.toLowerCase().replace(/-([a-z])/g, (g) => g[1].toUpperCase());
-    if (galleryData[idCamelCase]) {
-      newGalleryData[idCamelCase] = galleryData[idCamelCase];
-    }
-  }
-}
-
-// Add the items in galleryData but not in galleryList.
-for (const id in galleryData) {
-  if (!newGalleryData[id]) {
-    newGalleryData[id] = galleryData[id];
-  }
-}
-
-galleryStrings.galleryData = newGalleryData;
 
 // Sort the module strings by the order in the module list.
 const moduleData = moduleStrings.moduleData;
@@ -74,9 +47,6 @@ for (const id in moduleData) {
 }
 
 moduleStrings.moduleData = newModuleData;
-
-// Write the sorted gallery strings to the gallery file.
-fs.writeFileSync(path.join(__dirname, '../locales/en/gallery.json'), JSON.stringify(galleryStrings, null, 2));
 
 // Write the sorted module strings to the module file.
 fs.writeFileSync(path.join(__dirname, '../locales/en/modules.json'), JSON.stringify(moduleStrings, null, 2));

@@ -53,6 +53,14 @@
       reduce the sag, to get a meaningful result.
     </div>
 
+    <div v-if="status.urlWarning === 'tooLarge'" class="wave-status-warning">
+      This scene is too large to fit in a link. The URL has been left as it was;
+      save the scene as a file instead.
+    </div>
+    <div v-else-if="status.urlWarning === 'failed'" class="wave-status-warning">
+      The scene could not be compressed into a link.
+    </div>
+
     <div v-if="status.isPhaseUnreliable" class="wave-status-warning">
       The viewport spans more than ~10⁴ wavelengths, so float32 can no longer
       carry the phase accurately.

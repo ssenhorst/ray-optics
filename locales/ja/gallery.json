@@ -1,11 +1,3 @@
 {
-  "galleryPage": {
-    "categories": {
-      "title": "カテゴリー",
-      "reflection": "反射",
-      "refraction": "屈折",
-      "lens": "レンズ",
-      "combinationOfLenses": "組み合わせレンズ"
-    }
-  }
+  "galleryPage": {}
 }

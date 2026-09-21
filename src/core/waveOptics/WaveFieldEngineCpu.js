@@ -45,7 +45,7 @@ import { gridSamplePosition, subspaceIndexAt } from './waveSceneModel.js';
  *
  * @param {Array<{x: number, y: number}>} points - Where to evaluate.
  * @param {Object} params
- * @param {import('./waveSceneModel.js').WaveSource[]} params.sources
+ * @param {WaveSource[]} params.sources
  * @param {number} params.wavelength - Vacuum wavelength in scene units.
  * @param {number} params.refractiveIndex - Index of the medium radiated into.
  * @param {number} [params.directionalCount=0] - How many leading sources are directional.
@@ -100,7 +100,7 @@ export function computeFieldAt(points, {
  * Evaluate the field over a sampling grid, in the same memory layout the GPU
  * backend produces: row 0 first, each sample a `(real, imaginary)` pair.
  *
- * @param {import('./waveSceneModel.js').FieldGrid} grid
+ * @param {FieldGrid} grid
  * @param {Object} params - As for {@link computeFieldAt}.
  * @returns {Float64Array} `2 * grid.width * grid.height` long.
  */
@@ -193,7 +193,9 @@ export function computeModelFieldAt(model, points) {
   // Group the points by subspace so each subspace is summed over once.
   const bySubspace = new Map();
   points.forEach((point, index) => {
-    const j = subspaceIndexAt(model.interfaces, point.x, point.y);
+    const j = subspaceIndexAt(
+      model.interfaces, point.x, point.y, model.settings?.axisSign ?? 1
+    );
     if (!bySubspace.has(j)) bySubspace.set(j, []);
     bySubspace.get(j).push(index);
   });

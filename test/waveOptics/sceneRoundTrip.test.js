@@ -147,7 +147,7 @@ describe('the built-in examples', () => {
   test('examples scale to the viewport they are built for', () => {
     const small = JSON.parse(buildExampleScene('lens', 800, 500));
     const large = JSON.parse(buildExampleScene('lens', 1600, 1000));
-    const lensX = (data) => data.objs.find((o) => o.type === 'WaveInterface').p1.x;
+    const lensX = (data) => data.objs.find((o) => o.type === 'WaveLens').p1.x;
     expect(lensX(large)).toBeCloseTo(2 * lensX(small), 6);
   });
 });

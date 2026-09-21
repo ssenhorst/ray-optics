@@ -160,6 +160,9 @@ uniform vec4 uLowerRange;   // (yMin, yMax, z below yMin, z above yMax)
 uniform vec4 uUpperRange;
 uniform int uHasLower;
 uniform int uHasUpper;
+// +1 when light travels towards +x, -1 when it travels the other way. Every
+// subspace test is the same comparison with this factor on both sides.
+uniform float uAxisSign;
 
 out vec4 fragColor;
 
@@ -179,8 +182,9 @@ void main() {
   // which is the largest scene y.
   vec2 p = uGridOrigin + uGridStep * (gl_FragCoord.xy - 0.5);
 
-  if (uHasLower == 1 && p.x < boundaryZ(uLowerLut, uLowerRange, p.y)) discard;
-  if (uHasUpper == 1 && p.x >= boundaryZ(uUpperLut, uUpperRange, p.y)) discard;
+  float axial = uAxisSign * p.x;
+  if (uHasLower == 1 && axial < uAxisSign * boundaryZ(uLowerLut, uLowerRange, p.y)) discard;
+  if (uHasUpper == 1 && axial >= uAxisSign * boundaryZ(uUpperLut, uUpperRange, p.y)) discard;
 
   vec2 total = sumField(p);
   // The amplitude is stored alongside the complex field. The display pass
@@ -371,7 +375,7 @@ class WaveFieldEngineWebGL2 {
     this.fieldUniforms = collectUniforms(gl, this.fieldProgram, [
       ...SUMMATION_UNIFORMS, 'uGridOrigin', 'uGridStep',
       'uLowerLut', 'uUpperLut', 'uLowerRange', 'uUpperRange',
-      'uHasLower', 'uHasUpper',
+      'uHasLower', 'uHasUpper', 'uAxisSign',
     ]);
     this.displayUniforms = collectUniforms(gl, this.displayProgram, [
       'uField', 'uColormap', 'uResolution', 'uView', 'uScale',
@@ -630,6 +634,7 @@ class WaveFieldEngineWebGL2 {
     gl.useProgram(this.fieldProgram);
     gl.uniform2f(this.fieldUniforms.uGridOrigin, grid.originX, grid.originY);
     gl.uniform2f(this.fieldUniforms.uGridStep, grid.stepX, grid.stepY);
+    gl.uniform1f(this.fieldUniforms.uAxisSign, settings.axisSign ?? 1);
 
     for (let j = 0; j < subspaces.length; j++) {
       this.bindSources(
@@ -673,19 +678,43 @@ class WaveFieldEngineWebGL2 {
    * @param {number} percentile - Between 0 and 100.
    * @returns {{referenceAmplitude: number, maxAmplitude: number, sampleCount: number}}
    */
-  readFieldStats(percentile = 99) {
+  /**
+   * Bring the computed field back from the GPU.
+   *
+   * Four floats per sample, in the field pass's layout: real part, imaginary
+   * part, `|U|`, and a one. Rows run bottom to top, matching the grid built by
+   * {@link computeFieldGrid}.
+   *
+   * This is the only way anything outside the shaders can look at the field, so
+   * it is what the colour-scale statistics and the measurement objects both go
+   * through. It is also not cheap — a full framebuffer transfer that stalls the
+   * pipeline — so it is done once per change rather than per frame.
+   *
+   * @returns {Float32Array|null}
+   */
+  readField() {
     const gl = this.gl;
     const count = this.fieldWidth * this.fieldHeight;
-    if (count === 0) {
-      return { referenceAmplitude: 0, maxAmplitude: 0, sampleCount: 0 };
-    }
+    if (count === 0) return null;
 
-    if (!this.readbackBuffer) this.readbackBuffer = new Float32Array(count * 4);
+    if (!this.readbackBuffer || this.readbackBuffer.length < count * 4) {
+      this.readbackBuffer = new Float32Array(count * 4);
+    }
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
     gl.readPixels(
       0, 0, this.fieldWidth, this.fieldHeight, gl.RGBA, gl.FLOAT, this.readbackBuffer
     );
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    return this.readbackBuffer;
+  }
+
+  readFieldStats(percentile = 99) {
+    const count = this.fieldWidth * this.fieldHeight;
+    if (count === 0) {
+      return { referenceAmplitude: 0, maxAmplitude: 0, sampleCount: 0 };
+    }
+
+    this.readField();
 
     const amplitudes = new Float32Array(count);
     let maxAmplitude = 0;

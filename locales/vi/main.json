@@ -18,6 +18,7 @@
   },
   "tools": {
     "title": "Công cụ",
+    "homePageTitle": "Công cụ",
     "categories": {
       "lightSource": "Nguồn sáng",
       "mirror": "Gương",
@@ -60,7 +61,6 @@
       "description": "Gương có hình dạng là một phần của hình cầu. Được xác định bằng ba điểm.",
       "instruction": "Kéo hoặc nhấp chuột ở hai biên để tạo gương, tiếp theo là nhấp chuột để xác định điểm thứ ba và độ cong của gương."
     },
-    "homePageTitle": "Công cụ",
     "ParabolicMirror": {
       "title": "Parabol",
       "description": "Gương có dạng parabol tròn xoay, được xác định bằng ba điểm.",

@@ -32,6 +32,10 @@
       "title": "Otwórz…",
       "description": "Otwórz istniejący plik lub obraz tła. Obraz tła zostanie wyświetlony z punktu początkowego współrzędnych. (Lub upuść plik)"
     },
+    "importShapes": {
+      "title": "Importuj kształty…",
+      "description": "Importuj kształty z pliku SVG jako elementy optyczne (zwierciadła, soczewki itp.)."
+    },
     "export": {
       "title": "Eksportuj jako PNG/SVG…"
     },
@@ -42,10 +46,6 @@
     "viewGallery": {
       "title": "Zobacz Galerię",
       "description": "Przejdź do strony Galerii, aby załadować przykład."
-    },
-    "importShapes": {
-      "title": "Importuj kształty…",
-      "description": "Importuj kształty z pliku SVG jako elementy optyczne (zwierciadła, soczewki itp.)."
     }
   },
   "settings": {
@@ -168,10 +168,17 @@
       "random": "Losowo",
       "lambert": "Lambertowskie",
       "coordOrigin": "Początek",
+      "curveStepSize": "Krok",
+      "bezierControlPoints": "Punkty kontrolne krzywej Béziera",
       "focalLength": "Ogniskowa",
       "lineStyle": "Styl linii",
       "fillStyle": "Styl wypełnienia",
       "useThemeStyle": "Użyj stylu motywu",
+      "styleRed": "Czerwony",
+      "styleGreen": "Zielony",
+      "styleBlue": "Niebieski",
+      "styleAlpha": "Alfa",
+      "styleWidth": "Szerokość",
       "eqnInfo": {
         "constants": "Obsługiwane stałe",
         "operators": "Obsługiwane operatory",
@@ -182,28 +189,24 @@
         "mathjs": "Obsługuje tylko następujące operacje math.js: ",
         "customFunctions": "Można używać funkcji niestandardowych zdefiniowanych w sekcji \"Zmienne\" edytora modułów, ale ich definicje muszą ostatecznie składać się z obsługiwanych operacji."
       },
+      "pointN": "Punkt {{i}}",
       "imageDetectionWarning": "Ten komponent nie obsługuje wykrywania obrazu.",
-      "nonSimulateColorsWarning": "Ten komponent działa tylko wtedy, gdy \"Symuluj kolory\" jest włączone.",
-      "curveStepSize": "Krok",
-      "bezierControlPoints": "Punkty kontrolne krzywej Béziera",
-      "styleRed": "Czerwony",
-      "styleGreen": "Zielony",
-      "styleBlue": "Niebieski",
-      "styleAlpha": "Alfa",
-      "styleWidth": "Szerokość",
-      "pointN": "Punkt {{i}}"
+      "nonSimulateColorsWarning": "Ten komponent działa tylko wtedy, gdy \"Symuluj kolory\" jest włączone."
+    },
+    "LineObjMixin": {
+      "endpoint1": "Pierwszy punkt końcowy",
+      "endpoint2": "Drugi punkt końcowy",
+      "sourcePoint": "Punkt źródłowy",
+      "directionPoint": "Punkt kierunkowy"
+    },
+    "CircleObjMixin": {
+      "center": "Centrum",
+      "radiusPoint": "Punkt na okręgu"
     },
     "ParamCurveObjMixin": {
+      "pieces": "Elementy",
       "addPiece": "Dodaj element",
       "removePiece": "Usuń element",
-      "step": "Krok",
-      "error": {
-        "invalidStepSize": "Nieprawidłowy rozmiar kroku: {{step}}",
-        "invalidRange": "Nieprawidłowy zakres parametru: tMin ({{tMin}}) >= tMax ({{tMax}})",
-        "nonFiniteCoords": "Współrzędne nieskończone: ({{x}}, {{y}})",
-        "pieceError": "Błąd w elemencie {{pieceIndex}}, t={{t}}: {{error}}"
-      },
-      "pieces": "Elementy",
       "curveType": "Typ krzywej",
       "curveTypes": {
         "polygonal": "Łamana",
@@ -214,6 +217,13 @@
         "polygonal": "Proste odcinki między punktami próbkowania.",
         "smoothNormal": "Taki sam kształt jak łamana, ale wektory normalne są interpolowane między elementami podobnie jak cieniowanie Phonga. (Domyślnie)",
         "cubicBezier": "Kolejne próbki są połączone krzywą Béziera trzeciego stopnia, która zachowuje pozycję i pochodną na końcach. Niektóre funkcje mogą nie działać poprawnie z tym typem krzywej."
+      },
+      "step": "Krok",
+      "error": {
+        "invalidStepSize": "Nieprawidłowy rozmiar kroku: {{step}}",
+        "invalidRange": "Nieprawidłowy zakres parametru: tMin ({{tMin}}) >= tMax ({{tMax}})",
+        "nonFiniteCoords": "Współrzędne nieskończone: ({{x}}, {{y}})",
+        "pieceError": "Błąd w elemencie {{pieceIndex}}, t={{t}}: {{error}}"
       },
       "warning": {
         "piecesNotJoined": "Koniec elementu {{endPiece}} nie styka się z początkiem elementu {{startPiece}}."
@@ -233,6 +243,12 @@
     "IdealMirror": {
       "cartesianSign": "Konwencja znaków"
     },
+    "ArcMirror": {
+      "pointOnArc": "Punkt na łuku"
+    },
+    "ParabolicMirror": {
+      "vertex": "Wierzchołek"
+    },
     "BeamSplitter": {
       "transRatio": "Współczynnik transmisji"
     },
@@ -245,6 +261,11 @@
       },
       "cauchyCoeff": "Współczynnik Cauchy'ego",
       "partialReflect": "Symuluj odbicia częściowe"
+    },
+    "Glass": {
+      "vertices": "Wierzchołki",
+      "vertex": "Wierzchołek",
+      "arc": "Łuk kołowy"
     },
     "SphericalLens": {
       "defBy": {
@@ -275,6 +296,7 @@
       "absorptionFnInfo": {
         "absorption": "Współczynnik absorpcji szkła w jednostkach 1/[długość]."
       },
+      "plotFns": "Wykres n i α",
       "stepSize": "Rozmiar kroku rozwiązywania numerycznego",
       "stepSizeInfo": "Wielkość kroku metody Eulera do rozwiązywania równania eikonału promienia - więcej informacji można znaleźć w funkcji 'step' i dokumentacji w pliku 'BaseGrinGlass.js'.",
       "intersectTol": "Tolerancja intersekcji",
@@ -283,8 +305,7 @@
         "all": "Ten przełącznik dotyczy wszystkich obiektów GRIN w symulacji.",
         "impl": "Ten symulator ma obecnie dwie implementacje propagacji światła między różnymi ośrodkami dla obiektów GRIN - numeryczną i symboliczną (patrz funkcje 'multRefIndex' i 'devRefIndex' w 'BaseGrinGlass.js').",
         "implNote": "Implementacja numeryczna jest szybsza, ale nie zawsze działa poprawnie (w zależności od konkretnego przypadku) w scenariuszach, gdy jest używana z więcej niż jednym obiektem GRIN, takim, że przynajmniej jeden z nich ma funkcję współczynnika załamania światła, która nie jest zdefiniowana w całej płaszczyźnie, podczas gdy implementacja symboliczna jest wolniejsza, ale odporna na takie problemy."
-      },
-      "plotFns": "Wykres n i α"
+      }
     },
     "CircleGrinGlass": {
       "epsInfo": {
@@ -317,13 +338,16 @@
       "lineDensity": "Linie/{{lengthUnit}}",
       "customBrightness": "Niestandardowa jasność",
       "customBrightnessInfo": "Gdy jest włączona, jasność promieni dyfrakcyjnych jest dostosowywana przez tablicę liczb odpowiadającą m = 0, 1, -1, 2, -2, …. Liczba ta ma być znormalizowana do jasności promienia padającego. Wartości nieznajdujące się w tablicy są ustawiane na 0. Na przykład „1, 0,5, 0,5” oznacza, że promień m=0 ma taką samą jasność jak promień padający, promienie m=1 i m=-1 mają połowę jasności, a wszystkie pozostałe promienie są ignorowane.",
-      "slitRatio": "Szerokość szczeliny / odstęp linii",
-      "mirrored": "Odbiciowa",
       "brightnesses": "Jasności",
-      "brightness": "Jasność"
+      "brightness": "Jasność",
+      "slitRatio": "Szerokość szczeliny / odstęp linii",
+      "mirrored": "Odbiciowa"
     },
     "Ruler": {
-      "scaleInterval": "Odstęp skali",
+      "zeroPoint": "Punkt zerowy",
+      "scaleInterval": "Odstęp skali"
+    },
+    "Protractor": {
       "zeroPoint": "Punkt zerowy"
     },
     "Detector": {
@@ -338,13 +362,15 @@
         "sNewColorModes": "Gdy włączone jest \"Koryguj jasność\", bezwymiarowy współczynnik s zawsze wynosi 1.",
         "truncation": "Jeżeli niektóre promienie ulegną obcięciu w nieskończonej serii wewnętrznych odbić, całkowite obcięcie jest przedstawiane jako oszacowanie błędu."
       },
+      "twoSided": "Dwustronny",
       "irradMap": "Mapa irradiancji",
       "binSize": "Rozmiar pojemnika",
-      "exportData": "Eksportuj dane",
-      "twoSided": "Dwustronny"
+      "exportData": "Eksportuj dane"
     },
     "TextLabel": {
+      "text": "Tekst",
       "textHere": "Tekst tutaj",
+      "moduleInfo": "W module tekst może zawierać formuły math.js ujęte w odwrotne apostrofy, które zostaną obliczone w kontekście modułu. Na przykład wyrażenie „są \\`a+1\\` elementy” zamienia się na „są 3 elementy”, gdy `a` wynosi 2.",
       "fontSize": "Rozmiar czcionki",
       "font": "Czcionka",
       "fonts": "Serif: Szeryfowy\nArial: Arial\nHelvetica: Helvetica\nTimes New Roman: Times New Roman\nGeorgia: Georgia\nCourier New: Courier New\nVerdana: Verdana\nTahoma: Tahoma\nTrebuchet MS: Trebuchet MS\nImpact: Impact\nLucida Sans: Lucida Sans",
@@ -366,9 +392,7 @@
         "right": "Prawa"
       },
       "smallCaps": "Małe litery",
-      "angle": "Kąt",
-      "text": "Tekst",
-      "moduleInfo": "W module tekst może zawierać formuły math.js ujęte w odwrotne apostrofy, które zostaną obliczone w kontekście modułu. Na przykład wyrażenie „są \\`a+1\\` elementy” zamienia się na „są 3 elementy”, gdy `a` wynosi 2."
+      "angle": "Kąt"
     },
     "LineArrow": {
       "arrow": "Strzałka do przodu",
@@ -388,9 +412,9 @@
         "module": "Aby uzyskać niestandardowe parametry, skomplikowane wzory lub dużą liczbę promieni wychodzących, użyj Narzędzia -> Inne -> Utwórz moduł i przenieś ten obiekt do modułu."
       },
       "twoSided": "Dwustronny",
+      "outgoingRays": "Promienie wychodzące",
       "addOutgoingRay": "Dodaj promień wychodzący",
-      "removeOutgoingRay": "Usuń promień wychodzący",
-      "outgoingRays": "Promienie wychodzące"
+      "removeOutgoingRay": "Usuń promień wychodzący"
     },
     "CustomSurface": {
       "info": {
@@ -407,8 +431,14 @@
         "incidentPos": "Położenie punktu incydentnego w przestrzeni parametrów krzywej można określić jako {{t}}."
       }
     },
+    "CustomCurveSurface": {
+      "info": {
+        "incidentPos": "Położenie punktu incydentnego można określić jako {{t}}, przy czym wykorzystuje się naturalny parametr wielokrzywej Béziera: dla położenia s i-tego fragmentu mamy {{t}} = i + s."
+      }
+    },
     "ModuleObj": {
       "module": "Moduł",
+      "editModule": "Edytuj moduł",
       "demodulize": "Demodułuj",
       "loopVariableTooLarge": "Zmienna długości pętli \"{{name}}\" jest zbyt duża. Ustaw maxLoopLength na większą wartość.",
       "loopTooLarge": "Długość pętli jest zbyt duża. Ustaw maxLoopLength na większą wartość.",
@@ -417,11 +447,12 @@
       "objectExpansionError": "Błąd rozszerzania obiektu {{obj}} w tablicy z parametrami {{params}}: {{error}}",
       "variableDefinitionError": "Błąd oceny definicji zmiennych z parametrami {{params}}: {{error}}",
       "unclosedMathBlock": "Niezamknięty blok matematyczny: {{str}}",
-      "editModule": "Edytuj moduł",
       "inExpandedObjects": "W obiektach rozszerzonych:"
     },
     "Handle": {
       "handle": "Uchwyt",
+      "handlePoint": "Pozycja uchwytu",
+      "rotationScalingCenter": "Środek obrotu/skalowania",
       "transformation": "Transformacja",
       "transformations": {
         "translation": "Przesunięcie",
@@ -432,50 +463,19 @@
       },
       "step": "Krok",
       "transformationWarning": "Zastosowanie \"{{transformation}}\" do \"{{obj}}\" może dać nieoczekiwane rezultaty.",
-      "handlePoint": "Pozycja uchwytu",
-      "rotationScalingCenter": "Środek obrotu/skalowania",
       "placeOnCanvasHint": "Kliknij puste miejsce na obszarze roboczym, aby umieścić uchwyt.",
       "convertToModule": "Do modułu…"
     },
     "CropBox": {
       "title": "Eksportuj",
+      "label": "Pole przycięcia",
       "cropBoxSize": "Rozmiar pola przycięcia",
       "format": "Format",
       "width": "Szerokość",
       "rayCountLimit": "Limit liczby promieni",
       "transparent": "Przezroczyste tło",
       "svgWarning": "Eksport do SVG: Mieszanki kolorów, korekcja jasności i względne współczynniki załamania światła poniżej 1 nie są obsługiwane.",
-      "rayCountWarning": "Obecna liczba promieni w scenie jest większa niż limit liczby promieni. Konieczne może być zwiększenie limitu liczby promieni w opcjach Pola przycinania.",
-      "label": "Pole przycięcia"
-    },
-    "LineObjMixin": {
-      "endpoint1": "Pierwszy punkt końcowy",
-      "endpoint2": "Drugi punkt końcowy",
-      "sourcePoint": "Punkt źródłowy",
-      "directionPoint": "Punkt kierunkowy"
-    },
-    "CircleObjMixin": {
-      "center": "Centrum",
-      "radiusPoint": "Punkt na okręgu"
-    },
-    "ArcMirror": {
-      "pointOnArc": "Punkt na łuku"
-    },
-    "ParabolicMirror": {
-      "vertex": "Wierzchołek"
-    },
-    "Glass": {
-      "vertices": "Wierzchołki",
-      "vertex": "Wierzchołek",
-      "arc": "Łuk kołowy"
-    },
-    "Protractor": {
-      "zeroPoint": "Punkt zerowy"
-    },
-    "CustomCurveSurface": {
-      "info": {
-        "incidentPos": "Położenie punktu incydentnego można określić jako {{t}}, przy czym wykorzystuje się naturalny parametr wielokrzywej Béziera: dla położenia s i-tego fragmentu mamy {{t}} = i + s."
-      }
+      "rayCountWarning": "Obecna liczba promieni w scenie jest większa niż limit liczby promieni. Konieczne może być zwiększenie limitu liczby promieni w opcjach Pola przycinania."
     }
   },
   "saveModal": {
@@ -487,6 +487,25 @@
     },
     "fileName": "Nazwa",
     "rename": "Zmień nazwę"
+  },
+  "importShapesModal": {
+    "title": "Importuj kształty",
+    "stats_one": "{{total}} ścieżka — {{closed}} zamknięta / {{open}} otwarta",
+    "stats_few": "{{total}} ścieżki — {{closed}} zamknięte / {{open}} otwarte",
+    "stats_many": "{{total}} ścieżek — {{closed}} zamkniętych / {{open}} otwartych",
+    "strokeHeading": "Traktuj każdy kolor pociągnięcia jako:",
+    "fillHeading": "Traktuj każdy kolor wypełnienia jako:",
+    "actions": {
+      "ignore": "Ignoruj"
+    },
+    "scale": "Skala",
+    "offsetPair": "Offset",
+    "centerButton": "Wyśrodkuj",
+    "centerTooltip": "Wyśrodkuj w oknie podglądu",
+    "tolerance": "Tolerancja krzywizny",
+    "toleranceInfo": "Tolerancja krzywizny w jednostkach sceny. Służy do aproksymacji łuków eliptycznych oraz łączenia sąsiednich gęstych segmentów krzywych Béziera trzeciego stopnia.",
+    "groupInHandle": "Powiąż importowane obiekty z uchwytem",
+    "importButton": "Importuj"
   },
   "moduleModal": {
     "title": "Importuj moduły",
@@ -602,6 +621,9 @@
     "glass": {
       "title": "Wizualizacja współczynnika załamania"
     },
+    "glassAbsorption": {
+      "title": "Wizualizacja szybkości absorpcji"
+    },
     "grinGlass": {
       "title": "Domyślne wypełnienie materiału gradientowego (GRIN)"
     },
@@ -645,9 +667,6 @@
       "title": "Importuj",
       "description": "Importuj motyw z pliku JSON sceny.",
       "error": "Plik nie zawiera motywu."
-    },
-    "glassAbsorption": {
-      "title": "Wizualizacja szybkości absorpcji"
     }
   },
   "languageModal": {
@@ -681,16 +700,10 @@
     "invalidFile": "Plik nie jest prawidłową sceną JSON ani plikiem obrazu."
   },
   "sidebar": {
-    "ai": {
-      "title": "Korzystanie z asystenta AI",
-      "description": "[Ray Optics Coder](/ai-tools/chatgpt) w ChatGPT pomoże Ci pisać moduły Ray Optics. Generuje on kod JSON dla sceny zawierającej moduł na podstawie Twojego opisu, a następnie możesz skopiować ten kod do edytora JSON (the \"Code\" tab above). Możesz go również użyć do edycji istniejących modułów lub modularyzacji scen.",
-      "limitation": "Kod wygenerowany przez chatbota może nie działać bezpośrednio. W przypadku wystąpienia błędu, skopiowanie i wklejenie komunikatu o błędzie do chatbota może pomóc.",
-      "otherServices": "Pliki z instrukcjami i wiedzą dla chatbota są dostępne [tutaj](/ai-tools/instructions). Jeśli wolisz inną usługę LLM, możesz udostępnić te pliki, aby nauczyć go pisania modułów Ray Optics."
-    },
     "tabs": {
-      "ai": "AI",
+      "visual": "Wizualny",
       "code": "Kod",
-      "visual": "Wizualny"
+      "ai": "AI"
     },
     "visual": {
       "tabs": {
@@ -704,10 +717,12 @@
         "bindToHandle": "Powiąż z",
         "createHandle": "Utwórz nowy uchwyt",
         "unbindHandle": "Odwiąż",
+        "moveIntoModule": "Przenieś do",
         "createModule": "Utwórz nowy moduł",
         "emptyHint": "Aby utworzyć obiekt, skorzystaj z paska narzędzi i twórz go w obszarze roboczym.",
         "lockLocked": "Zablokowane (zawsze). Kliknij, aby zmienić",
         "lockUnlocked": "Odblokowane (zawsze). Kliknij, aby zmienić",
+        "lockDefault": "Śledź blokadę sceny. Kliknij, aby zmienić",
         "unnamedObject": "Obiekt bez nazwy",
         "unknownType": "Nieznany typ",
         "collapse": "Ukryj właściwości",
@@ -721,9 +736,7 @@
         "latexConversionFailed": "Nie udało się przekonwertować wyrażenia na format wewnętrzny. Sprawdź składnię.",
         "handleBadge": "Uchwyt {{n}}",
         "noModulesHint": "Przenieś obiekty do modułu, aby je sparametryzować lub utworzyć tablice.",
-        "noHandlesHint": "Przypisz obiekty do uchwytu, aby przesuwać/obracać/skalować je jako grupę.",
-        "moveIntoModule": "Przenieś do",
-        "lockDefault": "Śledź blokadę sceny. Kliknij, aby zmienić"
+        "noHandlesHint": "Przypisz obiekty do uchwytu, aby przesuwać/obracać/skalować je jako grupę."
       },
       "moduleEditor": {
         "new": {
@@ -755,9 +768,9 @@
         },
         "objects": {
           "info": "Obiekty w tym module. Ich właściwości można ustawić na [formuły math.js](/mathjs/syntax) z nazwami zdefiniowanymi powyżej. Na przykład, aby ustawić punkt jako średnią dwóch punktów kontrolnych utworzonych powyżej, można ustawić jego współrzędne na `(x_1+x_2)/2, (y_1+y_2)/2`. Aby utworzyć tablicę obiektów, rozwiń właściwość i kliknij \"Utwórz tablicę i warunek\".",
+          "moveOut": "Przenieś z",
           "moveInHint": "Aby dodać obiekt do tego modułu, najpierw utwórz obiekt korzystając z paska narzędzi lub wybierz istniejący obiekt w obszarze roboczym.",
           "moveIntoModule": "Przenieś \"{{name}}\" do tego modułu",
-          "moveOut": "Przenieś z",
           "templateLockInfo": "Aby obiekty w module były ruchome, najpierw utwórz powyżej kilka punktów kontrolnych, a następnie kliknij ▸, aby rozwinąć obiekt i zastąpić współrzędne numeryczne punktami kontrolnymi, takimi jak `x_1,y_1` lub formułami, takimi jak `(x_1+x_2)/2, (y_1+y_2)/2`.",
           "arrayAndConditional": {
             "info": "Utwórz wiele kopii tego obiektu i/lub umieść ten obiekt tylko wtedy, gdy spełniony jest określony warunek. Na przykład, aby skopiować ten obiekt 5 razy w poziomie z odstępem 10 jednostek między każdym z nich, możesz utworzyć zmienną pętli `i` o wartościach od 1 do 5 i ustawić współrzędne punktów na `x_1+i*10, y_1` itd. Aby wyświetlić obiekt tylko wtedy, gdy zmienna `a` jest większa od 0, możesz ustawić pole \"z warunkiem\" na `a > 0`.",
@@ -781,6 +794,12 @@
           "confirmRemove": "Usunąć moduł \"{{name}}\"?"
         }
       }
+    },
+    "ai": {
+      "title": "Korzystanie z asystenta AI",
+      "description": "[Ray Optics Coder](/ai-tools/chatgpt) w ChatGPT pomoże Ci pisać moduły Ray Optics. Generuje on kod JSON dla sceny zawierającej moduł na podstawie Twojego opisu, a następnie możesz skopiować ten kod do edytora JSON (the \"Code\" tab above). Możesz go również użyć do edycji istniejących modułów lub modularyzacji scen.",
+      "limitation": "Kod wygenerowany przez chatbota może nie działać bezpośrednio. W przypadku wystąpienia błędu, skopiowanie i wklejenie komunikatu o błędzie do chatbota może pomóc.",
+      "otherServices": "Pliki z instrukcjami i wiedzą dla chatbota są dostępne [tutaj](/ai-tools/instructions). Jeśli wolisz inną usługę LLM, możesz udostępnić te pliki, aby nauczyć go pisania modułów Ray Optics."
     }
   },
   "statusBox": {
@@ -804,6 +823,13 @@
   },
   "footer": {
     "processing": "Przetwarzanie… Kliknij tutaj, aby zatrzymać.",
+    "copyStatusMessage": {
+      "title": "Kopiuj wiadomość",
+      "copied": "Skopiowano"
+    },
+    "jsonFold": {
+      "expand": "Rozwiń wiadomość"
+    },
     "betaFeatures": {
       "title": "Funkcje wersji beta",
       "description": "Korzystasz z następujących funkcji beta:",
@@ -845,32 +871,6 @@
         "description": "Zalecany sposób to przejście do [Discussions](/github/discussions) lub [Issues](/github/issues) na GitHub. Jeśli nie korzystasz z GitHub, możesz również wysłać do nas wiadomość e-mail na adres [ray-optics@phydemo.app](/email).",
         "contribute": "Bezpośrednie wsparcie jest również mile widziane (patrz [przewodnik dotyczący wsparcia](/contributing))."
       }
-    },
-    "copyStatusMessage": {
-      "title": "Kopiuj wiadomość",
-      "copied": "Skopiowano"
-    },
-    "jsonFold": {
-      "expand": "Rozwiń wiadomość"
     }
-  },
-  "importShapesModal": {
-    "title": "Importuj kształty",
-    "stats_one": "{{total}} ścieżka — {{closed}} zamknięta / {{open}} otwarta",
-    "stats_few": "{{total}} ścieżki — {{closed}} zamknięte / {{open}} otwarte",
-    "stats_many": "{{total}} ścieżek — {{closed}} zamkniętych / {{open}} otwartych",
-    "strokeHeading": "Traktuj każdy kolor pociągnięcia jako:",
-    "fillHeading": "Traktuj każdy kolor wypełnienia jako:",
-    "actions": {
-      "ignore": "Ignoruj"
-    },
-    "scale": "Skala",
-    "importButton": "Importuj",
-    "centerTooltip": "Wyśrodkuj w oknie podglądu",
-    "centerButton": "Wyśrodkuj",
-    "tolerance": "Tolerancja krzywizny",
-    "toleranceInfo": "Tolerancja krzywizny w jednostkach sceny. Służy do aproksymacji łuków eliptycznych oraz łączenia sąsiednich gęstych segmentów krzywych Béziera trzeciego stopnia.",
-    "groupInHandle": "Powiąż importowane obiekty z uchwytem",
-    "offsetPair": "Offset"
   }
 }

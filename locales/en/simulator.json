@@ -999,11 +999,52 @@
       "slitWidth": "Slit width",
       "slitSpacing": "Slit spacing",
       "slitSpacingInfo": "Centre-to-centre spacing. The slit width sets the width of the diffraction envelope; the spacing sets how finely the fringes divide it.",
+      "slitsMergeWarning": "The spacing is no wider than the slits, so they overlap into a single opening. Increase the spacing to separate them.",
       "focalLength": "Focal length",
       "focalLengthInfo": "Where the zones bring the light to a focus, at the scene wavelength. The zone boundaries follow from it as the square root of n·λ·f.",
       "phaseReversing": "Phase-reversing",
       "phaseReversingInfo": "Invert the cancelling zones rather than blocking them. This wastes none of the light and is about four times as efficient.",
-      "maskInfo": "The screen is open wherever this function is non-negative, and opaque wherever it is negative."
+      "maskInfo": "The screen is open wherever this function is non-negative, and opaque wherever it is negative.",
+      "glassIndex": "Glass index",
+      "glassIndexInfo": "The refractive index of the glass between the two surfaces. The curvature needed for the stated focal length follows from it, so a higher index gives a flatter lens.",
+      "lensThickness": "Thickness",
+      "lensThicknessInfo": "The thickness of the glass at its thinnest: the rim of a converging lens, the centre of a diverging one. A thicker lens focuses closer than the thin-lens focal length says.",
+      "lensFocalLengthInfo": "The thin-lens focal length the curvature is derived from, positive for converging. The focus is drawn at plus and minus this distance and can be dragged; dragging one mark through the centre turns the lens over.",
+      "lensApertureWarning": "The aperture is wider than the radius of curvature, so the surfaces are cut off at their widest point. Shorten the aperture or lengthen the focal length.",
+      "profileDisplay": "Show transmission",
+      "profileDisplayInfo": "Colour the drawn surface by the transmission at each point, so a grating looks like a grating and a zone plate like rings. Amplitude and phase together uses the same bivariate mapping as the field view: lightness is the amplitude and hue is the phase.",
+      "profileColormap": "Profile colormap",
+      "profileDisplays": {
+        "off": "Off",
+        "amplitudePhase": "Amplitude and phase",
+        "amplitude": "Amplitude only",
+        "phase": "Phase only"
+      },
+      "probePoint": "Probe position",
+      "probeInfo": "The probe reports the brightest point of the subspace it sits in, not of the whole scene: the brightest point of a scene is almost always the source. Drop it after the last surface to ask about the image.",
+      "probeAt": "max at ({{x}}, {{y}})",
+      "probeWidth": "FWHM {{width}}",
+      "probeWidthUnresolved": "FWHM < {{width}} (grid-limited)",
+      "probeWidthUnbounded": "no half-maximum within the view",
+      "probeNoField": "no field computed yet",
+      "units": "Units",
+      "unitsWavelengths": "Wavelengths",
+      "unitsScene": "Scene units",
+      "plotMode": "Plot",
+      "plotModeInfo": "What the curve shows. Amplitude and phase draws the amplitude as the curve and the phase as its colour, so one line carries both.",
+      "plotIntensity": "Intensity",
+      "plotReal": "Real part",
+      "plotAmplitudePhase": "Amplitude and phase",
+      "plotPeak": "peak |U| = {{value}}",
+      "plotHeight": "Plot height (px)",
+      "farField": "Far field",
+      "farFieldInfo": "Show the pattern at infinity instead of the field here, over the angles the endpoints subtend at the centre of the last surface. Drawn as a dashed arc because nothing in the scene is there.",
+      "axisPosition": "across",
+      "axisAngle": "angle",
+      "screenSamples": "Samples",
+      "screenSamplesInfo": "Points taken across the screen (or, in far-field mode, across the angle span). Raising this resolves finer fringes; it costs nothing in the main field, since the screen evaluates the field itself rather than reading the displayed grid.",
+      "alwaysShowPlot": "Always show plot",
+      "alwaysShowPlotInfo": "Draw the plot whether or not this screen is selected, so several screens can be compared side by side. The drag handles at the ends still only appear when selected."
     },
     "eqnInfo": {
       "examples": "For example:",
@@ -1020,7 +1061,8 @@
       "typingNote": "Type them as written: <code>*</code> becomes a multiplication dot and <code>^</code> starts a power.",
       "maskRuling": "a grating of equal bars and gaps",
       "maskSlit": "a single slit of half-width {{half}}",
-      "maskZonePlate": "a zone plate, since the zone index goes as y²"
+      "maskZonePlate": "a zone plate, since the zone index goes as y²",
+      "lambdaInfo": "The symbol λ is the scene’s vacuum wavelength, so a profile written in terms of it keeps meaning the same thing when the wavelength changes. Type it as \\lambda followed by a space."
     }
   }
 }
