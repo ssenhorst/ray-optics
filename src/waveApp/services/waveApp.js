@@ -34,6 +34,7 @@ import { createWaveRenderingContext } from '../../core/waveOptics/WaveFieldEngin
 import { objBar } from '../../app/services/objBar.js';
 import { saveAs } from 'file-saver';
 import { buildExampleScene } from '../exampleScenes.js';
+import { resolveUiOptions } from '../../core/uiOptions.js';
 
 /** Scene object types the wave app offers as tools. */
 export const WAVE_TOOL_TYPES = ['WavePointSource'];
@@ -67,11 +68,107 @@ function emit(name, detail) {
   for (const callback of listeners[name] ?? []) callback(detail);
 }
 
+/**
+ * Whether the app was opened as a task designer, asked for with `?design=1` in the URL. The scene's
+ * interaction permissions and interface options are then read, written and saved as usual but not
+ * enforced, so whoever is authoring the task can reach everything.
+ * @returns {boolean} Whether the task designer is on.
+ */
+function isDesignMode() {
+  if (typeof window === 'undefined') return false;
+  const design = new URLSearchParams(window.location.search).get('design');
+  return design !== null && design !== '0' && design !== 'false';
+}
+
 /** Create the scene. Must run before the Vue app mounts, since controls bind to it. */
 function initScene() {
   scene = new Scene();
   scene.backgroundImage = null;
+  scene.designMode = isDesignMode();
   app.scene = scene;
+  app.designMode = scene.designMode;
+}
+
+/**
+ * Show or hide the parts of the interface the scene asks to hide. They are hidden with a class on
+ * `body` rather than by unmounting, since the app reaches into these elements directly by id.
+ */
+function applyUiOptions() {
+  const ui = resolveUiOptions(scene);
+  const hidden = {
+    'ro-hide-toolbar': !ui.toolbar,
+    'ro-hide-objbar': !ui.objectBar,
+    'ro-hide-statusbar': !ui.statusBar,
+  };
+  for (const [className, on] of Object.entries(hidden)) {
+    document.body.classList.toggle(className, on);
+  }
+}
+
+/**
+ * Keep the goal targets of a task in step with draggable handles on the canvas, so a designer can
+ * place them by dragging rather than by typing coordinates.
+ */
+function refreshGoalHandles() {
+  if (!scene.designMode || !editor) return;
+  const goals = (scene.task && scene.task.goals) || [];
+    const handles = [];
+    goals.forEach((goal, index) => {
+      if (!goal) return;
+      const label = goal.targetLabel || goal.id || `goal ${index + 1}`;
+
+      if (goal.point && typeof goal.point.x === 'number') {
+        handles.push({
+          point: goal.point,
+          radius: goal.radius,
+          label,
+          onDrag: (pos) => {
+            goal.point.x = Math.round(pos.x * 100) / 100;
+            goal.point.y = Math.round(pos.y * 100) / 100;
+          },
+        });
+      }
+
+      // A goal that measures along a line is placed by its two ends.
+      if (goal.line && goal.line.p1 && goal.line.p2) {
+        for (const [end, other] of [['p1', 'p2'], ['p2', 'p1']]) {
+          handles.push({
+            point: goal.line[end],
+            label: end === 'p1' ? `${label} probe` : '',
+            lineTo: goal.line[other],
+            onDrag: (pos) => {
+              goal.line[end].x = Math.round(pos.x * 100) / 100;
+              goal.line[end].y = Math.round(pos.y * 100) / 100;
+            },
+          });
+        }
+      }
+    });
+  editor.externalHandles = handles;
+}
+
+/**
+ * Load a scene from a URL relative to the app, which is how the task designer opens a task file.
+ * @param {string} url - The URL of the scene JSON.
+ */
+function openSceneFromUrl(url) {
+  const client = new XMLHttpRequest();
+  client.open('GET', url);
+  client.onload = () => {
+    if (client.status >= 300) {
+      emit('statusChange', { error: `Could not load ${url} (${client.status})` });
+      return;
+    }
+    scene.backgroundImage = null;
+    editor.loadJSON(client.responseText);
+    applyUiOptions();
+    refreshGoalHandles();
+    // The handles are known only after the scene is in place, so the layer they live on is redrawn.
+    simulator.updateSimulation(true, true);
+    emit('sceneChange', null);
+  };
+  client.onerror = () => emit('statusChange', { error: `Could not load ${url}` });
+  client.send();
 }
 
 /** The canvas size last applied, so no-op resize events can be ignored. */
@@ -176,8 +273,29 @@ function bindEditorEvents() {
   });
 
   editor.on('newAction', () => {
+    refreshGoalHandles();
     emit('sceneChange', null);
   });
+
+  editor.on('sceneLoaded', () => {
+    refreshGoalHandles();
+  });
+  applyUiOptions();
+
+  if (scene.designMode) {
+    // The designer is a tool for whoever is authoring the task, so its internals are reachable from
+    // the console. The app students get does not expose this.
+    window.rayOpticsApp = app;
+  }
+
+  // A scene named in the URL, which is how the task designer opens a task file. A path relative to
+  // the app only: no scheme and no protocol-relative URL.
+  const requestedScene = new URLSearchParams(window.location.search).get('scene');
+  if (requestedScene && /^[\w./-]+$/.test(requestedScene)
+    && !requestedScene.includes(':') && !requestedScene.startsWith('//')) {
+    openSceneFromUrl(requestedScene);
+  }
+
 
   editor.on('mouseCoordinateChange', (e) => {
     emit('statusChange', { mousePos: e.mousePos });
@@ -325,6 +443,8 @@ export const app = {
   fatalError: null,
   initScene,
   initAppService,
+  isDesignMode,
+  openSceneFromUrl,
   setTool,
   refresh,
   clearScene,

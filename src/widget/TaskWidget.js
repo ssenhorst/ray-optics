@@ -28,6 +28,8 @@ import Scene from '../core/Scene.js';
 import Simulator from '../core/Simulator.js';
 import Editor from '../core/Editor.js';
 import TaskEvaluator from '../core/goals/TaskEvaluator.js';
+import WaveSimulator from '../core/waveOptics/WaveSimulator.js';
+import { createWaveRenderingContext } from '../core/waveOptics/WaveFieldEngineWebGL2.js';
 import { resolveUiOptions } from '../core/uiOptions.js';
 import { getObjectPlacement, getImagePlacement } from '../core/illustration.js';
 import churchPicture from '../img/delft_new_church.svg';
@@ -45,6 +47,20 @@ function escapeHtml(text) {
   return String(text ?? '').replace(/[&<>"']/g, (c) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   }[c]));
+}
+
+/**
+ * Whether a scene file is for the wave-optics simulator, decided from the object types it names.
+ * @param {string} json - The scene JSON.
+ * @returns {boolean} Whether the scene is a wave scene.
+ */
+function sceneJsonIsWave(json) {
+  try {
+    const data = JSON.parse(json);
+    return (data.objs || []).some(obj => typeof obj?.type === 'string' && obj.type.startsWith('Wave'));
+  } catch (e) {
+    return false;
+  }
 }
 
 function el(tag, className, html) {
@@ -90,7 +106,9 @@ class TaskWidget {
     this.lastStatus = null;
 
     this.buildDom();
-    this.initEngine();
+    // Which simulator to build is decided from the file rather than from a loaded scene, so the
+    // scene is only ever loaded once, against the viewport it will actually be drawn in.
+    if (!this.initEngine(sceneJsonIsWave(this.initialJson))) return;
     this.load(this.initialJson);
   }
 
@@ -103,14 +121,19 @@ class TaskWidget {
 
     // The canvas layers expected by the simulator, bottom to top. The last one receives the pointer
     // events and is the one the editor is attached to; the overlay above it is click-through.
-    this.canvasGrid = el('canvas');
     this.canvasBelowLight = el('canvas');
+    this.canvasGrid = el('canvas');
     this.canvasLight = el('canvas');
+    // The wave simulator draws its field with WebGL, on its own layer between the grid and the
+    // objects. It is left in place but unused by a ray scene.
+    this.canvasWave = el('canvas');
     this.canvasAboveLight = el('canvas', 'ro-interaction');
     this.canvasOverlay = el('canvas', 'ro-overlay');
     this.canvasAboveLight.tabIndex = 0;
 
-    for (const canvas of [this.canvasGrid, this.canvasBelowLight, this.canvasLight, this.canvasAboveLight, this.canvasOverlay]) {
+    this.canvases = [this.canvasBelowLight, this.canvasGrid, this.canvasLight,
+      this.canvasWave, this.canvasAboveLight, this.canvasOverlay];
+    for (const canvas of this.canvases) {
       this.stage.appendChild(canvas);
     }
 
@@ -126,17 +149,41 @@ class TaskWidget {
     this.container.appendChild(this.panel);
   }
 
-  /** Create the simulator, the editor and the overlay, and wire up their events. */
-  initEngine() {
-    this.simulator = new Simulator(
-      this.scene,
-      this.canvasLight.getContext('2d'),
-      this.canvasBelowLight.getContext('2d'),
-      this.canvasAboveLight.getContext('2d'),
-      this.canvasGrid.getContext('2d'),
-      document.createElement('canvas').getContext('2d'),
-      true
-    );
+  /**
+   * Create the simulator, the editor and the overlay, and wire up their events.
+   *
+   * Which simulator depends on the scene: a scene holding wave-optics objects is summed as a field,
+   * anything else is traced as rays. Both drive the same editor and the same scene file, so
+   * everything else in the widget is unchanged.
+   * @param {boolean} wave - Whether to build the wave-optics simulator.
+   */
+  initEngine(wave) {
+    this.isWave = !!wave;
+
+    if (this.isWave) {
+      try {
+        this.simulator = new WaveSimulator({
+          scene: this.scene,
+          gl: createWaveRenderingContext(this.canvasWave),
+          ctxBelowLight: this.canvasBelowLight.getContext('2d'),
+          ctxAboveLight: this.canvasAboveLight.getContext('2d'),
+          ctxGrid: this.canvasGrid.getContext('2d'),
+        });
+      } catch (e) {
+        this.showError(`This task needs WebGL2 for the wave field: ${e.message}`);
+        return false;
+      }
+    } else {
+      this.simulator = new Simulator(
+        this.scene,
+        this.canvasLight.getContext('2d'),
+        this.canvasBelowLight.getContext('2d'),
+        this.canvasAboveLight.getContext('2d'),
+        this.canvasGrid.getContext('2d'),
+        document.createElement('canvas').getContext('2d'),
+        true
+      );
+    }
     this.simulator.dpr = window.devicePixelRatio || 1;
 
     this.editor = new Editor(this.scene, this.canvasAboveLight, this.simulator);
@@ -148,8 +195,14 @@ class TaskWidget {
       this.inspector.show(this.ui && this.ui.objectBar ? e.newIndex : -1);
     });
 
-    this.simulator.on('simulationComplete', () => this.evaluateTask());
-    this.simulator.on('simulationStop', () => this.evaluateTask());
+    if (this.isWave) {
+      // The wave simulator reports when the field has been recomputed rather than when a ray trace
+      // finishes; the goals are scored on the CPU from the scene, so the event is only a trigger.
+      this.simulator.on('fieldComputed', () => this.evaluateTask());
+    } else {
+      this.simulator.on('simulationComplete', () => this.evaluateTask());
+      this.simulator.on('simulationStop', () => this.evaluateTask());
+    }
     this.simulator.on('update', () => {
       this.refreshAffordances();
       this.refreshPictures();
@@ -160,6 +213,7 @@ class TaskWidget {
 
     this.onKeyDown = (e) => this.handleKeyDown(e);
     this.canvasAboveLight.addEventListener('keydown', this.onKeyDown);
+    return true;
   }
 
   /**
@@ -189,7 +243,9 @@ class TaskWidget {
   /** Apply the scene's `ui` options and rebuild the panel and the controls for the current scene. */
   applySceneSettings() {
     this.ui = resolveUiOptions(this.scene);
-    this.simulator.recordRaySegments = this.taskEvaluator.task !== null;
+    if (!this.isWave) {
+      this.simulator.recordRaySegments = this.taskEvaluator.task !== null;
+    }
 
     this.canvasBelowLight.style.backgroundColor =
       `rgb(${Math.round(this.scene.theme.background.color.r * 255)},` +
@@ -398,7 +454,7 @@ class TaskWidget {
     const height = Math.max(1, Math.round(rect.height));
     const dpr = window.devicePixelRatio || 1;
 
-    for (const canvas of [this.canvasGrid, this.canvasBelowLight, this.canvasLight, this.canvasAboveLight, this.canvasOverlay]) {
+    for (const canvas of this.canvases) {
       canvas.width = width * dpr;
       canvas.height = height * dpr;
     }
@@ -415,7 +471,7 @@ class TaskWidget {
     const task = this.taskEvaluator.task;
     if (!task) return;
 
-    const status = this.taskEvaluator.evaluate(this.simulator.raySegments, this.countSourceRays());
+    const status = this.taskEvaluator.evaluate(this.simulator.raySegments || [], this.countSourceRays());
     this.lastStatus = status;
     this.overlay.setGoals(status.goals);
     this.refreshPictures();
@@ -445,7 +501,7 @@ class TaskWidget {
    */
   countSourceRays() {
     const ids = new Set();
-    for (const seg of this.simulator.raySegments) {
+    for (const seg of this.simulator.raySegments || []) {
       if (seg.depth === 0) ids.add(seg.id);
     }
     return ids.size;

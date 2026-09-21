@@ -24,7 +24,27 @@
  * pass/fail verdict only.
  */
 
-import { GOAL_TYPES } from './goalTypes.js';
+import { GOAL_TYPES as RAY_GOAL_TYPES } from './goalTypes.js';
+import { WAVE_GOAL_TYPES } from './waveGoalTypes.js';
+import { buildWaveModel } from '../waveOptics/waveSceneModel.js';
+import { computeModelFieldAt } from '../waveOptics/WaveFieldEngineCpu.js';
+
+/**
+ * Every goal type, whichever simulator the scene is for. Ray goals count ray segments and wave goals
+ * measure the field, but a scene states them the same way and the evaluator scores them together.
+ * @const {Object<string, Object>}
+ */
+export const GOAL_TYPES = { ...RAY_GOAL_TYPES, ...WAVE_GOAL_TYPES };
+
+/**
+ * Whether a scene is for the wave-optics simulator, which is true when it contains any of that
+ * simulator's own objects.
+ * @param {Scene} scene - The scene.
+ * @returns {boolean} Whether the scene is a wave scene.
+ */
+export function isWaveScene(scene) {
+  return !!scene && (scene.objs || []).some(obj => obj?.constructor?.type?.startsWith('Wave'));
+}
 
 /**
  * The keys accepted in the scene-level `task` property.
@@ -39,7 +59,9 @@ const TASK_KEYS = ['title', 'description', 'hint', 'goals', 'requireAll', 'succe
 const COMMON_GOAL_KEYS = ['id', 'type', 'title', 'description', 'weight', 'showTarget', 'targetLabel'];
 
 const TYPE_SPECIFIC_KEYS = ['point', 'radius', 'count', 'minDepth', 'angle', 'direction', 'tolerance',
-  'detector', 'min', 'target', 'object', 'property', 'source'];
+  'detector', 'min', 'target', 'object', 'property', 'source',
+  // Wave-optics goals, which probe the field along a line rather than counting rays.
+  'line', 'samples', 'spacing', 'threshold', 'order', 'max', 'dip'];
 
 /**
  * Validate a raw `task` object coming from JSON.
@@ -111,6 +133,27 @@ class TaskEvaluator {
   }
 
   /**
+   * Evaluate the wave field at a list of points, propagated through the scene's interfaces.
+   *
+   * The model is built at a small grid resolution: the grid only matters for what is drawn, while
+   * what is sampled here is the field itself, whose accuracy comes from the source density instead.
+   * @param {Array<Point>} points - Where to evaluate.
+   * @returns {Float64Array|null} Interleaved real and imaginary parts, or null if this is not a wave
+   * scene or the field could not be built.
+   */
+  sampleField(points) {
+    if (!isWaveScene(this.scene)) return null;
+    try {
+      if (!this.waveModel) {
+        this.waveModel = buildWaveModel(this.scene, { resolution: 64 });
+      }
+      return computeModelFieldAt(this.waveModel, points);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /**
    * The shapes that should be drawn on the canvas so the student can see what to aim at.
    * @returns {Array<Object>} The target shapes, each annotated with the index of its goal.
    */
@@ -142,7 +185,17 @@ class TaskEvaluator {
       return { hasTask: false, complete: false, progress: 0, goals: [] };
     }
 
-    const context = { scene: this.scene, segments: segments || [], rayCount };
+    // The scene may have changed since the last run, so any cached field model is stale.
+    this.waveModel = null;
+
+    const context = {
+      scene: this.scene,
+      segments: segments || [],
+      rayCount,
+      // Built once per evaluation and only if a goal actually asks for it: propagating the field
+      // through the subspaces is the expensive part, and a ray scene never needs it.
+      sampleField: (points) => this.sampleField(points),
+    };
 
     let totalWeight = 0;
     let weightedProgress = 0;
@@ -195,6 +248,11 @@ function defaultGoalTitle(goal) {
     case 'collimated': return 'Make the outgoing light parallel';
     case 'detectorPower': return 'Reach the required power on the detector';
     case 'objectProperty': return `Set ${goal.property} to ${goal.target}`;
+    case 'waveIntensityPeak': return 'Put the brightest point on the target';
+    case 'waveFringeSpacing': return `Make the fringes ${goal.spacing} units apart`;
+    case 'waveFringeContrast': return 'Make the fringes stand out clearly';
+    case 'waveSpotSize': return 'Make the focus small enough';
+    case 'waveResolvedPeaks': return `Resolve ${goal.count} separate peaks`;
     default: return goal.type;
   }
 }

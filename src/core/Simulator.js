@@ -343,6 +343,17 @@ class Simulator {
       const p = handle && handle.point;
       if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) continue;
 
+      if (handle.lineTo && Number.isFinite(handle.lineTo.x)) {
+        ctx.strokeStyle = 'rgb(240,180,41)';
+        ctx.lineWidth = 1 / scale;
+        ctx.setLineDash([5 / scale, 4 / scale]);
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(handle.lineTo.x, handle.lineTo.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
       if (handle.radius > 0) {
         ctx.strokeStyle = 'rgb(240,180,41)';
         ctx.lineWidth = 1 / scale;

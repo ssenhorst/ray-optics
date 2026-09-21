@@ -58,14 +58,18 @@ function collectScenes() {
       const name = path.basename(file, '.json');
       let title = name;
       let goals = 0;
+      let wave = false;
       try {
         const data = JSON.parse(fs.readFileSync(path.join(SCENE_DIR, file), 'utf8'));
         title = data.task?.title || data.name || name;
         goals = data.task?.goals?.length || 0;
+        // A scene holding wave-optics objects belongs in the wave app, which simulates it; the ray
+        // app would load it happily and then show nothing.
+        wave = (data.objs || []).some(obj => typeof obj?.type === 'string' && obj.type.startsWith('Wave'));
       } catch (e) {
         title = `${name} (not valid JSON)`;
       }
-      return { file, name, title, goals };
+      return { file, name, title, goals, wave };
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 }
@@ -73,8 +77,8 @@ function collectScenes() {
 function buildPage(scenes) {
   const rows = scenes.map(scene => `
       <li>
-        <a class="scene" href="../simulator/?design=1&amp;scene=../taskScenes/${encodeURIComponent(scene.file)}">
-          <span class="scene-title">${escapeHtml(scene.title)}</span>
+        <a class="scene" href="../${scene.wave ? 'wave' : 'simulator'}/?design=1&amp;scene=../taskScenes/${encodeURIComponent(scene.file)}">
+          <span class="scene-title">${escapeHtml(scene.title)}<span class="kind">${scene.wave ? 'wave' : 'rays'}</span></span>
           <span class="scene-file">${escapeHtml(scene.file)} &middot; ${scene.goals} goal${scene.goals === 1 ? '' : 's'}</span>
         </a>
       </li>`).join('');
@@ -113,6 +117,11 @@ function buildPage(scenes) {
   .scene-title { display: block; font-weight: 600; font-size: 14px; }
   .scene-file { display: block; margin-top: 2px; color: #57606a; font-size: 12px; font-family: monospace; }
   .new { margin-top: 20px; text-align: center; font-weight: 600; font-size: 14px; }
+  .kind {
+    float: right; font-weight: 400; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.06em; color: #57606a; background: #eaeef2;
+    padding: 1px 7px; border-radius: 999px;
+  }
   .steps { margin-top: 28px; font-size: 13px; color: #57606a; }
   .steps code { background: #eaeef2; padding: 1px 5px; border-radius: 4px; }
 </style>
@@ -128,7 +137,10 @@ function buildPage(scenes) {
   <ul>${rows || '\n      <li><p>No task scenes in <code>data/taskScenes</code> yet.</p></li>'}
   </ul>
 
-  <a class="new" href="../simulator/?design=1">Start a new task from an empty scene</a>
+  <p style="display:flex; gap:10px;">
+    <a class="new" style="flex:1; margin-top:0" href="../simulator/?design=1">New ray task</a>
+    <a class="new" style="flex:1; margin-top:0" href="../wave/?design=1">New wave task</a>
+  </p>
 
   <div class="steps">
     <p><strong>To save your work:</strong> File &rarr; Save in the editor writes a scene file. Put it in

@@ -429,6 +429,61 @@ class WaveSimulator {
         : false;
       this.scene.objs[index].draw(above, true, isHighlighted);
     }
+
+    this.drawExternalHandles(above);
+  }
+
+  /**
+   * Draw the handles the application owns, such as the targets of a task's goals while the task is
+   * being designed. Drawn above the objects so they can always be found and grabbed.
+   * @param {CanvasRenderer} canvasRenderer - The renderer for the layer above the field.
+   */
+  drawExternalHandles(canvasRenderer) {
+    const handles = this.scene.editor?.externalHandles;
+    if (!canvasRenderer?.ctx || !handles?.length) return;
+
+    const ctx = canvasRenderer.ctx;
+    const scale = this.scene.scale || 1;
+
+    ctx.save();
+    ctx.globalAlpha = 1;
+    for (const handle of handles) {
+      const p = handle?.point;
+      if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) continue;
+
+      if (handle.lineTo && Number.isFinite(handle.lineTo.x)) {
+        ctx.strokeStyle = 'rgb(240,180,41)';
+        ctx.lineWidth = 1 / scale;
+        ctx.setLineDash([5 / scale, 4 / scale]);
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(handle.lineTo.x, handle.lineTo.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      if (handle.radius > 0) {
+        ctx.strokeStyle = 'rgb(240,180,41)';
+        ctx.lineWidth = 1 / scale;
+        ctx.setLineDash([4 / scale, 3 / scale]);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, handle.radius, 0, Math.PI * 2, false);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      ctx.fillStyle = 'rgb(240,180,41)';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 4 / scale, 0, Math.PI * 2, false);
+      ctx.fill();
+
+      if (handle.label) {
+        ctx.font = `${12 / scale}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.fillText(handle.label, p.x, p.y - 9 / scale);
+      }
+    }
+    ctx.restore();
   }
 
   /**

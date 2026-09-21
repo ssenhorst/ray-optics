@@ -80,6 +80,16 @@ describe('resolveInteraction', () => {
     expect(resolveInteraction({ enabled: false }, null).select).toBe(false);
   });
 
+  test('one open property is enough to make an object selectable', () => {
+    const resolved = resolveInteraction({ enabled: false }, { edit: false, properties: { focalLength: true } });
+    expect(resolved.edit).toBe(false);
+    expect(resolved.select).toBe(true);
+  });
+
+  test('a property pinned shut does not make an object selectable', () => {
+    expect(resolveInteraction({ enabled: false }, { properties: { focalLength: false } }).select).toBe(false);
+  });
+
   test('an explicit select is respected even when other things are allowed', () => {
     expect(resolveInteraction({ select: false }, { reshape: true }).select).toBe(false);
   });

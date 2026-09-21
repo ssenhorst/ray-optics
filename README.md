@@ -37,7 +37,8 @@ A web app for creating and simulating 2D geometric optical scenes, with a galler
 A scene can carry an `interaction` property saying what the user may change (scene-wide and per
 object, down to individual properties), a `ui` property saying which parts of the interface are
 shown, and a `task` property stating an assignment with goals that are scored after every
-simulation run. `npm run build-tasks` packs each scene in `data/taskScenes/` into a single
+simulation run. Both simulators are supported: ray goals count where rays go, wave goals measure the
+field. `npm run build-tasks` packs each scene in `data/taskScenes/` into a single
 self-contained HTML file under `dist/tasks/`, suitable for embedding in a course platform that
 allows only static HTML with no external dependencies. See
 [data/taskScenes/README.md](data/taskScenes/README.md) for the authoring guide.

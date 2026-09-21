@@ -203,6 +203,8 @@ All booleans, all default to `true`. `toolbar`, `objectBar`, `sidebar`, `statusB
 `welcomeMessage` are honoured by the full web app; `taskPanel`, `resetButton`, `zoomButtons`,
 `showTargets`, `showAffordances` and `celebrate` by the widget.
 
+`toolbar`, `objectBar` and `statusBar` are honoured by the wave app too.
+
 `showAffordances` is what makes a restricted scene readable: the widget marks every place the
 permissions let the student grab, with a ring on each draggable control point and a four-way arrow
 at the centre of each object that can be moved. Turn `objectBar` off to make an exercise purely
@@ -287,6 +289,49 @@ A numeric property of a named object must reach `target` within `tolerance`.
 ```json
 { "type": "objectProperty", "object": "Relay", "property": "focalLength", "target": 108.75, "tolerance": 2 }
 ```
+
+## Wave optics tasks
+
+A scene holding wave-optics objects (`WavePointSource`, `WaveMultiSlit`, `WaveSquareGrating`,
+`WaveZonePlate`, `WaveInterface`, …) is a wave scene: the widget sums fields instead of tracing rays,
+and the designer opens it in the wave app. Nothing else changes — the same `interaction`, `ui` and
+`task` properties apply, and the same file format is saved.
+
+Wave goals have no rays to count, so each samples the intensity along a probe `line` and asks a
+question about the profile. Every measure is a length, a ratio or a count, never an absolute
+intensity, so a student never has to match the brightness the author happened to choose.
+
+All of them take `line` (with `p1` and `p2`) and an optional `samples` count.
+
+| Goal | Asks |
+|------|------|
+| `waveIntensityPeak` | Is the brightest point on the line within `radius` of `point`? `order: 1` picks the second-strongest peak instead of the strongest. |
+| `waveFringeSpacing` | Are the fringes `spacing` apart, within `tolerance`? |
+| `waveFringeContrast` | Is the visibility `(Imax - Imin) / (Imax + Imin)` at least `min`? |
+| `waveSpotSize` | Is the principal peak no wider than `max` at half its height — or `target` within `tolerance`? |
+| `waveResolvedPeaks` | Are there exactly `count` peaks, each pair separated by a dip at least `dip` of the way down? |
+
+```json
+{ "id": "printed", "type": "waveFringeSpacing",
+  "line": { "p1": { "x": 600, "y": -140 }, "p2": { "x": 600, "y": 140 } },
+  "spacing": 40, "tolerance": 8, "samples": 561 }
+```
+
+The field is sampled on the CPU, propagated through the scene's interfaces, independently of whatever
+the GPU is drawing. Scoring therefore does not depend on the display resolution, and a task is scored
+correctly even while the adaptive resolution is still climbing.
+
+The four worked examples are all lithography-shaped:
+
+| Scene | What the student changes | What it teaches |
+|-------|--------------------------|-----------------|
+| `wave_diffraction_orders` | the grating pitch | where a mask's orders land in the pupil, `f λ / p` |
+| `wave_numerical_aperture` | the width of the lens pupil | the Abbe limit: no orders captured, no pattern printed |
+| `wave_phase_shift_mask` | the bars' transmission and phase | an alternating phase-shift mask prints at half the pitch |
+| `wave_zone_plate` | the focal length and the aperture | focus position, and numerical aperture against spot size |
+
+Wave scenes are best authored in the wave app, which the task-designer launcher links to
+automatically. Goal targets and probe lines both appear there as draggable handles.
 
 ## Embedding
 

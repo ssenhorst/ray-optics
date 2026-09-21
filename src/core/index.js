@@ -40,7 +40,7 @@ import Editor from './Editor.js';
 import * as sceneObjs from './sceneObjs.js';
 import geometry from './geometry.js';
 import TaskEvaluator, { validateTask } from './goals/TaskEvaluator.js';
-import { GOAL_TYPES } from './goals/goalTypes.js';
+import { GOAL_TYPES, isWaveScene } from './goals/TaskEvaluator.js';
 import * as interaction from './interaction.js';
 import * as uiOptions from './uiOptions.js';
 import i18next from 'i18next';
@@ -78,6 +78,7 @@ export {
   TaskEvaluator,
   validateTask,
   GOAL_TYPES,
+  isWaveScene,
   interaction,
   uiOptions
 };

@@ -199,7 +199,7 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useSceneStore } from '../../store/scene'
 import { app } from '../../services/app'
-import { GOAL_TYPES } from '../../../core/goals/goalTypes.js'
+import { GOAL_TYPES } from '../../../core/goals/TaskEvaluator.js'
 import { OBJECT_INTERACTION_DEFAULTS, SCENE_INTERACTION_DEFAULTS } from '../../../core/interaction.js'
 import { UI_DEFAULTS } from '../../../core/uiOptions.js'
 import { ILLUSTRATION_PICTURES } from '../../../core/illustration.js'

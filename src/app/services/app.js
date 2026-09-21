@@ -1059,21 +1059,42 @@ function initAppService() {
     // by dragging rather than by typing coordinates into the JSON.
     const refreshGoalHandles = () => {
       const goals = (scene.task && scene.task.goals) || [];
-      editor.externalHandles = goals
-        .map((goal, index) => ({ goal, index }))
-        .filter(({ goal }) => goal && goal.point && typeof goal.point.x === 'number')
-        .map(({ goal, index }) => ({
-          point: goal.point,
-          radius: goal.radius,
-          label: goal.targetLabel || goal.id || `goal ${index + 1}`,
-          onDrag: (pos) => {
-            goal.point.x = Math.round(pos.x * 100) / 100;
-            goal.point.y = Math.round(pos.y * 100) / 100;
-          },
-          onDone: () => {
-            document.dispatchEvent(new Event('sceneChanged'));
-          },
-        }));
+      const handles = [];
+      goals.forEach((goal, index) => {
+        if (!goal) return;
+        const label = goal.targetLabel || goal.id || `goal ${index + 1}`;
+
+        if (goal.point && typeof goal.point.x === 'number') {
+            handles.push({
+              point: goal.point,
+              radius: goal.radius,
+              label,
+              onDrag: (pos) => {
+                  goal.point.x = Math.round(pos.x * 100) / 100;
+                  goal.point.y = Math.round(pos.y * 100) / 100;
+              },
+            });
+        }
+
+        // A goal that measures along a line is placed by its two ends.
+        if (goal.line && goal.line.p1 && goal.line.p2) {
+            for (const [end, other] of [['p1', 'p2'], ['p2', 'p1']]) {
+              handles.push({
+                  point: goal.line[end],
+                  label: end === 'p1' ? `${label} probe` : '',
+                  lineTo: goal.line[other],
+                  onDrag: (pos) => {
+                    goal.line[end].x = Math.round(pos.x * 100) / 100;
+                    goal.line[end].y = Math.round(pos.y * 100) / 100;
+                  },
+              });
+            }
+        }
+      });
+      for (const handle of handles) {
+        handle.onDone = () => document.dispatchEvent(new Event('sceneChanged'));
+      }
+      editor.externalHandles = handles;
     };
 
     refreshGoalHandles();

@@ -193,14 +193,21 @@ export function resolveInteraction(sceneInteraction, objInteraction) {
     resolved[key] = lookup(sceneInteraction, objInteraction, key) ?? OBJECT_INTERACTION_DEFAULTS[key];
   }
 
+  resolved.properties = {
+    ...(sceneInteraction?.properties || {}),
+    ...(objInteraction?.properties || {}),
+  };
+
   // Selecting an object is a precondition for inspecting and editing it, so unless the scene says
   // otherwise it follows from whatever else the object allows. Without this, freezing a scene and
-  // then re-enabling one property would leave that property unreachable.
+  // then re-enabling one thing would leave that one thing unreachable — including when the thing is
+  // a single property, which is the usual way to expose one control and nothing else.
   const selectStated = [objInteraction, sceneInteraction].some(
     level => level && typeof level.select === 'boolean'
   );
   if (!selectStated) {
-    resolved.select = resolved.select
+    const anyProperty = Object.values(resolved.properties).some(value => value === true);
+    resolved.select = resolved.select || anyProperty
       || resolved.move || resolved.reshape || resolved.edit || resolved.remove;
   }
 
