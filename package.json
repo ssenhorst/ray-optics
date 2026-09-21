@@ -67,6 +67,7 @@
     "build-images": "node ./scripts/buildImages.mjs",
     "build-app": "webpack --mode=production",
     "build-widget-bundle": "webpack --config webpack.widget.config.mjs",
+    "build-anywidget": "webpack --config webpack.anywidget.config.mjs",
     "build-tasks": "npm run build-widget-bundle && node ./scripts/buildTaskWidget.mjs",
     "build-task-editor": "npm run build-app && node ./scripts/buildTaskEditor.mjs",
     "build-simulator": "webpack --mode=development",
@@ -84,6 +85,7 @@
     "@vue/compiler-sfc": "^3.5.13",
     "jsdoc": "^4.0.4",
     "jsdoc-vuejs": "^4.0.0",
+    "mini-css-extract-plugin": "^2.10.2",
     "vue-loader": "^17.4.2",
     "vue-template-compiler": "^2.7.16"
   }

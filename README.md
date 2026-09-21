@@ -43,6 +43,21 @@ self-contained HTML file under `dist/tasks/`, suitable for embedding in a course
 allows only static HTML with no external dependencies. See
 [data/taskScenes/README.md](data/taskScenes/README.md) for the authoring guide.
 
+## Jupyter and MyST
+
+The same applet is published as three [anywidget](https://anywidget.dev) classes, so a scene, a wave
+optics scene or an assignment can be dropped into a notebook or a MyST Markdown document, which
+passes the scene it wants to show:
+
+```python
+from ray_optics_widgets import RayOpticsWidget, WaveOpticsWidget, TaskWidget
+
+WaveOpticsWidget("wave_zone_plate", height=520)
+```
+
+`npm run build-anywidget` builds the bundle; the Python package around it lives in
+[python/](python/README.md) and is installed from this directory with `pip install .`.
+
 ## Links
 - [**Launch the Web App**](https://phydemo.app/ray-optics/simulator/)
 - [Gallery](https://phydemo.app/ray-optics/gallery/)
@@ -109,6 +124,7 @@ The full build may takes about half an hour to complete due to the generation of
 - `locales` contains the translations for the project in i18next format, managed by Weblate.
 - `scripts` contains the scripts for custom build steps.
 - `test` contains the automatic tests for the project.
+- `python` contains the Python distribution of the widgets, which wraps the built bundle as anywidgets. The project it belongs to is described by `pyproject.toml` at the root, so the repository as a whole is what `pip install .` installs.
 - `integrations` contains the integration tools for the simulator with other programming languages.
 - `dist` (generated at build time) contains the built files for the project (the entire content for the [https://phydemo.app/ray-optics](https://phydemo.app/ray-optics) website).
 - `dist-node` (generated at build time) contains the built files for the node module version of the simulator, which is required for the image generation, and can also be used in your own project.
