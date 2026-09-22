@@ -1,0 +1,37 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Wave Optics Simulation"
+abstract: >-
+  An interactive simulator for 2D wave optics, in which light is a complex
+  scalar field summed from point sources rather than a bundle of rays, with an
+  assignment system for teaching. A fork of the Ray Optics Simulation, which it
+  still contains.
+type: software
+authors:
+  - family-names: Senhorst
+    given-names: Sander
+    affiliation: "Delft University of Technology"
+    orcid: "https://orcid.org/0009-0005-9069-9584"
+version: "1.0.0"
+date-released: "2026-09-22"
+license: Apache-2.0
+repository-code: "https://github.com/ssenhorst/wave-optics"
+url: "https://ssenhorst.github.io/wave-optics/"
+keywords:
+  - optics
+  - wave optics
+  - diffraction
+  - lithography
+  - physics education
+  - simulation
+references:
+  - type: software
+    title: "Ray Optics Simulation"
+    abstract: "The project this work is forked from, and whose ray tracer it still contains."
+    authors:
+      - family-names: Tu
+        given-names: Yi-Ting
+      - name: "The Ray Optics Simulation authors and contributors"
+    doi: "10.5281/zenodo.6386611"
+    repository-code: "https://github.com/ricktu288/ray-optics"
+    license: Apache-2.0

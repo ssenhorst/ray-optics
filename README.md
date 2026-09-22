@@ -1,36 +1,38 @@
-![Example figure](https://raw.githubusercontent.com/ricktu288/ray-optics/master/src/img/spherical-lens-and-mirror.jpg)
+![Two coherent point sources interfering](src/img/wave/carousel-twoPointSources.jpg)
 
-# Ray Optics Simulation
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.6386611.svg)](https://doi.org/10.5281/zenodo.6386611)
-[![translated](https://hosted.weblate.org/widget/ray-optics-simulation/svg-badge.svg)](https://hosted.weblate.org/engage/ray-optics-simulation/)
-[![Deploy website](https://github.com/ricktu288/ray-optics/actions/workflows/deploy.yml/badge.svg)](https://github.com/ricktu288/ray-optics/actions/workflows/deploy.yml)
-[![Deploy integrations](https://github.com/ricktu288/ray-optics/actions/workflows/deploy-integrations.yml/badge.svg)](https://github.com/ricktu288/ray-optics/actions/workflows/deploy-integrations.yml)
+# Wave Optics Simulation
+[![Deploy website](https://github.com/ssenhorst/wave-optics/actions/workflows/deploy.yml/badge.svg)](https://github.com/ssenhorst/wave-optics/actions/workflows/deploy.yml)
+[![Run Tests](https://github.com/ssenhorst/wave-optics/actions/workflows/test.yml/badge.svg)](https://github.com/ssenhorst/wave-optics/actions/workflows/test.yml)
 
-A web app for creating and simulating 2D geometric optical scenes, with a gallery of (interactive) demos.
+A web app for simulating 2D wave optics: light as a complex scalar field, summed from point sources,
+so that diffraction, interference and the resolution limit come out of the simulation rather than
+being drawn on top of it. It is built for teaching, and carries an assignment system that scores a
+student's work against the field as they change the scene.
+
+It is a fork of the [Ray Optics Simulation](https://github.com/ricktu288/ray-optics), whose ray
+tracer and editor it still contains and still runs. See [CITATION.md](CITATION.md) for which project
+to cite for which part, and [NOTICE](NOTICE) for what was inherited and what was changed.
 
 ## Features
-- Simulate various light sources: ray, parallel/divergent beam, and point source
-- Simulate reflection in linear or curved mirrors, which can be defined by a custom equation
-- Simulate beam splitters and dichroic mirrors
-- Simulate refraction in linear or curved interfaces, which can be defined by a custom equation
-- Simulate ideal lens/mirror, which obey the lens/mirror equation
-- Simulate spherical lens defined by front/back focal distances
-- Simulate gradient-index material defined by a custom refractive index function
-- Simulate mixture of colors, color filtering, and chromatic dispersion
-- Simulate diffraction gratings.
-- Simulate custom surfaces with ray interaction defined by custom equations
-- View extensions of rays to see if they converge to a virtual image
-- View real images, virtual images, and virtual objects directly
-- View images that can be observed from some given position
-- Distance, angular, energy flow, and momentum flow measurements
-- Draw irradiance map and export as CSV data
-- Import shapes from SVG files as optical components
-- Export as SVG diagram
-- Create modularized combinations of optical elements with custom parameters.
-- Author interactive assignments: restrict what the student may change, hide parts of the interface, and set goals that are scored live against the simulation.
-- Run with high-performance ray tracing engine based on WebGPU. <sup>Beta</sup>
-- Use the simulator as a node module in your own project and integrate with other programming languages.
-- Simulate 2D scalar wave optics — diffraction, interference and refraction by summing point-source fields — in a companion app sharing the same editor. <sup>Experimental</sup>
+
+- Light as a scalar field, propagated with the Rayleigh–Sommerfeld integral, so near field and far
+  field are the same calculation
+- Sources: point, line with an arbitrary complex profile, and plane wave
+- Elements: refracting interfaces of any shape, glass lenses, multi-slit apertures, square and
+  sinusoidal gratings, zone plates, and binary masks defined by an equation
+- Media with a refractive index, entered and left through curved interfaces
+- Measurements: a focus probe that finds and reports a focus, and a screen that plots the field
+  falling on it
+- Three views of the same field: intensity, the instantaneous real field, and amplitude with phase
+  as hue
+- Adaptive resolution, computed on the GPU, refining while you drag
+- Worked examples that build themselves to fit the window they open in
+- Assignments with goals scored live, packable into one self-contained HTML file
+- Embeddable in Jupyter and MyST as an [anywidget](https://anywidget.dev)
+
+The ray optics simulator this project was forked from is still here, at `/simulator/`, with
+everything it could do before. Its own features are listed in
+[its README](https://github.com/ricktu288/ray-optics#features).
 
 ## Task scenes
 
@@ -50,7 +52,7 @@ optics scene or an assignment can be dropped into a notebook or a MyST Markdown 
 passes the scene it wants to show:
 
 ```python
-from ray_optics_widgets import RayOpticsWidget, WaveOpticsWidget, TaskWidget
+from wave_optics_widgets import RayOpticsWidget, WaveOpticsWidget, TaskWidget
 
 WaveOpticsWidget("wave_zone_plate", height=520)
 ```
@@ -61,57 +63,57 @@ also publishes the bundle on its own, readable and minified, for a page that emb
 directly rather than through Python.
 
 ## Links
-- [**Launch the Web App**](https://phydemo.app/ray-optics/simulator/)
-- [Gallery](https://phydemo.app/ray-optics/gallery/)
-- [Documentation](https://phydemo.app/ray-optics/docs/index.html)
-- [About](https://phydemo.app/ray-optics/about)
-- [Run Locally](https://github.com/ricktu288/ray-optics/blob/master/run-locally/README.md)
+- [**Launch the Wave Optics Simulator**](https://ssenhorst.github.io/wave-optics/wave/)
+- [Gallery and assignments](https://ssenhorst.github.io/wave-optics/gallery/)
+- [Documentation](https://ssenhorst.github.io/wave-optics/docs/index.html)
+- [The ray optics simulator](https://ssenhorst.github.io/wave-optics/simulator/)
+- [Run Locally](https://github.com/ssenhorst/wave-optics/blob/master/run-locally/README.md)
 
 ## Cite this project
 
-If you use this project in your research, please cite it according to the following instruction depending on the version you are using.
-
-If you are using the [online version](https://phydemo.app/ray-optics/simulator/), please check if you are using any beta features (if some are used, a "Beta" icon is shown in the lower left corner of the web app). If no beta features are used, then please cite [the Zenodo record of the latest release](https://doi.org/10.5281/zenodo.6386611) by following the "Citation" or "Export" panel there. If beta features are used, you may either cite as above but with additional comment on the usage of beta features (as the latest release does not include beta features), or directly cite the GitHub repository with access date.
-
-If you are running the project locally, please follow the Zenodo link of the version you are using in the [Releases](https://github.com/ricktu288/ray-optics/releases) page if you downloaded it there. If you are not using a released version (e.g. downloaded from a previous "latest deployment" link or cloned from the repository), you may either cite the Zenodo record corresponding to the most recent parent release of the version you are using with comment on the usage of beta/modified features (if any), or directly cite the GitHub repository with access date.
+Which work to cite depends on which part you used: this project for the wave optics simulator and
+the assignments, the original Ray Optics Simulation for the ray tracer. [CITATION.md](CITATION.md)
+says how, and [CITATION.cff](CITATION.cff) holds the metadata that GitHub's "Cite this repository"
+button and most reference managers read.
 
 ## Contributing
 
 Contributions are welcome. For the following types of contributions, no (or little) programming knowledge is required:
 
-- New items in the [gallery](https://phydemo.app/ray-optics/gallery/)
+- New items in the [gallery](https://ssenhorst.github.io/wave-optics/gallery/)
 - New translations
 - New modules (as in Tools -> Other -> Import Modules)
 
-See [CONTRIBUTING.md](https://github.com/ricktu288/ray-optics/blob/master/CONTRIBUTING.md) for the tutorial. Also see the [roadmap](https://github.com/ricktu288/ray-optics/blob/master/ROADMAP.md) for the planned features to avoid duplicate work or conflicts.
+See [CONTRIBUTING.md](https://github.com/ssenhorst/wave-optics/blob/master/CONTRIBUTING.md) for the tutorial.
 
-For translations, note that this project uses Weblate. Please visit https://hosted.weblate.org/engage/ray-optics-simulation/ to translate.
+Translations of the inherited interface are managed by the upstream project on
+[Weblate](https://hosted.weblate.org/engage/ray-optics-simulation/) and reach this fork when it
+merges from upstream; contribute them there. Strings belonging to the wave optics simulator are only
+in this repository, and are contributed here.
 
-[![Translation status](https://hosted.weblate.org/widget/ray-optics-simulation/287x66-grey.png)](https://hosted.weblate.org/engage/ray-optics-simulation/)
-
-To contribute code, you need to have some knowledge of JavaScript and module bundling. The code is written in ES6 and bundled with Webpack. The code structure is documented in the [documentation](https://phydemo.app/ray-optics/docs/index.html). See the following section for installation instructions.
+To contribute code, you need to have some knowledge of JavaScript and module bundling. The code is written in ES6 and bundled with Webpack. The code structure is documented in the [documentation](https://ssenhorst.github.io/wave-optics/docs/index.html). See the following section for installation instructions.
 
 ## Installation
 
 > [!NOTE]
-> The following instructions are for developers. If you just want to use the web app, you can launch it directly from [here](https://phydemo.app/ray-optics/simulator/).
-> If you just want to run the project locally, please see [Run Locally](https://github.com/ricktu288/ray-optics/blob/master/run-locally/README.md).
+> The following instructions are for developers. If you just want to use the web app, you can launch it directly from [here](https://ssenhorst.github.io/wave-optics/wave/).
+> If you just want to run the project locally, please see [Run Locally](https://github.com/ssenhorst/wave-optics/blob/master/run-locally/README.md).
 
 To run the web app locally for development, you need to have Node.js installed. Then, run the following commands in the terminal:
 ```bash
-git clone https://github.com/ricktu288/ray-optics.git
+git clone https://github.com/ssenhorst/wave-optics.git
 cd ray-optics
 npm install --no-optional
 npm run start
 ```
-After that, the simulator web app should be running at `http://localhost:8080/simulator/`. Note however that some links and the "import module" window will not work because the other part of the project is not built.
+After that, the wave optics web app should be running at `http://localhost:8080/wave/`, and the ray simulator at `http://localhost:8080/simulator/`. Note however that some links and the "import module" window will not work because the other part of the project is not built.
 
 If you want to build the entire project, including the home pages, gallery, modules, documentation, and the node version of the simulator, you can run the following command:
 ```bash
 npm install
 npm run build
 ```
-After that, the entire content for the [https://phydemo.app/ray-optics/](https://phydemo.app/ray-optics/) website will be in the `dist` folder. You can again run `npm run start` to run the simulator locally, and now all the links and the "import module" window should work.
+After that, the entire content for the [https://ssenhorst.github.io/wave-optics/](https://ssenhorst.github.io/wave-optics/) website will be in the `dist` folder. You can again run `npm run start` to run the simulator locally, and now all the links and the "import module" window should work.
 
 If an error occurs during the installation, some common reasons are:
 - The version of Node.js is too old. You can update Node.js to version 18 or later.
@@ -128,7 +130,7 @@ The full build may takes about half an hour to complete due to the generation of
 - `test` contains the automatic tests for the project.
 - `python` contains the Python distribution of the widgets, which wraps the built bundle as anywidgets. The project it belongs to is described by `pyproject.toml` at the root, so the repository as a whole is what `pip install .` installs.
 - `integrations` contains the integration tools for the simulator with other programming languages.
-- `dist` (generated at build time) contains the built files for the project (the entire content for the [https://phydemo.app/ray-optics](https://phydemo.app/ray-optics) website).
+- `dist` (generated at build time) contains the built files for the project (the entire content for the [https://ssenhorst.github.io/wave-optics](https://ssenhorst.github.io/wave-optics) website).
 - `dist-node` (generated at build time) contains the built files for the node module version of the simulator, which is required for the image generation, and can also be used in your own project.
 - `dist-integrations` (generated at build time) contains the built files for the integration tools.
 
@@ -163,7 +165,7 @@ Note that `npm run build` is equivalent to running all the above commands.
 
 Two further builds are not part of `npm run build`, since neither belongs in the website:
 ```bash
-# build the anywidget bundle, into python/ray_optics_widgets/static.
+# build the anywidget bundle, into python/wave_optics_widgets/static.
 npm run build-anywidget
 
 # open a task scene in the app as a designer, rather than as an assignment.
@@ -204,7 +206,7 @@ Currently there is no automatic end-to-end test for the web app. So please manua
 ## Use as a Node Module
 
 The simulator can be used as a node module in your own project and integrated with other programming languages.
-The easiest way is to use the built [integration tools](https://github.com/ricktu288/ray-optics/tree/dist-integrations). You don't need to clone this repo and build anything, but you still need to have Node.js installed.
+The easiest way is to use the built [integration tools](https://github.com/ssenhorst/wave-optics/tree/dist-integrations). You don't need to clone this repo and build anything, but you still need to have Node.js installed.
 
 For more advanced usage, the node module version of the simulator is built with the following command:
 ```bash
@@ -215,7 +217,7 @@ After that, you can use the simulator in your own project by importing the modul
 const { Scene, Simulator, sceneObjs, geometry } = require('path/to/ray-optics/dist-node/rayOptics.js');
 ```
 
-See the [documentation](https://phydemo.app/ray-optics/docs/index.html) for more information about the API. For a usage example, see the [image generation script](https://github.com/ricktu288/ray-optics/blob/master/scripts/buildImages.mjs).
+See the [documentation](https://ssenhorst.github.io/wave-optics/docs/index.html) for more information about the API. For a usage example, see the [image generation script](https://github.com/ssenhorst/wave-optics/blob/master/scripts/buildImages.mjs).
 
 To build the integration tools by yourself, run the following command:
 ```bash

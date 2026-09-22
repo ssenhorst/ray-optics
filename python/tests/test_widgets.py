@@ -1,4 +1,4 @@
-# Copyright 2026 The Ray Optics Simulation authors and contributors
+# Copyright 2026 The Wave Optics Simulation authors and contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import json
 
 import pytest
 
-from ray_optics_widgets import (
+from wave_optics_widgets import (
     RayOpticsWidget,
     TaskWidget,
     WaveOpticsWidget,
@@ -51,7 +51,7 @@ def test_every_bundled_scene_loads(name):
 
 
 def test_load_scene_accepts_a_dict_a_path_and_json_text():
-    from ray_optics_widgets import SCENES_DIR
+    from wave_optics_widgets import SCENES_DIR
 
     path = SCENES_DIR / f"{RAY_SCENE}.json"
     by_name = load_scene(RAY_SCENE)

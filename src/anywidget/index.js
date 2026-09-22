@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 The Ray Optics Simulation authors and contributors
+ * Copyright 2026 The Wave Optics Simulation authors and contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@
  * viewer, the wave viewer and the task applet differ only in what they are handed. The `variant`
  * trait is carried through for the sake of error messages and of defaults, not to select code.
  *
- * The model's traits are documented in `python/ray_optics_widgets/widgets.py`, which is the other
+ * The model's traits are documented in `python/wave_optics_widgets/widgets.py`, which is the other
  * half of this file.
  */
 

@@ -1,4 +1,4 @@
-# Copyright 2026 The Ray Optics Simulation authors and contributors
+# Copyright 2026 The Wave Optics Simulation authors and contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ The simulator itself is JavaScript, under ``src/`` in this repository. This pack
 side of it: three `anywidget <https://anywidget.dev>`_ classes that render a scene wherever
 anywidget is understood — a Jupyter notebook, a MyST Markdown build, or a static page.
 
-    >>> from ray_optics_widgets import TaskWidget, list_scenes
+    >>> from wave_optics_widgets import TaskWidget, list_scenes
     >>> "wave_zone_plate" in list_scenes()
     True
 """
@@ -29,7 +29,7 @@ from .widgets import RayOpticsWidget, TaskWidget, WaveOpticsWidget
 try:  # pragma: no cover - only absent when running from a source tree with no metadata
     from importlib.metadata import PackageNotFoundError, version
 
-    __version__ = version("ray-optics-widgets")
+    __version__ = version("wave-optics-widgets")
 except (ImportError, PackageNotFoundError):  # pragma: no cover
     __version__ = "0.0.0.dev0"
 

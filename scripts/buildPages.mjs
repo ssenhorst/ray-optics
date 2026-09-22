@@ -1,5 +1,6 @@
 /*
  * Copyright 2024 The Ray Optics Simulation authors and contributors
+ * Modified in the Wave Optics Simulation, a fork of https://github.com/ricktu288/ray-optics
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -339,17 +340,17 @@ for (const lang of langs) {
     "/wave": "/wave/",
     "/phydemo": "https://phydemo.app/",
     "/email": "mailto:ray-optics@phydemo.app",
-    "/github": "https://github.com/ricktu288/ray-optics",
-    "/github/issues": "https://github.com/ricktu288/ray-optics/issues",
-    "/github/discussions": "https://github.com/ricktu288/ray-optics/discussions",
-    "/integrations": "https://github.com/ricktu288/ray-optics/tree/dist-integrations",
-    "/contributing": "https://github.com/ricktu288/ray-optics/blob/master/CONTRIBUTING.md",
-    "/contributing/gallery": "https://github.com/ricktu288/ray-optics/blob/master/CONTRIBUTING.md#contributing-items-to-the-gallery",
-    "/contributing/modules": "https://github.com/ricktu288/ray-optics/blob/master/CONTRIBUTING.md#contributing-modules",
-    "/license": "https://github.com/ricktu288/ray-optics/blob/master/LICENSE",
+    "/github": "https://github.com/ssenhorst/wave-optics",
+    "/github/issues": "https://github.com/ssenhorst/wave-optics/issues",
+    "/github/discussions": "https://github.com/ssenhorst/wave-optics/discussions",
+    "/integrations": "https://github.com/ssenhorst/wave-optics/tree/dist-integrations",
+    "/contributing": "https://github.com/ssenhorst/wave-optics/blob/master/CONTRIBUTING.md",
+    "/contributing/gallery": "https://github.com/ssenhorst/wave-optics/blob/master/CONTRIBUTING.md#contributing-items-to-the-gallery",
+    "/contributing/modules": "https://github.com/ssenhorst/wave-optics/blob/master/CONTRIBUTING.md#contributing-modules",
+    "/license": "https://github.com/ssenhorst/wave-optics/blob/master/LICENSE",
     "/mathjs/syntax": "https://mathjs.org/docs/expressions/syntax.html",
     "/ai-tools/chatgpt": "https://chatgpt.com/g/g-6777588b53708191b66722e353e95125-ray-optics-coder",
-    "/ai-tools/instructions": "https://github.com/ricktu288/ray-optics/blob/master/ai-tools"
+    "/ai-tools/instructions": "https://github.com/ssenhorst/wave-optics/blob/master/ai-tools"
   };
 
   homeLangs.push(lang);

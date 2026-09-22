@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 The Ray Optics Simulation authors and contributors
+ * Copyright 2026 The Wave Optics Simulation authors and contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -357,7 +357,7 @@ function bindEditorEvents() {
   if (scene.designMode) {
     // The designer is a tool for whoever is authoring the task, so its internals are reachable from
     // the console. The app students get does not expose this.
-    window.rayOpticsApp = app;
+    window.waveOpticsApp = app;
   }
 
   // Switch back to the move-view tool the instant an object is placed, so a

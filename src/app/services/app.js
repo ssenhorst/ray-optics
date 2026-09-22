@@ -1,5 +1,6 @@
 /*
  * Copyright 2024 The Ray Optics Simulation authors and contributors
+ * Modified in the Wave Optics Simulation, a fork of https://github.com/ricktu288/ray-optics
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1053,7 +1054,7 @@ function initAppService() {
   if (scene.designMode) {
     // The designer is a tool for whoever is authoring the task, so its internals are reachable from
     // the console for scripting and debugging. The app students get does not expose this.
-    window.rayOpticsApp = app;
+    window.waveOpticsApp = app;
 
     // While designing, the target of each goal is a handle on the canvas, so that it can be placed
     // by dragging rather than by typing coordinates into the JSON.

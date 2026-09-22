@@ -345,13 +345,13 @@ at it, which is the most robust route on a platform that sanitises pasted HTML:
 To put several applets on a page you control, include the bundle once and mark up each container:
 
 ```html
-<div data-ray-optics style="height: 520px">
+<div data-wave-optics style="height: 520px">
   <script type="application/json"> ... the scene ... </script>
 </div>
-<script src="ray-optics-widget.js"></script>
+<script src="wave-optics-widget.js"></script>
 ```
 
-or create them from code with `RayOptics.createWidget(element, sceneJson, options)`. The options are
+or create them from code with `WaveOptics.createWidget(element, sceneJson, options)`. The options are
 `onTaskStatus(status)`, called after every run with the score of each goal, and `onComplete(status)`,
 called the first time the task is solved — use them to report progress back to the host page.
 

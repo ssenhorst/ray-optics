@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 The Ray Optics Simulation authors and contributors
+ * Copyright 2026 The Wave Optics Simulation authors and contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
  *
  * It produces the pair of files the anywidget spec asks for — an ES module whose default export has
  * a `render` function, and a stylesheet — written straight into the Python package at
- * `python/ray_optics_widgets/static/`, which is where `RayOpticsWidget._esm` and `._css` read them
+ * `python/wave_optics_widgets/static/`, which is where `RayOpticsWidget._esm` and `._css` read them
  * from. The wheel therefore carries the built bundle and the installed package needs no Node.
  *
  * Two builds are made of each, as the release assets offer both: `widget.js` and `widget.css` are
@@ -37,7 +37,7 @@ import path from 'path';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import CopyWebpackPlugin from 'copy-webpack-plugin';
 
-const OUT_DIR = path.resolve('python/ray_optics_widgets/static');
+const OUT_DIR = path.resolve('python/wave_optics_widgets/static');
 
 /**
  * @param {Object} options
@@ -106,7 +106,7 @@ export default () => [
       new CopyWebpackPlugin({
         patterns: [{
           from: 'data/taskScenes',
-          to: path.resolve('python/ray_optics_widgets/scenes'),
+          to: path.resolve('python/wave_optics_widgets/scenes'),
           // The stray metadata files some file systems leave beside the real ones are not scenes.
           globOptions: { ignore: ['**/._*'] },
         }],

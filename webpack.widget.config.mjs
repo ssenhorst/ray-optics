@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 The Ray Optics Simulation authors and contributors
+ * Copyright 2025 The Wave Optics Simulation authors and contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,11 +27,11 @@ export default () => ({
   entry: {
     widget: {
       import: './src/widget/main.js',
-      library: { name: 'RayOptics', type: 'umd', export: 'default' },
+      library: { name: 'WaveOptics', type: 'umd', export: 'default' },
     },
   },
   output: {
-    filename: 'ray-optics-widget.js',
+    filename: 'wave-optics-widget.js',
     path: path.resolve('dist-widget'),
     clean: true,
   },

@@ -1,5 +1,6 @@
 /*
  * Copyright 2024 The Ray Optics Simulation authors and contributors
+ * Modified in the Wave Optics Simulation, a fork of https://github.com/ricktu288/ray-optics
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,17 +54,17 @@ export default (env, argv) => {
       simulator: './src/app/main.js',
       wave: './src/waveApp/main.js',
       // The standalone task widget, exposed as a global so that a page can also create widgets
-      // programmatically rather than only through the `data-ray-optics` attribute.
+      // programmatically rather than only through the `data-wave-optics` attribute.
       widget: {
         import: './src/widget/main.js',
-        library: { name: 'RayOptics', type: 'umd', export: 'default' },
+        library: { name: 'WaveOptics', type: 'umd', export: 'default' },
       },
     },
     output: {
       // The apps are each served from their own directory; the widget is a library file rather than
       // an app, so it keeps a name an embedding page can refer to.
       filename: (pathData) => pathData.chunk.name === 'widget'
-        ? 'widget/ray-optics-widget.js'
+        ? 'widget/wave-optics-widget.js'
         : '[name]/main.js',
       path: path.resolve('dist'),
       assetModuleFilename: (pathData) => {
