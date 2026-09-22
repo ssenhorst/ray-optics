@@ -85,6 +85,17 @@ export const useWaveStore = () => {
     }
     state.showGrid = app.scene.showGrid;
     state.snapToGrid = app.scene.snapToGrid;
+    applyAnimationSetting();
+  };
+
+  /**
+   * Run or hold the clock to match the scene's own `animated` setting. A scene that says it moves
+   * should move as soon as it is opened, whether it came from a file, an example or a link.
+   */
+  const applyAnimationSetting = () => {
+    if (!app.simulator) return;
+    if (state.animated && state.view !== 'intensity') app.simulator.startAnimation();
+    else app.simulator.stopAnimation();
   };
 
   const settingProps = Object.fromEntries(
@@ -138,11 +149,17 @@ export const useWaveStore = () => {
 
   const toggleAnimation = () => {
     if (!app.simulator) return;
-    if (app.simulator.isAnimating) {
+    const running = app.simulator.isAnimating;
+    if (running) {
       app.simulator.stopAnimation();
     } else {
       app.simulator.startAnimation();
     }
+    // Whether the field moves belongs to the scene, so that a scene shared or embedded as a widget
+    // arrives in the state it was left in.
+    state.animated = !running;
+    if (app.scene) app.scene.waveOptics.animated = !running;
+    app.editor?.onActionComplete();
   };
 
   const setTime = (value) => {

@@ -34,6 +34,9 @@ import { resolveUiOptions } from '../core/uiOptions.js';
 import { getObjectPlacement, getImagePlacement } from '../core/illustration.js';
 import churchPicture from '../img/delft_new_church.svg';
 import { sceneAllows, objAllows, objAllowsProperty } from '../core/interaction.js';
+import { FIELD_VIEWS } from '../core/waveOptics/conventions.js';
+import { resolveWaveSettings } from '../core/waveOptics/waveSceneModel.js';
+import { isSceneLink, resolveSceneSource } from './sceneSource.js';
 import GoalOverlay from './overlay.js';
 import Inspector from './Inspector.js';
 import './styles.css';
@@ -77,8 +80,11 @@ function el(tag, className, html) {
 class TaskWidget {
   /**
    * @param {HTMLElement} container - The element the widget is built into. Its contents are replaced.
-   * @param {Object|string} sceneData - The scene, either as a JSON string or as a parsed object.
+   * @param {Object|string} sceneData - The scene: a parsed object, a JSON string, or a link shared
+   * from the simulator, whose hash carries the whole scene compressed.
    * @param {Object} [options] - Overrides applied on top of the scene's own settings.
+   * @param {Object} [options.overrides] - Scene properties (`ui`, `interaction`, `task`, ...) laid
+   * over the scene's own, merged key by key.
    * @param {boolean} [options.allowKeyboard=true] - Whether keyboard shortcuts are handled.
    * @param {function} [options.onTaskStatus] - Called with the {@link TaskStatus} after each run.
    * @param {function} [options.onComplete] - Called once each time the task becomes complete.
@@ -88,8 +94,8 @@ class TaskWidget {
     this.container = container;
     /** @property {Object} options - The options passed by the embedder. */
     this.options = options;
-    /** @property {string} initialJson - The scene as loaded, used by the "restart" button. */
-    this.initialJson = typeof sceneData === 'string' ? sceneData : JSON.stringify(sceneData);
+    /** @property {boolean} destroyed - Whether the widget was disposed of before it finished loading. */
+    this.destroyed = false;
 
     /** @property {Scene} scene - The scene being simulated. */
     this.scene = new Scene();
@@ -104,6 +110,30 @@ class TaskWidget {
     this.pictures = {};
     /** @property {TaskStatus|null} lastStatus - The last evaluated task status. */
     this.lastStatus = null;
+
+    const overrides = options.overrides;
+    const needsDecoding = isSceneLink(sceneData);
+    if (needsDecoding) {
+      // Decompressing a shared link is asynchronous, so the applet cannot be built in one go. The
+      // wait is announced rather than left as an empty box, since a large scene takes a moment.
+      this.container.innerHTML = '';
+      this.container.classList.add('ro-widget');
+      this.container.appendChild(el('div', 'ro-error ro-loading', 'Reading the shared scene…'));
+    }
+    resolveSceneSource(sceneData, overrides)
+      .then((json) => this.start(json))
+      .catch((e) => this.showError(`Could not read the scene: ${e.message}`));
+  }
+
+  /**
+   * Build the applet around a resolved scene. Split out of the constructor because a scene given as
+   * a shared link only becomes available once it has been decompressed.
+   * @param {string} json - The scene JSON.
+   */
+  start(json) {
+    if (this.destroyed) return;
+    /** @property {string} initialJson - The scene as loaded, used by the "restart" button. */
+    this.initialJson = json;
 
     this.buildDom();
     // Which simulator to build is decided from the file rather than from a loaded scene, so the
@@ -265,6 +295,8 @@ class TaskWidget {
 
     this.buildPanel();
     this.buildControls();
+    this.applyAnimationSetting();
+    this.refreshPlayButton();
     this.inspector.show(-1);
   }
 
@@ -287,6 +319,8 @@ class TaskWidget {
       host.appendChild(reset);
     }
 
+    if (this.isWave) this.buildWaveControls(host);
+
     if (this.ui.zoomButtons && sceneAllows(this.scene, 'zoom')) {
       const zoomOut = el('button', 'ro-btn', '&minus;');
       zoomOut.title = 'Zoom out';
@@ -296,6 +330,91 @@ class TaskWidget {
       zoomIn.addEventListener('click', () => this.zoomBy(1.25));
       host.appendChild(zoomOut);
       host.appendChild(zoomIn);
+    }
+  }
+
+  /**
+   * Build the controls that only a wave scene has: which way the field is shown, and, for the two
+   * views that show an instant rather than a time average, whether that instant advances.
+   *
+   * They are shown by default because a field the student cannot switch or set in motion hides
+   * most of what the simulation knows; a scene that wants a single fixed picture turns them off
+   * with `ui.viewSelector` and `ui.playButton`.
+   *
+   * @param {HTMLElement} host - The element the controls are appended to.
+   */
+  buildWaveControls(host) {
+    const settings = resolveWaveSettings(this.scene);
+
+    if (this.ui.viewSelector) {
+      const select = el('select', 'ro-select');
+      select.title = 'How the field is shown';
+      for (const view of FIELD_VIEWS) {
+        const option = document.createElement('option');
+        option.value = view;
+        option.textContent = { intensity: 'Intensity', field: 'Field', amplitudePhase: 'Amp+phase' }[view];
+        select.appendChild(option);
+      }
+      select.value = settings.view;
+      select.addEventListener('change', () => this.setView(select.value));
+      host.appendChild(select);
+    }
+
+    if (this.ui.playButton) {
+      this.playButton = el('button', 'ro-btn');
+      this.playButton.addEventListener('click', () => {
+        if (this.simulator.isAnimating) this.simulator.stopAnimation();
+        else this.simulator.startAnimation();
+        this.refreshPlayButton();
+      });
+      host.appendChild(this.playButton);
+      this.refreshPlayButton();
+    } else {
+      this.playButton = null;
+    }
+  }
+
+  /**
+   * Show the play button in the state the animation is actually in, and hide it in the intensity
+   * view, which is a time average and so has no instant to animate.
+   */
+  refreshPlayButton() {
+    if (!this.playButton) return;
+    const timeResolved = resolveWaveSettings(this.scene).view !== 'intensity';
+    this.playButton.style.display = timeResolved ? '' : 'none';
+    const running = !!this.simulator.isAnimating;
+    this.playButton.innerHTML = running ? '&#10073;&#10073;' : '&#9654;';
+    this.playButton.title = running ? 'Pause the field' : 'Animate the field';
+  }
+
+  /**
+   * Switch which way the field is shown.
+   *
+   * Only the colouring of the cached field changes, so nothing is recomputed. Leaving the
+   * time-averaged view is what the animation exists for, so the scene's `waveOptics.animated` is
+   * honoured again here rather than only at load.
+   * @param {string} view - One of {@link FIELD_VIEWS}.
+   */
+  setView(view) {
+    if (!this.isWave || !FIELD_VIEWS.includes(view)) return;
+    this.scene.waveOptics.view = view;
+    this.simulator.updateSimulation(true, true);
+    this.simulator.render();
+    this.applyAnimationSetting();
+    this.refreshPlayButton();
+  }
+
+  /**
+   * Start or stop the field animation to match the scene's `waveOptics.animated`, which is how a
+   * scene says whether it is a moving picture or a still one.
+   */
+  applyAnimationSetting() {
+    if (!this.isWave) return;
+    const settings = resolveWaveSettings(this.scene);
+    if (settings.animated && settings.view !== 'intensity') {
+      this.simulator.startAnimation();
+    } else {
+      this.simulator.stopAnimation();
     }
   }
 
@@ -449,6 +568,7 @@ class TaskWidget {
 
   /** Re-measure the canvases after the host element changed size. */
   resize(skipUpdate) {
+    if (!this.simulator) return;
     const rect = this.stage.getBoundingClientRect();
     const width = Math.max(1, Math.round(rect.width));
     const height = Math.max(1, Math.round(rect.height));
@@ -604,9 +724,11 @@ class TaskWidget {
 
   /** Release the observers and animation loop of the widget. */
   destroy() {
-    this.overlay.stop();
-    this.resizeObserver.disconnect();
-    this.canvasAboveLight.removeEventListener('keydown', this.onKeyDown);
+    this.destroyed = true;
+    this.simulator?.stopAnimation?.();
+    this.overlay?.stop();
+    this.resizeObserver?.disconnect();
+    this.canvasAboveLight?.removeEventListener('keydown', this.onKeyDown);
   }
 }
 

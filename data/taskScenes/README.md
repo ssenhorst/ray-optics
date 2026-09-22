@@ -201,9 +201,15 @@ out, or set `showImage` to false, to draw only the object.
 
 All booleans, all default to `true`. `toolbar`, `objectBar`, `sidebar`, `statusBar`, `footer` and
 `welcomeMessage` are honoured by the full web app; `taskPanel`, `resetButton`, `zoomButtons`,
-`showTargets`, `showAffordances` and `celebrate` by the widget.
+`playButton`, `viewSelector`, `showTargets`, `showAffordances` and `celebrate` by the widget.
 
 `toolbar`, `objectBar` and `statusBar` are honoured by the wave app too.
+
+`viewSelector` and `playButton` only ever appear on a wave scene, and the play button only in the
+two views that show an instant rather than a time average. Both are on by default, because a field
+the student can neither switch nor set in motion hides most of what the simulation knows; a figure
+meant to be one fixed picture turns them off. Which view that picture is, and whether it moves, are
+scene properties: `waveOptics.view` and `waveOptics.animated`.
 
 `showAffordances` is what makes a restricted scene readable: the widget marks every place the
 permissions let the student grab, with a ring on each draggable control point and a four-way arrow
@@ -352,8 +358,18 @@ To put several applets on a page you control, include the bundle once and mark u
 ```
 
 or create them from code with `WaveOptics.createWidget(element, sceneJson, options)`. The options are
-`onTaskStatus(status)`, called after every run with the score of each goal, and `onComplete(status)`,
-called the first time the task is solved — use them to report progress back to the host page.
+`onTaskStatus(status)`, called after every run with the score of each goal, `onComplete(status)`,
+called the first time the task is solved — use them to report progress back to the host page — and
+`overrides`, scene properties merged over the scene's own.
+
+Wherever a scene is accepted, a link shared from the simulator is accepted too: the URL its
+**File → Copy link** button produces, or the address bar with **Auto sync URL** on, whose hash is
+the whole scene compressed. That is the quickest way from a scene on screen to an applet on a page,
+with no file in between:
+
+```html
+<div data-wave-optics="https://phydemo.app/ray-optics/simulator/#XQAAgAD..." style="height: 520px"></div>
+```
 
 ## Where an assignment ends up
 

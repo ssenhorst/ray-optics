@@ -26,6 +26,7 @@ from wave_optics_widgets import (
     RayOpticsWidget,
     TaskWidget,
     WaveOpticsWidget,
+    is_scene_link,
     is_wave_scene,
     list_scenes,
     load_scene,
@@ -33,6 +34,10 @@ from wave_optics_widgets import (
 
 RAY_SCENE = "collimate_the_beam"
 WAVE_SCENE = "wave_zone_plate"
+
+# A link of the shape the simulator produces: the host is irrelevant, the compressed payload is the
+# scene. Only its shape matters here, since the browser is what decompresses it.
+SCENE_LINK = "https://phydemo.app/ray-optics/simulator/#" + "N4IgLg" * 20
 
 
 def test_bundled_scenes_are_listed():
@@ -120,3 +125,44 @@ def test_the_student_facing_results_start_empty():
     assert widget.progress == 0.0
     assert widget.solved is False
     assert widget.goal_status == []
+
+
+def test_a_shared_link_is_told_apart_from_a_scene_name_or_a_path():
+    assert is_scene_link(SCENE_LINK)
+    assert is_scene_link("#" + "N4IgLg" * 20)
+    # A gallery link names a scene rather than carrying one, and neither does a name or a file.
+    assert not is_scene_link("https://phydemo.app/ray-optics/simulator/#zone_plate")
+    assert not is_scene_link(RAY_SCENE)
+    assert not is_scene_link("scenes/thing.json")
+
+
+def test_a_scene_may_be_given_as_a_shared_link():
+    # The link travels to the browser as a link: decompressing it needs the codec the simulator
+    # compressed it with, which lives there.
+    widget = RayOpticsWidget(SCENE_LINK)
+    assert widget.link == SCENE_LINK
+    assert widget.scene == {}
+
+    with pytest.raises(TypeError):
+        RayOpticsWidget(SCENE_LINK, link=SCENE_LINK)
+
+
+def test_a_link_is_not_checked_against_the_widget_engine():
+    # Which simulator a compressed scene needs cannot be known until it is decompressed, so the
+    # applet decides it, as it does for a scene handed to it directly.
+    assert WaveOpticsWidget(SCENE_LINK).link == SCENE_LINK
+    assert TaskWidget(SCENE_LINK).link == SCENE_LINK
+
+
+def test_the_wave_display_settings_are_an_override_of_their_own():
+    widget = WaveOpticsWidget(WAVE_SCENE, wave_optics={"view": "field", "animated": True})
+    assert widget.wave_optics == {"view": "field", "animated": True}
+
+
+def test_a_misspelled_option_is_refused_where_it_is_written():
+    with pytest.raises(ValueError, match="unknown ui key 'playbutton'"):
+        RayOpticsWidget(RAY_SCENE, ui={"playbutton": False})
+    with pytest.raises(ValueError, match="unknown interaction key 'draggable'"):
+        RayOpticsWidget(RAY_SCENE, interaction={"draggable": False})
+    # The widget's own controls are options like any other.
+    RayOpticsWidget(RAY_SCENE, ui={"playButton": False, "viewSelector": False})

@@ -237,6 +237,10 @@ export default {
       app.saveScene();
     },
     onCopyLink() {
+      // Copying a link says the scene is meant to be shared, so the address bar starts tracking it
+      // from here on and the link keeps pointing at what is on screen.
+      this.store.state.autoSyncUrl = true;
+      app.autoSyncUrl = true;
       this.linkLabel = 'Copying…';
       app.copyLink()
         .then(() => { this.linkLabel = 'Copied'; })

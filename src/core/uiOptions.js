@@ -46,6 +46,10 @@ export const UI_DEFAULTS = {
   resetButton: true,
   /** The zoom buttons of the widget. */
   zoomButtons: true,
+  /** The widget's play/pause button, which runs the clock of a wave scene's instantaneous views. */
+  playButton: true,
+  /** The widget's field-view selector, which switches between intensity, field and amplitude+phase. */
+  viewSelector: true,
   /** Whether goal targets are drawn on the canvas. */
   showTargets: true,
   /** Whether the places the student may grab are marked on the canvas. */

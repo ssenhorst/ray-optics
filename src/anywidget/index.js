@@ -36,6 +36,7 @@ import i18next from 'i18next';
 import simulatorEn from '../../locales/en/simulator.json';
 import mainEn from '../../locales/en/main.json';
 import TaskWidget from '../widget/TaskWidget.js';
+import { isSceneLink } from '../widget/sceneSource.js';
 import '../widget/styles.css';
 import './anywidget.css';
 
@@ -47,7 +48,7 @@ i18next.init({
 });
 
 /** The traits that describe what to show. A change to any of them rebuilds the applet. */
-const SCENE_TRAITS = ['scene', 'interaction', 'ui', 'task', 'variant'];
+const SCENE_TRAITS = ['scene', 'link', 'interaction', 'ui', 'task', 'wave_optics', 'variant'];
 
 /**
  * Read a trait, tolerating both an anywidget model and a plain object standing in for one, which is
@@ -63,53 +64,48 @@ function getValue(model, name, fallback) {
 }
 
 /**
- * Whether a value is a plain object worth merging into rather than replacing.
- * @param {*} value - The value.
- * @returns {boolean} Whether it is a plain object.
+ * The scene the applet is asked to show: the `scene` dict, or the `link` a scene was shared as.
+ *
+ * A link is handed on as it stands rather than decompressed here, because the applet accepts one
+ * directly and does the decompression itself; this way a notebook, a MyST page and a plain HTML
+ * embed all reach the same code.
+ *
+ * @param {Object} model - The model.
+ * @returns {Object|string|null} The scene, the link, or null if neither was given.
  */
-function isPlainObject(value) {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
+function sceneSource(model) {
+  const link = getValue(model, 'link', '');
+  const scene = getValue(model, 'scene', {});
+  const parsed = typeof scene === 'string' && scene.trim().startsWith('{') ? JSON.parse(scene) : scene;
+  if (parsed && typeof parsed === 'object' && Array.isArray(parsed.objs)) return parsed;
+  if (typeof link === 'string' && isSceneLink(link)) return link;
+  if (typeof scene === 'string' && isSceneLink(scene)) return scene;
+  return null;
 }
 
 /**
- * Merge `overrides` into `base`, recursing into plain objects so that, say, an override naming only
- * `ui.toolbar` leaves the rest of `ui` as the scene had it. Arrays are replaced outright: a list of
- * goals or of objects is a single value, not something to merge element by element.
- * @param {Object} base - The value merged into. Not modified.
- * @param {Object} overrides - The value taking precedence.
- * @returns {Object} The merged value.
- */
-function mergeDeep(base, overrides) {
-  const out = { ...base };
-  for (const [key, value] of Object.entries(overrides || {})) {
-    out[key] = isPlainObject(value) && isPlainObject(base?.[key])
-      ? mergeDeep(base[key], value)
-      : value;
-  }
-  return out;
-}
-
-/**
- * Build the scene the applet is given: the scene from the model, with the separately supplied
- * interaction permissions, interface options and task laid over it.
+ * The scene properties supplied beside the scene: the interaction permissions, the interface
+ * options, the task and the wave-optics display settings.
  *
  * Keeping them separate is what makes one scene file reusable. The same scene can be shown as a
  * free exploration in one place and as a graded assignment in another, with the difference living
- * in the notebook or the Markdown rather than in a second copy of the scene.
+ * in the notebook or the Markdown rather than in a second copy of the scene. They are merged key by
+ * key by the applet, so a `ui` naming one key leaves the scene's own settings for the others — and,
+ * where nothing is given, the scene's own `interaction` and `ui` are what decide what the student
+ * may do and which controls appear.
  *
  * @param {Object} model - The model.
- * @returns {Object} The scene to load.
+ * @returns {Object} The overrides, possibly empty.
  */
-function composeScene(model) {
-  const scene = getValue(model, 'scene', {});
-  const parsed = typeof scene === 'string' ? JSON.parse(scene) : scene;
+function sceneOverrides(model) {
   const overrides = {};
-  for (const key of ['interaction', 'ui', 'task']) {
-    const value = getValue(model, key, null);
+  for (const [trait, key] of [['interaction', 'interaction'], ['ui', 'ui'], ['task', 'task'],
+    ['wave_optics', 'waveOptics']]) {
+    const value = getValue(model, trait, null);
     // An empty dict is how a Python trait says "not set", so it must not clear the scene's own.
     if (value && Object.keys(value).length > 0) overrides[key] = value;
   }
-  return mergeDeep(parsed, overrides);
+  return overrides;
 }
 
 /**
@@ -177,19 +173,20 @@ function render({ model, el }) {
     host.innerHTML = '';
     applyHeight();
 
-    let composed;
+    let source;
     try {
-      composed = composeScene(model);
+      source = sceneSource(model);
     } catch (e) {
       showMessage(host, `Could not read the scene: ${e.message}`);
       return;
     }
-    if (!composed || !Array.isArray(composed.objs)) {
-      showMessage(host, 'No scene to show. Pass one as the widget\'s `scene`.');
+    if (!source) {
+      showMessage(host, 'No scene to show. Pass one as the widget\'s `scene`, or a shared link as its `link`.');
       return;
     }
 
-    widget = new TaskWidget(host, composed, {
+    widget = new TaskWidget(host, source, {
+      overrides: sceneOverrides(model),
       allowKeyboard: getValue(model, 'allow_keyboard', true),
       onTaskStatus: (status) => publishStatus(model, status),
     });
