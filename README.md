@@ -1,36 +1,38 @@
-![Example figure](https://raw.githubusercontent.com/ssenhorst/ray-optics/master/src/img/spherical-lens-and-mirror.jpg)
+![Two coherent point sources interfering](src/img/wave/carousel-twoPointSources.jpg)
 
-# Ray Optics Simulation
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.6386611.svg)](https://doi.org/10.5281/zenodo.6386611)
-[![translated](https://hosted.weblate.org/widget/ray-optics-simulation/svg-badge.svg)](https://hosted.weblate.org/engage/ray-optics-simulation/)
+# Wave Optics Simulation
 [![Deploy website](https://github.com/ssenhorst/ray-optics/actions/workflows/deploy.yml/badge.svg)](https://github.com/ssenhorst/ray-optics/actions/workflows/deploy.yml)
-[![Deploy integrations](https://github.com/ssenhorst/ray-optics/actions/workflows/deploy-integrations.yml/badge.svg)](https://github.com/ssenhorst/ray-optics/actions/workflows/deploy-integrations.yml)
+[![Run Tests](https://github.com/ssenhorst/ray-optics/actions/workflows/test.yml/badge.svg)](https://github.com/ssenhorst/ray-optics/actions/workflows/test.yml)
 
-A web app for creating and simulating 2D geometric optical scenes, with a gallery of (interactive) demos.
+A web app for simulating 2D wave optics: light as a complex scalar field, summed from point sources,
+so that diffraction, interference and the resolution limit come out of the simulation rather than
+being drawn on top of it. It is built for teaching, and carries an assignment system that scores a
+student's work against the field as they change the scene.
+
+It is a fork of the [Ray Optics Simulation](https://github.com/ricktu288/ray-optics), whose ray
+tracer and editor it still contains and still runs. See [CITATION.md](CITATION.md) for which project
+to cite for which part, and [NOTICE](NOTICE) for what was inherited and what was changed.
 
 ## Features
-- Simulate various light sources: ray, parallel/divergent beam, and point source
-- Simulate reflection in linear or curved mirrors, which can be defined by a custom equation
-- Simulate beam splitters and dichroic mirrors
-- Simulate refraction in linear or curved interfaces, which can be defined by a custom equation
-- Simulate ideal lens/mirror, which obey the lens/mirror equation
-- Simulate spherical lens defined by front/back focal distances
-- Simulate gradient-index material defined by a custom refractive index function
-- Simulate mixture of colors, color filtering, and chromatic dispersion
-- Simulate diffraction gratings.
-- Simulate custom surfaces with ray interaction defined by custom equations
-- View extensions of rays to see if they converge to a virtual image
-- View real images, virtual images, and virtual objects directly
-- View images that can be observed from some given position
-- Distance, angular, energy flow, and momentum flow measurements
-- Draw irradiance map and export as CSV data
-- Import shapes from SVG files as optical components
-- Export as SVG diagram
-- Create modularized combinations of optical elements with custom parameters.
-- Author interactive assignments: restrict what the student may change, hide parts of the interface, and set goals that are scored live against the simulation.
-- Run with high-performance ray tracing engine based on WebGPU. <sup>Beta</sup>
-- Use the simulator as a node module in your own project and integrate with other programming languages.
-- Simulate 2D scalar wave optics — diffraction, interference and refraction by summing point-source fields — in a companion app sharing the same editor. <sup>Experimental</sup>
+
+- Light as a scalar field, propagated with the Rayleigh–Sommerfeld integral, so near field and far
+  field are the same calculation
+- Sources: point, line with an arbitrary complex profile, and plane wave
+- Elements: refracting interfaces of any shape, glass lenses, multi-slit apertures, square and
+  sinusoidal gratings, zone plates, and binary masks defined by an equation
+- Media with a refractive index, entered and left through curved interfaces
+- Measurements: a focus probe that finds and reports a focus, and a screen that plots the field
+  falling on it
+- Three views of the same field: intensity, the instantaneous real field, and amplitude with phase
+  as hue
+- Adaptive resolution, computed on the GPU, refining while you drag
+- Worked examples that build themselves to fit the window they open in
+- Assignments with goals scored live, packable into one self-contained HTML file
+- Embeddable in Jupyter and MyST as an [anywidget](https://anywidget.dev)
+
+The ray optics simulator this project was forked from is still here, at `/simulator/`, with
+everything it could do before. Its own features are listed in
+[its README](https://github.com/ricktu288/ray-optics#features).
 
 ## Task scenes
 
@@ -61,19 +63,18 @@ also publishes the bundle on its own, readable and minified, for a page that emb
 directly rather than through Python.
 
 ## Links
-- [**Launch the Web App**](https://ssenhorst.github.io/ray-optics/simulator/)
-- [Gallery](https://ssenhorst.github.io/ray-optics/gallery/)
+- [**Launch the Wave Optics Simulator**](https://ssenhorst.github.io/ray-optics/wave/)
+- [Gallery and assignments](https://ssenhorst.github.io/ray-optics/gallery/)
 - [Documentation](https://ssenhorst.github.io/ray-optics/docs/index.html)
-- [About](https://ssenhorst.github.io/ray-optics/about)
+- [The ray optics simulator](https://ssenhorst.github.io/ray-optics/simulator/)
 - [Run Locally](https://github.com/ssenhorst/ray-optics/blob/master/run-locally/README.md)
 
 ## Cite this project
 
-If you use this project in your research, please cite it according to the following instruction depending on the version you are using.
-
-For the wave optics features, please cite this repository with the access date. For the ray optics features, please check if you are using any beta features (if some are used, a "Beta" icon is shown in the lower left corner of the web app). If no beta features are used, then please cite [the Zenodo record of the latest release](https://doi.org/10.5281/zenodo.6386611) by following the "Citation" or "Export" panel there. If beta features are used, you may either cite as above but with additional comment on the usage of beta features (as the latest release does not include beta features), or directly cite the GitHub repository with access date.
-
-If you are running the project locally, please follow the Zenodo link of the version you are using in the [Releases](https://github.com/ssenhorst/ray-optics/releases) page if you downloaded it there. If you are not using a released version (e.g. downloaded from a previous "latest deployment" link or cloned from the repository), you may either cite the Zenodo record corresponding to the most recent parent release of the version you are using with comment on the usage of beta/modified features (if any), or directly cite the GitHub repository with access date.
+Which work to cite depends on which part you used: this project for the wave optics simulator and
+the assignments, the original Ray Optics Simulation for the ray tracer. [CITATION.md](CITATION.md)
+says how, and [CITATION.cff](CITATION.cff) holds the metadata that GitHub's "Cite this repository"
+button and most reference managers read.
 
 ## Contributing
 
@@ -83,18 +84,19 @@ Contributions are welcome. For the following types of contributions, no (or litt
 - New translations
 - New modules (as in Tools -> Other -> Import Modules)
 
-See [CONTRIBUTING.md](https://github.com/ssenhorst/ray-optics/blob/master/CONTRIBUTING.md) for the tutorial. Also see the [roadmap](https://github.com/ssenhorst/ray-optics/blob/master/ROADMAP.md) for the planned features to avoid duplicate work or conflicts.
+See [CONTRIBUTING.md](https://github.com/ssenhorst/ray-optics/blob/master/CONTRIBUTING.md) for the tutorial.
 
-For translations, note that this project uses Weblate. Please visit https://hosted.weblate.org/engage/ray-optics-simulation/ to translate.
-
-[![Translation status](https://hosted.weblate.org/widget/ray-optics-simulation/287x66-grey.png)](https://hosted.weblate.org/engage/ray-optics-simulation/)
+Translations of the inherited interface are managed by the upstream project on
+[Weblate](https://hosted.weblate.org/engage/ray-optics-simulation/) and reach this fork when it
+merges from upstream; contribute them there. Strings belonging to the wave optics simulator are only
+in this repository, and are contributed here.
 
 To contribute code, you need to have some knowledge of JavaScript and module bundling. The code is written in ES6 and bundled with Webpack. The code structure is documented in the [documentation](https://ssenhorst.github.io/ray-optics/docs/index.html). See the following section for installation instructions.
 
 ## Installation
 
 > [!NOTE]
-> The following instructions are for developers. If you just want to use the web app, you can launch it directly from [here](https://ssenhorst.github.io/ray-optics/simulator/).
+> The following instructions are for developers. If you just want to use the web app, you can launch it directly from [here](https://ssenhorst.github.io/ray-optics/wave/).
 > If you just want to run the project locally, please see [Run Locally](https://github.com/ssenhorst/ray-optics/blob/master/run-locally/README.md).
 
 To run the web app locally for development, you need to have Node.js installed. Then, run the following commands in the terminal:
@@ -104,7 +106,7 @@ cd ray-optics
 npm install --no-optional
 npm run start
 ```
-After that, the simulator web app should be running at `http://localhost:8080/simulator/`. Note however that some links and the "import module" window will not work because the other part of the project is not built.
+After that, the wave optics web app should be running at `http://localhost:8080/wave/`, and the ray simulator at `http://localhost:8080/simulator/`. Note however that some links and the "import module" window will not work because the other part of the project is not built.
 
 If you want to build the entire project, including the home pages, gallery, modules, documentation, and the node version of the simulator, you can run the following command:
 ```bash

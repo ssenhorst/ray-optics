@@ -57,7 +57,8 @@ jobs:
       - name: Build anywidget bundle
         run: npm run build-anywidget
 
-      # The Python distribution of the widgets.
+      # The Python distribution of the widgets, so it can be installed straight from the release
+      # without Node. It has to follow the anywidget build, whose output it packages.
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
@@ -66,8 +67,9 @@ jobs:
       - name: Install Python build tools
         run: pip install -q build
 
-      - name: Build Python wheel
-        run: python -m build --wheel
+      # Not the default `dist/`, which at this point holds the built website.
+      - name: Build Python wheel and sdist
+        run: python -m build --outdir python-dist
 
       - name: Collect anywidget assets
         run: |
@@ -100,10 +102,12 @@ jobs:
         with:
           files: integrations-build.zip
 
-      - name: Upload Python wheel as release asset
+      - name: Upload Python distribution as release assets
         uses: softprops/action-gh-release@v1
         with:
-          files: dist/ray_optics_widgets-*.whl
+          files: |
+            python-dist/ray_optics_widgets-*.whl
+            python-dist/ray_optics_widgets-*.tar.gz
 
       - name: Upload anywidget bundle as release assets
         uses: softprops/action-gh-release@v1

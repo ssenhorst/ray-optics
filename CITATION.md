@@ -1,11 +1,27 @@
 # Citation
 
-If you use Ray Optics Simulation in your research, please cite it according to the following instruction depending on the version you are using.
+This project is a fork of the [Ray Optics Simulation](https://github.com/ricktu288/ray-optics) and
+still contains its ray tracer. Which work to cite therefore depends on which part you used.
 
-## The online version
+## The wave optics simulator, or the assignments
 
-If you are using the [online version](https://phydemo.app/ray-optics/simulator/), please check if you are using any beta features (if some are used, a "Beta" icon is shown in the lower left corner of the web app). If no beta features are used, then please cite [the Zenodo record of the latest release](https://doi.org/10.5281/zenodo.6386611) by following the "Citation" or "Export" panel there. If beta features are used, you may either cite as above but with additional comment on the usage of beta features (as the latest release does not include beta features), or directly cite the GitHub repository with access date.
+Cite this project. [`CITATION.cff`](CITATION.cff) in the repository root holds the metadata; GitHub
+renders it as a "Cite this repository" button, and most reference managers read it directly.
 
-## Other versions
+Until a release is archived and given a DOI, cite the repository with the access date and the
+version or commit you used.
 
-If you are running the project locally, please follow the Zenodo link of the version you are using in the [Releases](https://github.com/ricktu288/ray-optics/releases) page if you downloaded it there. If you are not using a released version (e.g. downloaded from a previous "latest deployment" link or cloned from the repository), you may either cite the Zenodo record corresponding to the most recent parent release of the version you are using with comment on the usage of beta/modified features (if any), or directly cite the GitHub repository with access date.
+## The ray optics simulator
+
+The ray tracer is the original project's work, not this one's. Cite
+[the Zenodo record of the Ray Optics Simulation](https://doi.org/10.5281/zenodo.6386611), following
+the "Citation" or "Export" panel there.
+
+If you used the ray tracer *through* this fork — for instance because you used an assignment built
+on it — cite both: the original for the simulation, this project for what was done with it.
+
+## Both
+
+A paper that uses the wave simulator and the ray simulator together should cite both records. The
+`references` section of `CITATION.cff` names the original, so a manager that follows references will
+usually offer both.
