@@ -1,6 +1,7 @@
 ![Two coherent point sources interfering](src/img/wave/carousel-twoPointSources.jpg)
 
 # Wave Optics Simulation
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22893112.svg)](https://doi.org/10.5281/zenodo.22893112)
 [![Deploy website](https://github.com/ssenhorst/wave-optics/actions/workflows/deploy.yml/badge.svg)](https://github.com/ssenhorst/wave-optics/actions/workflows/deploy.yml)
 [![Run Tests](https://github.com/ssenhorst/wave-optics/actions/workflows/test.yml/badge.svg)](https://github.com/ssenhorst/wave-optics/actions/workflows/test.yml)
 
