@@ -11,6 +11,7 @@ authors:
   - family-names: Senhorst
     given-names: Sander
     affiliation: "Delft University of Technology"
+    orcid: "https://orcid.org/0009-0005-9069-9584"
 version: "1.0.0"
 date-released: "2026-09-22"
 license: Apache-2.0
