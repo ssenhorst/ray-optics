@@ -346,6 +346,7 @@
     "launch": "Launch Wave Optics",
     "rayOpticsNote": "Forked from Ray Optics Simulation, which traces rays instead. That simulator ships alongside this one:",
     "launchRayOptics": "Ray optics simulator",
+    "originalRayOptics": "The original at phydemo.app",
     "componentsTitle": "Components",
     "viewsTitle": "Field views",
     "viewsDescription": "The same double slit, in each of the three ways the field can be shown.",

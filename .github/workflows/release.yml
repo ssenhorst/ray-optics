@@ -45,6 +45,28 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      # PyPI will not accept a version it already has, and cannot be made to: a version number is
+      # spent the moment it is uploaded, even if the release is later deleted. The packaged version
+      # comes from package.json, so a tag disagreeing with it means one of the two is wrong. Checked
+      # here, before the long builds, rather than left to PyPI's opaque rejection at the end.
+      #
+      # Only a release that will actually be published has to agree. A prerelease is often a tag cut
+      # for some other purpose, and is not worth failing a build over.
+      - name: Check the tag matches the packaged version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          packaged=$(node -p "require('./package.json').version")
+          if [ "$tag" = "$packaged" ]; then
+            echo "version $packaged"
+          elif [ "${{ github.event.release.prerelease }}" = "true" ]; then
+            echo "::warning::Prerelease tag $GITHUB_REF_NAME does not match package.json version $packaged. Not published to PyPI, so continuing."
+          else
+            echo "::error::Release tag $GITHUB_REF_NAME does not match package.json version $packaged."
+            echo "Bump the version in package.json, or retag."
+            exit 1
+          fi
+
+
       - name: Build website
         run: npm run build:release
 
@@ -71,14 +93,23 @@ jobs:
       - name: Build Python wheel and sdist
         run: python -m build --outdir python-dist
 
+      # Handed to the publishing job, which is kept separate so that it can run with no permissions
+      # beyond the one it needs to mint an OIDC token.
+      - name: Keep the Python distribution for the publishing job
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-dist
+          path: python-dist/
+          if-no-files-found: error
+
       - name: Collect anywidget assets
         run: |
           mkdir -p anywidget-assets
           static=python/wave_optics_widgets/static
-          cp "$static/widget.js"      anywidget-assets/ray-optics-anywidget.js
-          cp "$static/widget.min.js"  anywidget-assets/ray-optics-anywidget.min.js
-          cp "$static/widget.css"     anywidget-assets/ray-optics-anywidget.css
-          cp "$static/widget.min.css" anywidget-assets/ray-optics-anywidget.min.css
+          cp "$static/widget.js"      anywidget-assets/wave-optics-anywidget.js
+          cp "$static/widget.min.js"  anywidget-assets/wave-optics-anywidget.min.js
+          cp "$static/widget.css"     anywidget-assets/wave-optics-anywidget.css
+          cp "$static/widget.min.css" anywidget-assets/wave-optics-anywidget.min.css
 
       - name: Zip website build
         run: |
@@ -113,7 +144,38 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            anywidget-assets/ray-optics-anywidget.js
-            anywidget-assets/ray-optics-anywidget.min.js
-            anywidget-assets/ray-optics-anywidget.css
-            anywidget-assets/ray-optics-anywidget.min.css
+            anywidget-assets/wave-optics-anywidget.js
+            anywidget-assets/wave-optics-anywidget.min.js
+            anywidget-assets/wave-optics-anywidget.css
+            anywidget-assets/wave-optics-anywidget.min.css
+
+  # Publishing to PyPI through trusted publishing: PyPI is configured to accept a release from this
+  # workflow in this repository, and verifies a short-lived OIDC token rather than a stored API
+  # token, so there is no secret here to leak or rotate.
+  #
+  # It is its own job for the sake of that token. Job-level permissions replace the workflow's
+  # rather than adding to them, so this job can mint an identity token and can do nothing else —
+  # in particular it cannot write to the repository, which the build job above can.
+  publish-pypi:
+    needs: build-artifacts
+    runs-on: ubuntu-latest
+    # A prerelease is usually a tag cut for some purpose other than distribution — the way v0.9.0
+    # was cut only to mint a concept DOI. Spending a PyPI version number on one is not recoverable.
+    if: ${{ !github.event.release.prerelease }}
+    environment:
+      name: pypi
+      url: https://pypi.org/p/wave-optics-widgets
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download the distribution built above
+        uses: actions/download-artifact@v4
+        with:
+          name: python-dist
+          path: python-dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: python-dist/

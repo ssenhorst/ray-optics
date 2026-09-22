@@ -152,9 +152,11 @@ export default {
     const preferences = usePreferencesStore()
     const help = toRef(preferences, 'help')
     const tooltipType = computed(() => help.value ? 'popover' : null)
+    const autoSyncUrl = toRef(preferences, 'autoSyncUrl')
 
     return {
-      tooltipType
+      tooltipType,
+      autoSyncUrl
     }
   },
   methods: {
@@ -181,6 +183,9 @@ export default {
     },
     handleGetLink(event) {
       event.target.blur();
+      // Asking for a link says the scene is meant to be shared, so the address bar starts tracking
+      // it from here on: the link that was just copied stays the link to what is on screen.
+      this.autoSyncUrl = true;
       app.getLink();
     },
     handleExportSvg(event) {

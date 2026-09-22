@@ -33,7 +33,46 @@ import anywidget
 import traitlets
 
 from ._assets import read_asset
-from .scenes import SceneLike, is_wave_scene, load_scene
+from .scenes import SceneLike, is_scene_link, is_wave_scene, load_scene
+
+
+#: The keys of the scene's ``ui`` property, mirroring ``UI_DEFAULTS`` in ``src/core/uiOptions.js``.
+#: Kept here so that a misspelled option is reported where it is written rather than ignored by the
+#: browser, which is the one place a typo would otherwise be invisible.
+UI_KEYS = frozenset({
+    "toolbar", "objectBar", "sidebar", "statusBar", "footer", "welcomeMessage",
+    "taskPanel", "resetButton", "zoomButtons", "playButton", "viewSelector",
+    "showTargets", "showAffordances", "celebrate",
+})
+
+#: The keys of the scene's ``interaction`` property, mirroring ``src/core/interaction.js``.
+INTERACTION_KEYS = frozenset({
+    "enabled", "select", "move", "moveX", "moveY", "reshape", "edit", "remove", "properties",
+    "create", "pan", "zoom", "keyboard",
+})
+
+
+def _check_keys(value: Mapping[str, Any], known: frozenset[str], name: str) -> dict[str, Any]:
+    """Return a settings dict, having complained about any key the front end would not recognise.
+
+    Args:
+        value: The dict given for the trait.
+        known: The keys the front end acts on.
+        name: The trait's name, for the message.
+
+    Returns:
+        The value, as a plain dict.
+
+    Raises:
+        ValueError: If a key is not one the front end knows.
+    """
+    unknown = sorted(set(value or {}) - known)
+    if unknown:
+        raise ValueError(
+            f"unknown {name} key{'s' if len(unknown) > 1 else ''} "
+            f"{', '.join(repr(key) for key in unknown)}. Known keys: {', '.join(sorted(known))}."
+        )
+    return dict(value or {})
 
 
 class RayOpticsWidget(anywidget.AnyWidget):
@@ -41,7 +80,8 @@ class RayOpticsWidget(anywidget.AnyWidget):
 
     Args:
         scene: The scene to show, in any of the forms :func:`~wave_optics_widgets.load_scene`
-            accepts. May also be given as the ``scene`` keyword.
+            accepts, or a link shared from the simulator, whose hash carries the whole scene. May
+            also be given as the ``scene`` keyword, and a link as the ``link`` keyword.
         **kwargs: Any of the traits below.
 
     Example:
@@ -60,6 +100,12 @@ class RayOpticsWidget(anywidget.AnyWidget):
     #: The scene, in the simulator's JSON format.
     scene = traitlets.Dict(default_value={}).tag(sync=True)
 
+    #: A scene given as a link shared from the simulator instead of as a dictionary: the URL its
+    #: "copy link" button produces, or the address bar with "auto sync URL" on. The hash carries the
+    #: whole scene compressed, and the browser decompresses it, so no scene file is needed. Set for
+    #: you when a link is passed where a scene is expected.
+    link = traitlets.Unicode("").tag(sync=True)
+
     #: Interaction permissions laid over the scene's own. See `src/core/interaction.js`; the same
     #: keys work here, and only the keys given are overridden.
     interaction = traitlets.Dict(default_value={}).tag(sync=True)
@@ -69,6 +115,11 @@ class RayOpticsWidget(anywidget.AnyWidget):
 
     #: A task laid over the scene's own. See `data/taskScenes/README.md`.
     task = traitlets.Dict(default_value={}).tag(sync=True)
+
+    #: Wave-optics display settings laid over the scene's own, the same keys the scene's
+    #: ``waveOptics`` uses: ``view`` (``"intensity"``, ``"field"`` or ``"amplitudePhase"``),
+    #: ``animated``, the colormaps and the colour scale cutoffs.
+    wave_optics = traitlets.Dict(default_value={}).tag(sync=True)
 
     #: The height of the applet in pixels. It has no content-driven height of its own, so a notebook
     #: output area or a page needs to be told one.
@@ -93,11 +144,25 @@ class RayOpticsWidget(anywidget.AnyWidget):
             if "scene" in kwargs:
                 raise TypeError("scene was given both positionally and as a keyword")
             kwargs["scene"] = scene
+        # A link is a scene too, so it is accepted wherever a scene is; it just travels to the
+        # browser as a link, since the compression it uses is undone there.
+        if is_scene_link(kwargs.get("scene")):
+            if kwargs.get("link"):
+                raise TypeError("a scene link was given both as `scene` and as `link`")
+            kwargs["link"] = kwargs.pop("scene")
         if "scene" in kwargs:
             kwargs["scene"] = load_scene(kwargs["scene"])
         kwargs.setdefault("variant", self._default_variant())
         super().__init__(**kwargs)
         self._check_scene(self.scene)
+
+    @traitlets.validate("ui")
+    def _validate_ui(self, proposal: Any) -> dict[str, Any]:
+        return _check_keys(proposal["value"], UI_KEYS, "ui")
+
+    @traitlets.validate("interaction")
+    def _validate_interaction(self, proposal: Any) -> dict[str, Any]:
+        return _check_keys(proposal["value"], INTERACTION_KEYS, "interaction")
 
     @classmethod
     def _default_variant(cls) -> str:
@@ -105,7 +170,12 @@ class RayOpticsWidget(anywidget.AnyWidget):
 
     def _check_scene(self, scene: Mapping[str, Any]) -> None:
         """Complain about a scene this widget cannot show, at the point it is given rather than as
-        a blank output later on."""
+        a blank output later on.
+
+        A scene given as a link cannot be checked here: it is compressed, and undoing that is the
+        browser's job. Such a scene is shown by whichever simulator its objects call for, exactly as
+        the standalone applet decides it.
+        """
         if scene and is_wave_scene(scene):
             raise ValueError(
                 "This is a wave optics scene; show it with WaveOpticsWidget, which runs the field "

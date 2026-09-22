@@ -18,6 +18,18 @@ TaskWidget("wave_diffraction_orders")
 A scene may be a bundled example's name, a path to a `.json` file, the JSON itself, or a dictionary
 you built. The format is the simulator's own, documented in `data/taskScenes/README.md`.
 
+It may also be a link shared from the simulator — what its **File → Copy link** button writes, and
+what the address bar holds with **Auto sync URL** on. The hash carries the whole scene compressed, so
+a scene goes from the simulator into a notebook by pasting, with no file in between:
+
+```python
+WaveOpticsWidget("https://phydemo.app/ray-optics/simulator/#XQAAgAD...")
+```
+
+The link is carried to the browser as a link and decompressed there, which is where the codec that
+wrote it already lives; it therefore arrives on the `link` trait rather than on `scene`, and which
+simulator it needs is decided once it has been read.
+
 ## The three widgets
 
 They share one front-end bundle, because the applet decides which simulator to run from the scene it
@@ -37,15 +49,20 @@ The refusals are there to turn a blank output into a sentence, at the point the 
 | Trait | Meaning |
 | --- | --- |
 | `scene` | The scene, as a dictionary. |
+| `link` | A scene given as a shared link instead; set for you when one is passed as the scene. |
 | `interaction` | Interaction permissions laid over the scene's own. |
 | `ui` | Interface options laid over the scene's own. |
 | `task` | A task laid over the scene's own. |
+| `wave_optics` | Wave display settings laid over the scene's own: `view`, `animated`, colormaps. |
 | `height` | The applet's height in pixels; it has no height of its own. |
 | `allow_keyboard` | Whether the applet handles keyboard shortcuts. |
 | `progress`, `solved`, `goal_status` | Written by the front end as the student works. |
 
-`interaction`, `ui` and `task` are merged into the scene key by key rather than replacing it
-wholesale, so naming one option leaves the rest as the scene had them. That is what lets one scene
+`interaction`, `ui`, `task` and `wave_optics` are merged into the scene key by key rather than
+replacing it wholesale, so naming one option leaves the rest as the scene had them. Where none is
+given, the scene's own `interaction` and `ui` are what decide what the student may change and which
+controls appear — a scene that freezes everything but one lens arrives frozen. A key the front end
+does not know is refused here rather than ignored there. That is what lets one scene
 file be a free exploration in one place and a graded assignment in another:
 
 ```python
@@ -53,6 +70,16 @@ scene = load_scene("two_lens_imaging")
 
 WaveOpticsWidget(scene, ui={"taskPanel": False})      # explore it
 TaskWidget(scene, task={...}, interaction={"move": False})  # or set it
+```
+
+A wave scene carries two controls of its own: a selector for how the field is shown, and, in the two
+views that show an instant rather than a time average, a play button for its clock. Both are shown
+by default and are turned off with `ui={"viewSelector": False, "playButton": False}`. Which view a
+scene opens in and whether it is already moving are scene properties, so a figure can be authored as
+a moving one:
+
+```python
+WaveOpticsWidget("wave_zone_plate", wave_optics={"view": "field", "animated": True})
 ```
 
 With a kernel attached, `progress`, `solved` and `goal_status` report back what the student has

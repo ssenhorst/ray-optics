@@ -106,6 +106,29 @@
   transform: translateY(1px);
 }
 
+/* The field-view selector. Styled as a sibling of the buttons rather than as a form control, since
+   it sits in the same row and would otherwise arrive with the host page's own look. */
+.ro-select {
+  border: 1px solid var(--ro-border);
+  background: rgba(22, 27, 34, 0.85);
+  color: var(--ro-text);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+
+.ro-select:hover {
+  border-color: var(--ro-accent);
+}
+
+/* The wait while a scene given as a shared link is decompressed. */
+.ro-loading {
+  opacity: 0.8;
+}
+
 /* ---------------- task panel ---------------- */
 
 .ro-panel {

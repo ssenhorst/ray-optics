@@ -25,6 +25,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any, Mapping, Union
+from urllib.parse import unquote
 
 def _scenes_dir() -> Path:
     """Where the bundled example scenes are.
@@ -107,6 +108,33 @@ def load_scene(source: SceneLike) -> dict[str, Any]:
 
     known = ", ".join(list_scenes()) or "none are bundled"
     raise FileNotFoundError(f"No scene named {text!r}. Bundled scenes: {known}.")
+
+
+def is_scene_link(source: Any) -> bool:
+    """Whether a value is a link the simulator shared a scene as.
+
+    The "copy link" button and the "auto sync URL" setting both write the whole scene into the
+    address bar, compressed, so a link is a complete scene rather than a reference to one. The
+    widgets take such a link as they take a scene, and the decompression happens in the browser,
+    where the same codec the simulator wrote it with already lives.
+
+    Recognised by shape rather than by host, so a link from a local build, from this project's site
+    or from the original simulator all count. What is excluded is anything that could equally be a
+    scene name or a path: the payload has to be long enough not to be the gallery's ``#name`` form.
+
+    Args:
+        source: The candidate.
+
+    Returns:
+        Whether it is a shared link.
+    """
+    if not isinstance(source, str):
+        return False
+    text = source.strip()
+    if not text or text.startswith("{") or "#" not in text:
+        return False
+    payload = unquote(text.split("#", 1)[1]).strip()
+    return len(payload) >= 70 and not any(c.isspace() for c in payload)
 
 
 def is_wave_scene(scene: Mapping[str, Any]) -> bool:

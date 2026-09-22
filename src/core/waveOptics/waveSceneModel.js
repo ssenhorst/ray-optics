@@ -75,6 +75,9 @@ export function resolveWaveSettings(scene) {
     autoResolution: stored.autoResolution !== false,
     sourceDensity: positiveOr(stored.sourceDensity, DEFAULT_SOURCE_DENSITY),
     view: stored.view ?? 'intensity',
+    // Whether the instantaneous views run their clock. Saved with the scene because whether a
+    // figure moves is part of what the figure is, not a preference of whoever opens it.
+    animated: Boolean(stored.animated),
     intensityColormap: stored.intensityColormap ?? 'magma',
     fieldColormap: stored.fieldColormap ?? 'twilight',
     phaseChroma: clamp(stored.phaseChroma ?? DEFAULT_PHASE_CHROMA, 0, 0.4),

@@ -23,7 +23,7 @@ anywidget is understood — a Jupyter notebook, a MyST Markdown build, or a stat
     True
 """
 
-from .scenes import SCENES_DIR, is_wave_scene, list_scenes, load_scene
+from .scenes import SCENES_DIR, is_scene_link, is_wave_scene, list_scenes, load_scene
 from .widgets import RayOpticsWidget, TaskWidget, WaveOpticsWidget
 
 try:  # pragma: no cover - only absent when running from a source tree with no metadata
@@ -40,6 +40,7 @@ __all__ = [
     "load_scene",
     "list_scenes",
     "is_wave_scene",
+    "is_scene_link",
     "SCENES_DIR",
     "__version__",
 ]
