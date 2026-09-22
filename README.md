@@ -1,10 +1,10 @@
-![Example figure](https://raw.githubusercontent.com/ricktu288/ray-optics/master/src/img/spherical-lens-and-mirror.jpg)
+![Example figure](https://raw.githubusercontent.com/ssenhorst/ray-optics/master/src/img/spherical-lens-and-mirror.jpg)
 
 # Ray Optics Simulation
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.6386611.svg)](https://doi.org/10.5281/zenodo.6386611)
 [![translated](https://hosted.weblate.org/widget/ray-optics-simulation/svg-badge.svg)](https://hosted.weblate.org/engage/ray-optics-simulation/)
-[![Deploy website](https://github.com/ricktu288/ray-optics/actions/workflows/deploy.yml/badge.svg)](https://github.com/ricktu288/ray-optics/actions/workflows/deploy.yml)
-[![Deploy integrations](https://github.com/ricktu288/ray-optics/actions/workflows/deploy-integrations.yml/badge.svg)](https://github.com/ricktu288/ray-optics/actions/workflows/deploy-integrations.yml)
+[![Deploy website](https://github.com/ssenhorst/ray-optics/actions/workflows/deploy.yml/badge.svg)](https://github.com/ssenhorst/ray-optics/actions/workflows/deploy.yml)
+[![Deploy integrations](https://github.com/ssenhorst/ray-optics/actions/workflows/deploy-integrations.yml/badge.svg)](https://github.com/ssenhorst/ray-optics/actions/workflows/deploy-integrations.yml)
 
 A web app for creating and simulating 2D geometric optical scenes, with a gallery of (interactive) demos.
 
@@ -61,45 +61,45 @@ also publishes the bundle on its own, readable and minified, for a page that emb
 directly rather than through Python.
 
 ## Links
-- [**Launch the Web App**](https://phydemo.app/ray-optics/simulator/)
-- [Gallery](https://phydemo.app/ray-optics/gallery/)
-- [Documentation](https://phydemo.app/ray-optics/docs/index.html)
-- [About](https://phydemo.app/ray-optics/about)
-- [Run Locally](https://github.com/ricktu288/ray-optics/blob/master/run-locally/README.md)
+- [**Launch the Web App**](https://ssenhorst.github.io/ray-optics/simulator/)
+- [Gallery](https://ssenhorst.github.io/ray-optics/gallery/)
+- [Documentation](https://ssenhorst.github.io/ray-optics/docs/index.html)
+- [About](https://ssenhorst.github.io/ray-optics/about)
+- [Run Locally](https://github.com/ssenhorst/ray-optics/blob/master/run-locally/README.md)
 
 ## Cite this project
 
 If you use this project in your research, please cite it according to the following instruction depending on the version you are using.
 
-If you are using the [online version](https://phydemo.app/ray-optics/simulator/), please check if you are using any beta features (if some are used, a "Beta" icon is shown in the lower left corner of the web app). If no beta features are used, then please cite [the Zenodo record of the latest release](https://doi.org/10.5281/zenodo.6386611) by following the "Citation" or "Export" panel there. If beta features are used, you may either cite as above but with additional comment on the usage of beta features (as the latest release does not include beta features), or directly cite the GitHub repository with access date.
+For the wave optics features, please cite this repository with the access date. For the ray optics features, please check if you are using any beta features (if some are used, a "Beta" icon is shown in the lower left corner of the web app). If no beta features are used, then please cite [the Zenodo record of the latest release](https://doi.org/10.5281/zenodo.6386611) by following the "Citation" or "Export" panel there. If beta features are used, you may either cite as above but with additional comment on the usage of beta features (as the latest release does not include beta features), or directly cite the GitHub repository with access date.
 
-If you are running the project locally, please follow the Zenodo link of the version you are using in the [Releases](https://github.com/ricktu288/ray-optics/releases) page if you downloaded it there. If you are not using a released version (e.g. downloaded from a previous "latest deployment" link or cloned from the repository), you may either cite the Zenodo record corresponding to the most recent parent release of the version you are using with comment on the usage of beta/modified features (if any), or directly cite the GitHub repository with access date.
+If you are running the project locally, please follow the Zenodo link of the version you are using in the [Releases](https://github.com/ssenhorst/ray-optics/releases) page if you downloaded it there. If you are not using a released version (e.g. downloaded from a previous "latest deployment" link or cloned from the repository), you may either cite the Zenodo record corresponding to the most recent parent release of the version you are using with comment on the usage of beta/modified features (if any), or directly cite the GitHub repository with access date.
 
 ## Contributing
 
 Contributions are welcome. For the following types of contributions, no (or little) programming knowledge is required:
 
-- New items in the [gallery](https://phydemo.app/ray-optics/gallery/)
+- New items in the [gallery](https://ssenhorst.github.io/ray-optics/gallery/)
 - New translations
 - New modules (as in Tools -> Other -> Import Modules)
 
-See [CONTRIBUTING.md](https://github.com/ricktu288/ray-optics/blob/master/CONTRIBUTING.md) for the tutorial. Also see the [roadmap](https://github.com/ricktu288/ray-optics/blob/master/ROADMAP.md) for the planned features to avoid duplicate work or conflicts.
+See [CONTRIBUTING.md](https://github.com/ssenhorst/ray-optics/blob/master/CONTRIBUTING.md) for the tutorial. Also see the [roadmap](https://github.com/ssenhorst/ray-optics/blob/master/ROADMAP.md) for the planned features to avoid duplicate work or conflicts.
 
 For translations, note that this project uses Weblate. Please visit https://hosted.weblate.org/engage/ray-optics-simulation/ to translate.
 
 [![Translation status](https://hosted.weblate.org/widget/ray-optics-simulation/287x66-grey.png)](https://hosted.weblate.org/engage/ray-optics-simulation/)
 
-To contribute code, you need to have some knowledge of JavaScript and module bundling. The code is written in ES6 and bundled with Webpack. The code structure is documented in the [documentation](https://phydemo.app/ray-optics/docs/index.html). See the following section for installation instructions.
+To contribute code, you need to have some knowledge of JavaScript and module bundling. The code is written in ES6 and bundled with Webpack. The code structure is documented in the [documentation](https://ssenhorst.github.io/ray-optics/docs/index.html). See the following section for installation instructions.
 
 ## Installation
 
 > [!NOTE]
-> The following instructions are for developers. If you just want to use the web app, you can launch it directly from [here](https://phydemo.app/ray-optics/simulator/).
-> If you just want to run the project locally, please see [Run Locally](https://github.com/ricktu288/ray-optics/blob/master/run-locally/README.md).
+> The following instructions are for developers. If you just want to use the web app, you can launch it directly from [here](https://ssenhorst.github.io/ray-optics/simulator/).
+> If you just want to run the project locally, please see [Run Locally](https://github.com/ssenhorst/ray-optics/blob/master/run-locally/README.md).
 
 To run the web app locally for development, you need to have Node.js installed. Then, run the following commands in the terminal:
 ```bash
-git clone https://github.com/ricktu288/ray-optics.git
+git clone https://github.com/ssenhorst/ray-optics.git
 cd ray-optics
 npm install --no-optional
 npm run start
@@ -111,7 +111,7 @@ If you want to build the entire project, including the home pages, gallery, modu
 npm install
 npm run build
 ```
-After that, the entire content for the [https://phydemo.app/ray-optics/](https://phydemo.app/ray-optics/) website will be in the `dist` folder. You can again run `npm run start` to run the simulator locally, and now all the links and the "import module" window should work.
+After that, the entire content for the [https://ssenhorst.github.io/ray-optics/](https://ssenhorst.github.io/ray-optics/) website will be in the `dist` folder. You can again run `npm run start` to run the simulator locally, and now all the links and the "import module" window should work.
 
 If an error occurs during the installation, some common reasons are:
 - The version of Node.js is too old. You can update Node.js to version 18 or later.
@@ -128,7 +128,7 @@ The full build may takes about half an hour to complete due to the generation of
 - `test` contains the automatic tests for the project.
 - `python` contains the Python distribution of the widgets, which wraps the built bundle as anywidgets. The project it belongs to is described by `pyproject.toml` at the root, so the repository as a whole is what `pip install .` installs.
 - `integrations` contains the integration tools for the simulator with other programming languages.
-- `dist` (generated at build time) contains the built files for the project (the entire content for the [https://phydemo.app/ray-optics](https://phydemo.app/ray-optics) website).
+- `dist` (generated at build time) contains the built files for the project (the entire content for the [https://ssenhorst.github.io/ray-optics](https://ssenhorst.github.io/ray-optics) website).
 - `dist-node` (generated at build time) contains the built files for the node module version of the simulator, which is required for the image generation, and can also be used in your own project.
 - `dist-integrations` (generated at build time) contains the built files for the integration tools.
 
@@ -204,7 +204,7 @@ Currently there is no automatic end-to-end test for the web app. So please manua
 ## Use as a Node Module
 
 The simulator can be used as a node module in your own project and integrated with other programming languages.
-The easiest way is to use the built [integration tools](https://github.com/ricktu288/ray-optics/tree/dist-integrations). You don't need to clone this repo and build anything, but you still need to have Node.js installed.
+The easiest way is to use the built [integration tools](https://github.com/ssenhorst/ray-optics/tree/dist-integrations). You don't need to clone this repo and build anything, but you still need to have Node.js installed.
 
 For more advanced usage, the node module version of the simulator is built with the following command:
 ```bash
@@ -215,7 +215,7 @@ After that, you can use the simulator in your own project by importing the modul
 const { Scene, Simulator, sceneObjs, geometry } = require('path/to/ray-optics/dist-node/rayOptics.js');
 ```
 
-See the [documentation](https://phydemo.app/ray-optics/docs/index.html) for more information about the API. For a usage example, see the [image generation script](https://github.com/ricktu288/ray-optics/blob/master/scripts/buildImages.mjs).
+See the [documentation](https://ssenhorst.github.io/ray-optics/docs/index.html) for more information about the API. For a usage example, see the [image generation script](https://github.com/ssenhorst/ray-optics/blob/master/scripts/buildImages.mjs).
 
 To build the integration tools by yourself, run the following command:
 ```bash

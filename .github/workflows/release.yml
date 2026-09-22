@@ -57,6 +57,18 @@ jobs:
       - name: Build anywidget bundle
         run: npm run build-anywidget
 
+      # The Python distribution of the widgets.
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install Python build tools
+        run: pip install -q build
+
+      - name: Build Python wheel
+        run: python -m build --wheel
+
       - name: Collect anywidget assets
         run: |
           mkdir -p anywidget-assets
@@ -87,6 +99,11 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: integrations-build.zip
+
+      - name: Upload Python wheel as release asset
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/ray_optics_widgets-*.whl
 
       - name: Upload anywidget bundle as release assets
         uses: softprops/action-gh-release@v1
