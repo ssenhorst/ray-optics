@@ -5,11 +5,14 @@ still contains its ray tracer. Which work to cite therefore depends on which par
 
 ## The wave optics simulator, or the assignments
 
-Cite this project. [`CITATION.cff`](CITATION.cff) in the repository root holds the metadata; GitHub
-renders it as a "Cite this repository" button, and most reference managers read it directly.
+Cite [the Zenodo record](https://doi.org/10.5281/zenodo.22893112),
+`10.5281/zenodo.22893112`. That is the *concept* DOI: it resolves to the most recent release, which
+is what a reader following the citation almost always wants. Each release also has a DOI of its own,
+shown on its Zenodo page, for when the exact version matters.
 
-Until a release is archived and given a DOI, cite the repository with the access date and the
-version or commit you used.
+[`CITATION.cff`](CITATION.cff) in the repository root holds the same metadata in machine-readable
+form; GitHub renders it as a "Cite this repository" button, and most reference managers read it
+directly.
 
 ## The ray optics simulator
 

@@ -48,6 +48,8 @@ dev = [
 
 [project.urls]
 Homepage = "https://ssenhorst.github.io/wave-optics/"
+# The concept DOI, which resolves to the most recent release.
+DOI = "https://doi.org/10.5281/zenodo.22893112"
 Source = "https://github.com/ssenhorst/wave-optics"
 
 # One source of truth for the version: the npm package, which is what the simulator is versioned by.
