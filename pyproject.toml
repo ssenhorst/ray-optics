@@ -6,7 +6,7 @@
 # `pip install .` (or a build to PyPI) works from here.
 #
 # The front-end bundle the widgets serve is built by `npm run build-anywidget`, which writes it to
-# `python/ray_optics_widgets/static/` along with a copy of the example scenes. Both are build
+# `python/wave_optics_widgets/static/` along with a copy of the example scenes. Both are build
 # products, so neither is in version control, and both are listed under `artifacts` below so that
 # packaging includes them anyway. Only the minified build goes into the distribution: the readable
 # one is several times the size and is published as a release asset instead.
@@ -16,14 +16,14 @@ requires = ["hatchling>=1.24", "hatch-nodejs-version>=0.3"]
 build-backend = "hatchling.build"
 
 [project]
-name = "ray-optics-widgets"
+name = "wave-optics-widgets"
 dynamic = ["version"]
-description = "Embeddable ray optics, wave optics and assignment widgets, as anywidgets."
+description = "Embeddable wave optics, ray optics and assignment widgets, as anywidgets."
 readme = "python/README.md"
 requires-python = ">=3.9"
 license = "Apache-2.0"
-authors = [{ name = "The Ray Optics Simulation authors and contributors" }]
-keywords = ["optics", "ray tracing", "wave optics", "anywidget", "jupyter", "myst", "education"]
+authors = [{ name = "The Wave Optics Simulation authors and contributors" }]
+keywords = ["optics", "wave optics", "diffraction", "ray tracing", "anywidget", "jupyter", "myst", "education"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Framework :: Jupyter",
@@ -56,13 +56,13 @@ source = "nodejs"
 path = "package.json"
 
 [tool.hatch.build.targets.wheel]
-packages = ["python/ray_optics_widgets"]
+packages = ["python/wave_optics_widgets"]
 # Both directories are written by `npm run build-anywidget` and so are ignored by git, which is
 # otherwise what hatchling selects files by: the bundle, and the copy of the example scenes that
 # lets `load_scene("wave_zone_plate")` work from an installed package.
 artifacts = [
-    "python/ray_optics_widgets/static/widget.min.*",
-    "python/ray_optics_widgets/scenes/*",
+    "python/wave_optics_widgets/static/widget.min.*",
+    "python/wave_optics_widgets/scenes/*",
 ]
 
 [tool.hatch.build.targets.sdist]
@@ -76,8 +76,8 @@ include = [
     "/LICENSE",
 ]
 artifacts = [
-    "python/ray_optics_widgets/static/widget.min.*",
-    "python/ray_optics_widgets/scenes/*",
+    "python/wave_optics_widgets/static/widget.min.*",
+    "python/wave_optics_widgets/scenes/*",
 ]
 
 [tool.pytest.ini_options]

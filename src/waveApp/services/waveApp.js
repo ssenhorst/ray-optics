@@ -357,7 +357,7 @@ function bindEditorEvents() {
   if (scene.designMode) {
     // The designer is a tool for whoever is authoring the task, so its internals are reachable from
     // the console. The app students get does not expose this.
-    window.rayOpticsApp = app;
+    window.waveOpticsApp = app;
   }
 
   // Switch back to the move-view tool the instant an object is placed, so a

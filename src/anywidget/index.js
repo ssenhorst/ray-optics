@@ -28,7 +28,7 @@
  * viewer, the wave viewer and the task applet differ only in what they are handed. The `variant`
  * trait is carried through for the sake of error messages and of defaults, not to select code.
  *
- * The model's traits are documented in `python/ray_optics_widgets/widgets.py`, which is the other
+ * The model's traits are documented in `python/wave_optics_widgets/widgets.py`, which is the other
  * half of this file.
  */
 

@@ -32,7 +32,7 @@
 import fs from 'fs';
 import path from 'path';
 
-const BUNDLE_PATH = 'dist-widget/ray-optics-widget.js';
+const BUNDLE_PATH = 'dist-widget/wave-optics-widget.js';
 const DEFAULT_SCENE_DIR = 'data/taskScenes';
 const DEFAULT_OUT_DIR = 'dist/tasks';
 
@@ -73,12 +73,12 @@ function buildPage(bundle, sceneJson, title) {
 <title>${escapeHtml(title)}</title>
 <style>
   html, body { margin: 0; padding: 0; height: 100%; background: #0d1117; }
-  #ray-optics-task { height: 100%; min-height: 420px; }
+  #wave-optics-task { height: 100%; min-height: 420px; }
 </style>
 </head>
 
 <body>
-<div id="ray-optics-task" data-ray-optics><script type="application/json">
+<div id="wave-optics-task" data-wave-optics><script type="application/json">
 ${escapeForScript(sceneJson)}
 </script></div>
 <script>

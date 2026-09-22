@@ -24,12 +24,12 @@
  * Markup that uses it looks like:
  *
  * ```html
- * <div data-ray-optics style="height: 420px">
+ * <div data-wave-optics style="height: 420px">
  *   <script type="application/json">{ "version": 5, "objs": [] }</script>
  * </div>
  * ```
  *
- * or, programmatically, `RayOptics.createWidget(element, sceneJson, options)`.
+ * or, programmatically, `WaveOptics.createWidget(element, sceneJson, options)`.
  */
 
 import i18next from 'i18next';
@@ -53,26 +53,26 @@ i18next.init({
  */
 export function createWidget(target, sceneData, options) {
   const element = typeof target === 'string' ? document.getElementById(target) : target;
-  if (!element) throw new Error('RayOptics.createWidget: no such element');
+  if (!element) throw new Error('WaveOptics.createWidget: no such element');
   return new TaskWidget(element, sceneData, options);
 }
 
 /**
- * Build a widget for every element carrying a `data-ray-optics` attribute that has not been
+ * Build a widget for every element carrying a `data-wave-optics` attribute that has not been
  * initialised yet. The scene is read from an inline `<script type="application/json">` child, or
  * from the attribute itself if it holds the JSON directly.
  * @returns {Array<TaskWidget>} The widgets created.
  */
 export function autoInit() {
   const widgets = [];
-  for (const element of document.querySelectorAll('[data-ray-optics]')) {
-    if (element.dataset.rayOpticsReady === 'true') continue;
+  for (const element of document.querySelectorAll('[data-wave-optics]')) {
+    if (element.dataset.waveOpticsReady === 'true') continue;
 
     const inline = element.querySelector('script[type="application/json"]');
-    const raw = inline ? inline.textContent : element.getAttribute('data-ray-optics');
+    const raw = inline ? inline.textContent : element.getAttribute('data-wave-optics');
     if (!raw || !raw.trim()) continue;
 
-    element.dataset.rayOpticsReady = 'true';
+    element.dataset.waveOpticsReady = 'true';
     widgets.push(new TaskWidget(element, raw));
   }
   return widgets;

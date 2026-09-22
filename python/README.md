@@ -1,4 +1,4 @@
-# ray-optics-widgets
+# wave-optics-widgets
 
 Embeddable ray optics, wave optics and assignment widgets, as
 [anywidgets](https://anywidget.dev).
@@ -8,7 +8,7 @@ widget classes that render a scene anywhere anywidget is understood — a Jupyte
 [MyST](https://mystmd.org) Markdown build, or a static page.
 
 ```python
-from ray_optics_widgets import RayOpticsWidget, WaveOpticsWidget, TaskWidget
+from wave_optics_widgets import RayOpticsWidget, WaveOpticsWidget, TaskWidget
 
 RayOpticsWidget("collimate_the_beam")
 WaveOpticsWidget("wave_zone_plate", height=520)
@@ -70,7 +70,7 @@ The front-end bundle is a build product and is not in version control:
 
 ```bash
 npm install
-npm run build-anywidget     # writes python/ray_optics_widgets/static/widget.{js,css}
+npm run build-anywidget     # writes python/wave_optics_widgets/static/widget.{js,css}
 pip install .               # from the repository root
 ```
 
@@ -92,7 +92,7 @@ value:
 ````markdown
 ```{code-cell} python
 :tags: [remove-input]
-from ray_optics_widgets import TaskWidget
+from wave_optics_widgets import TaskWidget
 TaskWidget("wave_diffraction_orders", height=520)
 ```
 ````

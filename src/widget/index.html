@@ -102,7 +102,7 @@
           })
           .then(function (json) {
             if (widget) widget.destroy();
-            widget = RayOptics.createWidget('applet', json, {
+            widget = WaveOptics.createWidget('applet', json, {
               onComplete: function () { console.log('task complete'); }
             });
             // Exposed so that the development page can be driven from a script.

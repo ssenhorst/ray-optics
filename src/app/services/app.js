@@ -1054,7 +1054,7 @@ function initAppService() {
   if (scene.designMode) {
     // The designer is a tool for whoever is authoring the task, so its internals are reachable from
     // the console for scripting and debugging. The app students get does not expose this.
-    window.rayOpticsApp = app;
+    window.waveOpticsApp = app;
 
     // While designing, the target of each goal is a handle on the canvas, so that it can be placed
     // by dragging rather than by typing coordinates into the JSON.

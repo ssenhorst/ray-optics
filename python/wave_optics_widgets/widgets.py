@@ -40,12 +40,12 @@ class RayOpticsWidget(anywidget.AnyWidget):
     """A ray optics scene, embedded.
 
     Args:
-        scene: The scene to show, in any of the forms :func:`~ray_optics_widgets.load_scene`
+        scene: The scene to show, in any of the forms :func:`~wave_optics_widgets.load_scene`
             accepts. May also be given as the ``scene`` keyword.
         **kwargs: Any of the traits below.
 
     Example:
-        >>> from ray_optics_widgets import RayOpticsWidget
+        >>> from wave_optics_widgets import RayOpticsWidget
         >>> RayOpticsWidget("collimate_the_beam", height=380)  # doctest: +SKIP
     """
 
@@ -125,7 +125,7 @@ class WaveOpticsWidget(RayOpticsWidget):
     on the CPU.
 
     Args:
-        scene: The scene to show, in any of the forms :func:`~ray_optics_widgets.load_scene`
+        scene: The scene to show, in any of the forms :func:`~wave_optics_widgets.load_scene`
             accepts.
         **kwargs: Any of :class:`RayOpticsWidget`'s traits.
     """
@@ -152,12 +152,12 @@ class TaskWidget(RayOpticsWidget):
     Ray and wave scenes are both accepted, since an assignment is an assignment either way.
 
     Args:
-        scene: The scene to show, in any of the forms :func:`~ray_optics_widgets.load_scene`
+        scene: The scene to show, in any of the forms :func:`~wave_optics_widgets.load_scene`
             accepts.
         **kwargs: Any of :class:`RayOpticsWidget`'s traits.
 
     Example:
-        >>> from ray_optics_widgets import TaskWidget
+        >>> from wave_optics_widgets import TaskWidget
         >>> widget = TaskWidget("wave_zone_plate")  # doctest: +SKIP
         >>> widget.solved  # doctest: +SKIP
         False

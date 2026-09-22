@@ -27,11 +27,11 @@ export default () => ({
   entry: {
     widget: {
       import: './src/widget/main.js',
-      library: { name: 'RayOptics', type: 'umd', export: 'default' },
+      library: { name: 'WaveOptics', type: 'umd', export: 'default' },
     },
   },
   output: {
-    filename: 'ray-optics-widget.js',
+    filename: 'wave-optics-widget.js',
     path: path.resolve('dist-widget'),
     clean: true,
   },

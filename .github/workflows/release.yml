@@ -74,7 +74,7 @@ jobs:
       - name: Collect anywidget assets
         run: |
           mkdir -p anywidget-assets
-          static=python/ray_optics_widgets/static
+          static=python/wave_optics_widgets/static
           cp "$static/widget.js"      anywidget-assets/ray-optics-anywidget.js
           cp "$static/widget.min.js"  anywidget-assets/ray-optics-anywidget.min.js
           cp "$static/widget.css"     anywidget-assets/ray-optics-anywidget.css
@@ -106,8 +106,8 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            python-dist/ray_optics_widgets-*.whl
-            python-dist/ray_optics_widgets-*.tar.gz
+            python-dist/wave_optics_widgets-*.whl
+            python-dist/wave_optics_widgets-*.tar.gz
 
       - name: Upload anywidget bundle as release assets
         uses: softprops/action-gh-release@v1

@@ -52,7 +52,7 @@ optics scene or an assignment can be dropped into a notebook or a MyST Markdown 
 passes the scene it wants to show:
 
 ```python
-from ray_optics_widgets import RayOpticsWidget, WaveOpticsWidget, TaskWidget
+from wave_optics_widgets import RayOpticsWidget, WaveOpticsWidget, TaskWidget
 
 WaveOpticsWidget("wave_zone_plate", height=520)
 ```
@@ -165,7 +165,7 @@ Note that `npm run build` is equivalent to running all the above commands.
 
 Two further builds are not part of `npm run build`, since neither belongs in the website:
 ```bash
-# build the anywidget bundle, into python/ray_optics_widgets/static.
+# build the anywidget bundle, into python/wave_optics_widgets/static.
 npm run build-anywidget
 
 # open a task scene in the app as a designer, rather than as an assignment.
