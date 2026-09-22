@@ -1,12 +1,12 @@
 {
-  "name": "ray-optics",
+  "name": "wave-optics",
   "displayName": "Wave Optics Simulation",
   "description": "A web app for simulating 2D wave optics, with interactive assignments.",
   "version": "1.0.0",
   "author": "The Wave Optics Simulation authors and contributors",
   "license": "Apache-2.0",
-  "homepage": "https://ssenhorst.github.io/ray-optics/",
-  "repository": "https://github.com/ssenhorst/ray-optics",
+  "homepage": "https://ssenhorst.github.io/wave-optics/",
+  "repository": "https://github.com/ssenhorst/wave-optics",
   "private": true,
   "dependencies": {
     "@popperjs/core": "2.11.8",

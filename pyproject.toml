@@ -47,8 +47,8 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://ssenhorst.github.io/ray-optics/"
-Source = "https://github.com/ssenhorst/ray-optics"
+Homepage = "https://ssenhorst.github.io/wave-optics/"
+Source = "https://github.com/ssenhorst/wave-optics"
 
 # One source of truth for the version: the npm package, which is what the simulator is versioned by.
 [tool.hatch.version]

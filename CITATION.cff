@@ -14,8 +14,8 @@ authors:
 version: "1.0.0"
 date-released: "2026-09-22"
 license: Apache-2.0
-repository-code: "https://github.com/ssenhorst/ray-optics"
-url: "https://ssenhorst.github.io/ray-optics/"
+repository-code: "https://github.com/ssenhorst/wave-optics"
+url: "https://ssenhorst.github.io/wave-optics/"
 keywords:
   - optics
   - wave optics

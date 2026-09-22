@@ -1,8 +1,8 @@
 ![Two coherent point sources interfering](src/img/wave/carousel-twoPointSources.jpg)
 
 # Wave Optics Simulation
-[![Deploy website](https://github.com/ssenhorst/ray-optics/actions/workflows/deploy.yml/badge.svg)](https://github.com/ssenhorst/ray-optics/actions/workflows/deploy.yml)
-[![Run Tests](https://github.com/ssenhorst/ray-optics/actions/workflows/test.yml/badge.svg)](https://github.com/ssenhorst/ray-optics/actions/workflows/test.yml)
+[![Deploy website](https://github.com/ssenhorst/wave-optics/actions/workflows/deploy.yml/badge.svg)](https://github.com/ssenhorst/wave-optics/actions/workflows/deploy.yml)
+[![Run Tests](https://github.com/ssenhorst/wave-optics/actions/workflows/test.yml/badge.svg)](https://github.com/ssenhorst/wave-optics/actions/workflows/test.yml)
 
 A web app for simulating 2D wave optics: light as a complex scalar field, summed from point sources,
 so that diffraction, interference and the resolution limit come out of the simulation rather than
@@ -63,11 +63,11 @@ also publishes the bundle on its own, readable and minified, for a page that emb
 directly rather than through Python.
 
 ## Links
-- [**Launch the Wave Optics Simulator**](https://ssenhorst.github.io/ray-optics/wave/)
-- [Gallery and assignments](https://ssenhorst.github.io/ray-optics/gallery/)
-- [Documentation](https://ssenhorst.github.io/ray-optics/docs/index.html)
-- [The ray optics simulator](https://ssenhorst.github.io/ray-optics/simulator/)
-- [Run Locally](https://github.com/ssenhorst/ray-optics/blob/master/run-locally/README.md)
+- [**Launch the Wave Optics Simulator**](https://ssenhorst.github.io/wave-optics/wave/)
+- [Gallery and assignments](https://ssenhorst.github.io/wave-optics/gallery/)
+- [Documentation](https://ssenhorst.github.io/wave-optics/docs/index.html)
+- [The ray optics simulator](https://ssenhorst.github.io/wave-optics/simulator/)
+- [Run Locally](https://github.com/ssenhorst/wave-optics/blob/master/run-locally/README.md)
 
 ## Cite this project
 
@@ -80,28 +80,28 @@ button and most reference managers read.
 
 Contributions are welcome. For the following types of contributions, no (or little) programming knowledge is required:
 
-- New items in the [gallery](https://ssenhorst.github.io/ray-optics/gallery/)
+- New items in the [gallery](https://ssenhorst.github.io/wave-optics/gallery/)
 - New translations
 - New modules (as in Tools -> Other -> Import Modules)
 
-See [CONTRIBUTING.md](https://github.com/ssenhorst/ray-optics/blob/master/CONTRIBUTING.md) for the tutorial.
+See [CONTRIBUTING.md](https://github.com/ssenhorst/wave-optics/blob/master/CONTRIBUTING.md) for the tutorial.
 
 Translations of the inherited interface are managed by the upstream project on
 [Weblate](https://hosted.weblate.org/engage/ray-optics-simulation/) and reach this fork when it
 merges from upstream; contribute them there. Strings belonging to the wave optics simulator are only
 in this repository, and are contributed here.
 
-To contribute code, you need to have some knowledge of JavaScript and module bundling. The code is written in ES6 and bundled with Webpack. The code structure is documented in the [documentation](https://ssenhorst.github.io/ray-optics/docs/index.html). See the following section for installation instructions.
+To contribute code, you need to have some knowledge of JavaScript and module bundling. The code is written in ES6 and bundled with Webpack. The code structure is documented in the [documentation](https://ssenhorst.github.io/wave-optics/docs/index.html). See the following section for installation instructions.
 
 ## Installation
 
 > [!NOTE]
-> The following instructions are for developers. If you just want to use the web app, you can launch it directly from [here](https://ssenhorst.github.io/ray-optics/wave/).
-> If you just want to run the project locally, please see [Run Locally](https://github.com/ssenhorst/ray-optics/blob/master/run-locally/README.md).
+> The following instructions are for developers. If you just want to use the web app, you can launch it directly from [here](https://ssenhorst.github.io/wave-optics/wave/).
+> If you just want to run the project locally, please see [Run Locally](https://github.com/ssenhorst/wave-optics/blob/master/run-locally/README.md).
 
 To run the web app locally for development, you need to have Node.js installed. Then, run the following commands in the terminal:
 ```bash
-git clone https://github.com/ssenhorst/ray-optics.git
+git clone https://github.com/ssenhorst/wave-optics.git
 cd ray-optics
 npm install --no-optional
 npm run start
@@ -113,7 +113,7 @@ If you want to build the entire project, including the home pages, gallery, modu
 npm install
 npm run build
 ```
-After that, the entire content for the [https://ssenhorst.github.io/ray-optics/](https://ssenhorst.github.io/ray-optics/) website will be in the `dist` folder. You can again run `npm run start` to run the simulator locally, and now all the links and the "import module" window should work.
+After that, the entire content for the [https://ssenhorst.github.io/wave-optics/](https://ssenhorst.github.io/wave-optics/) website will be in the `dist` folder. You can again run `npm run start` to run the simulator locally, and now all the links and the "import module" window should work.
 
 If an error occurs during the installation, some common reasons are:
 - The version of Node.js is too old. You can update Node.js to version 18 or later.
@@ -130,7 +130,7 @@ The full build may takes about half an hour to complete due to the generation of
 - `test` contains the automatic tests for the project.
 - `python` contains the Python distribution of the widgets, which wraps the built bundle as anywidgets. The project it belongs to is described by `pyproject.toml` at the root, so the repository as a whole is what `pip install .` installs.
 - `integrations` contains the integration tools for the simulator with other programming languages.
-- `dist` (generated at build time) contains the built files for the project (the entire content for the [https://ssenhorst.github.io/ray-optics](https://ssenhorst.github.io/ray-optics) website).
+- `dist` (generated at build time) contains the built files for the project (the entire content for the [https://ssenhorst.github.io/wave-optics](https://ssenhorst.github.io/wave-optics) website).
 - `dist-node` (generated at build time) contains the built files for the node module version of the simulator, which is required for the image generation, and can also be used in your own project.
 - `dist-integrations` (generated at build time) contains the built files for the integration tools.
 
@@ -206,7 +206,7 @@ Currently there is no automatic end-to-end test for the web app. So please manua
 ## Use as a Node Module
 
 The simulator can be used as a node module in your own project and integrated with other programming languages.
-The easiest way is to use the built [integration tools](https://github.com/ssenhorst/ray-optics/tree/dist-integrations). You don't need to clone this repo and build anything, but you still need to have Node.js installed.
+The easiest way is to use the built [integration tools](https://github.com/ssenhorst/wave-optics/tree/dist-integrations). You don't need to clone this repo and build anything, but you still need to have Node.js installed.
 
 For more advanced usage, the node module version of the simulator is built with the following command:
 ```bash
@@ -217,7 +217,7 @@ After that, you can use the simulator in your own project by importing the modul
 const { Scene, Simulator, sceneObjs, geometry } = require('path/to/ray-optics/dist-node/rayOptics.js');
 ```
 
-See the [documentation](https://ssenhorst.github.io/ray-optics/docs/index.html) for more information about the API. For a usage example, see the [image generation script](https://github.com/ssenhorst/ray-optics/blob/master/scripts/buildImages.mjs).
+See the [documentation](https://ssenhorst.github.io/wave-optics/docs/index.html) for more information about the API. For a usage example, see the [image generation script](https://github.com/ssenhorst/wave-optics/blob/master/scripts/buildImages.mjs).
 
 To build the integration tools by yourself, run the following command:
 ```bash
