@@ -291,7 +291,7 @@ const waveTasks = waveTaskList();
 const galleryLangs = [];
 const modulesLangs = [];
 
-const rootAbsUrl = "https://phydemo.app/ray-optics";
+const rootAbsUrl = "https://ssenhorst.github.io/wave-optics";
 const urlMaps = {};
 const langNames = {};
 const i18nextResources = {};
@@ -338,8 +338,6 @@ for (const lang of langs) {
     // The wave-optics app has no translations of its own yet, so there is only
     // one of it; the link is the same from every language's pages.
     "/wave": "/wave/",
-    "/phydemo": "https://phydemo.app/",
-    "/email": "mailto:ray-optics@phydemo.app",
     "/github": "https://github.com/ssenhorst/wave-optics",
     "/github/issues": "https://github.com/ssenhorst/wave-optics/issues",
     "/github/discussions": "https://github.com/ssenhorst/wave-optics/discussions",
@@ -475,7 +473,7 @@ for (const lang of homeLangs) {
   const homeTemplate = Handlebars.compile(fs.readFileSync(path.join(__dirname, '../src/pages/home.hbs'), 'utf8'));
 
   const homeData = {
-    title: i18next.t('main:project.name') + ' - PhyDemo',
+    title: i18next.t('main:project.name'),
     ogImage: rootAbsUrl + '/img/image.png',
     absUrl: rootAbsUrl + urlMaps[lang]['/home'],
     lang: lang,

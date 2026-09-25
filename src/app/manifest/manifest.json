@@ -1,6 +1,6 @@
 ﻿{
-  "name": "Ray Optics Simulation",
-  "short_name": "Ray Optics",
+  "name": "Wave Optics Simulation",
+  "short_name": "Wave Optics",
   "icons": [
     {
       "src": "/wave-optics/img/icon.png",
